@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Orçamento — Corte a Laser / Dobra / Estampagem</title>
+<title>LUMATRI Industrial</title>
 <style>
   :root{
     --bg:#15171a;
@@ -404,7 +404,7 @@
   <div id="viewOrcamento" class="view">
 
   <header class="top no-print">
-    <h1>Orçamento <span>·</span> Corte Laser / Dobra / Estampagem</h1>
+    <h1>LUMATRI Industrial</h1>
     <div class="tag">geração automática a partir de arquivos .DXF</div>
   </header>
 
@@ -1118,45 +1118,45 @@ const DEFAULT_EMPRESA_CONTATO = "(48) 99160-6759 · lmlaser@lmlaser.com.br";
 
 let materials = [
   {nome:'Aço Carbono', densidade:7850, thicknesses:[
-    {esp:1,     preco:11.00, vel:4.5, pierce:0.5},
-    {esp:1.5,   preco:11.00, vel:18,  pierce:0.6},
-    {esp:2,     preco:11.00, vel:16,  pierce:0.8},
-    {esp:3,     preco:11.00, vel:4,   pierce:1.2},
-    {esp:4.76,  preco:11.00, vel:3,   pierce:2},
-    {esp:6.35,  preco:11.00, vel:2.5, pierce:15.5},
-    {esp:8,     preco:11.00, vel:2,   pierce:4},
-    {esp:9.52,  preco:11.00, vel:1.2, pierce:5},
-    {esp:12.7,  preco:11.00, vel:0.9, pierce:7},
-    {esp:16,    preco:11.00, vel:0.75,pierce:9},
-    {esp:18,    preco:11.00, vel:0.68,pierce:10},
-    {esp:19,    preco:11.00, vel:0.5, pierce:11},
+    {esp:1,     preco:11.00, vel:1.58, pierce:1.9},
+    {esp:1.5,   preco:11.00, vel:6.3,  pierce:2},
+    {esp:2,     preco:11.00, vel:5.6,  pierce:2.2},
+    {esp:3,     preco:11.00, vel:1.4,  pierce:2.6},
+    {esp:4.76,  preco:11.00, vel:1.05, pierce:3.4},
+    {esp:6.35,  preco:11.00, vel:0.88, pierce:16.9},
+    {esp:8,     preco:11.00, vel:0.7,  pierce:5.4},
+    {esp:9.52,  preco:11.00, vel:0.42, pierce:6.4},
+    {esp:12.7,  preco:11.00, vel:0.32, pierce:8.4},
+    {esp:16,    preco:11.00, vel:0.26, pierce:10.4},
+    {esp:18,    preco:11.00, vel:0.24, pierce:11.4},
+    {esp:19,    preco:11.00, vel:0.18, pierce:12.4},
   ]},
   {nome:'Aço Inox', densidade:8000, thicknesses:[
-    {esp:1,   preco:40.00, vel:30, pierce:0.5},
-    {esp:1.5, preco:40.00, vel:24, pierce:0.6},
-    {esp:2,   preco:40.00, vel:21, pierce:0.8},
-    {esp:3,   preco:40.00, vel:9,  pierce:1.2},
-    {esp:5,   preco:40.00, vel:3,  pierce:2.5},
-    {esp:6,   preco:40.00, vel:2.5,pierce:1.25},
-    {esp:8,   preco:40.00, vel:1,  pierce:4.5},
+    {esp:1,   preco:40.00, vel:10.5, pierce:1.9},
+    {esp:1.5, preco:40.00, vel:8.4,  pierce:2},
+    {esp:2,   preco:40.00, vel:7.35, pierce:2.2},
+    {esp:3,   preco:40.00, vel:3.15, pierce:2.6},
+    {esp:5,   preco:40.00, vel:1.05, pierce:3.9},
+    {esp:6,   preco:40.00, vel:0.88, pierce:2.65},
+    {esp:8,   preco:40.00, vel:0.35, pierce:5.9},
   ]},
   {nome:'Alumínio', densidade:2700, thicknesses:[
-    {esp:0.7, preco:35.00, vel:40, pierce:0.4},
-    {esp:1.5, preco:35.00, vel:30, pierce:0.6},
-    {esp:2,   preco:35.00, vel:25, pierce:0.8},
-    {esp:3,   preco:35.00, vel:13, pierce:1.2},
-    {esp:4.8, preco:35.00, vel:4.5,pierce:2},
-    {esp:6,   preco:35.00, vel:2,  pierce:2.8},
+    {esp:0.7, preco:35.00, vel:14,   pierce:1.8},
+    {esp:1.5, preco:35.00, vel:10.5, pierce:2},
+    {esp:2,   preco:35.00, vel:8.75, pierce:2.2},
+    {esp:3,   preco:35.00, vel:4.55, pierce:2.6},
+    {esp:4.8, preco:35.00, vel:1.58, pierce:3.4},
+    {esp:6,   preco:35.00, vel:0.7,  pierce:4.2},
   ]},
   {nome:'Alumínio Xadrez', densidade:2700, thicknesses:[
-    {esp:3, preco:35.00, vel:9, pierce:1.2},
+    {esp:3, preco:35.00, vel:3.15, pierce:2.6},
   ]},
   {nome:'Galvanizado', densidade:7850, thicknesses:[
-    {esp:0.9,  preco:11.00, vel:40, pierce:0.5},
-    {esp:1.25, preco:11.00, vel:29, pierce:0.6},
-    {esp:1.5,  preco:11.00, vel:30, pierce:0.6},
-    {esp:2,    preco:11.00, vel:13, pierce:0.8},
-    {esp:2.7,  preco:11.00, vel:10, pierce:1.2},
+    {esp:0.9,  preco:11.00, vel:14,   pierce:1.9},
+    {esp:1.25, preco:11.00, vel:10.15,pierce:2},
+    {esp:1.5,  preco:11.00, vel:10.5, pierce:2},
+    {esp:2,    preco:11.00, vel:4.55, pierce:2.2},
+    {esp:2.7,  preco:11.00, vel:3.5,  pierce:2.6},
   ]},
 ];
 let items = []; // {id, fileName, material, espessura, qtd, area, perimetro, dobras, custoAdicional, estimativa}
