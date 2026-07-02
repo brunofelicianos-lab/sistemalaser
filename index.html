@@ -165,12 +165,45 @@
   .stat-card.warn .stat-num{color:var(--brand-red);}
   .stat-card .stat-label{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.4px; margin-top:2px;}
 
+  /* Fiscal — painel resumido agrupado */
+  .fiscal-grupo{background:var(--panel); border:1px solid var(--line); border-radius:6px; margin-bottom:10px; overflow:hidden;}
+  .fiscal-grupo.liberado{border-color:var(--good); background:rgba(95,184,138,0.10);}
+  .fiscal-resumo{display:flex; align-items:center; gap:14px; padding:12px 16px; cursor:pointer;}
+  .fiscal-resumo:hover{background:rgba(255,255,255,0.02);}
+  .fiscal-grupo.liberado .fiscal-resumo:hover{background:rgba(95,184,138,0.06);}
+  .fiscal-resumo .fr-expand{font-family:var(--mono); font-size:18px; font-weight:700; color:var(--accent); width:22px; text-align:center; flex:0 0 auto; user-select:none;}
+  .fiscal-resumo .fr-cliente{flex:2; font-weight:700; font-size:14px;}
+  .fiscal-resumo .fr-cliente .fr-sub{display:block; font-weight:400; font-size:11px; color:var(--text-dim); margin-top:2px;}
+  .fiscal-resumo .fr-tipo{flex:1.4; font-size:12px; color:var(--text-dim);}
+  .fiscal-resumo .fr-valor{flex:0 0 auto; font-family:var(--mono); font-size:16px; font-weight:800; color:var(--accent); text-align:right; min-width:110px;}
+  .fiscal-grupo.liberado .fr-valor{color:var(--good);}
+  .fiscal-resumo .fr-badge{flex:0 0 auto; font-size:10px; text-transform:uppercase; letter-spacing:0.4px; padding:3px 7px; border-radius:4px; font-weight:700;}
+  .fr-badge.pend{background:var(--accent-dim); color:var(--accent);}
+  .fr-badge.lib{background:rgba(95,184,138,0.2); color:var(--good);}
+  .fr-badge.fat{background:rgba(120,120,130,0.2); color:var(--text-dim);}
+  .fiscal-resumo .fr-liberar{flex:0 0 auto;}
+  .btn.liberar-btn{background:transparent; border:1px solid var(--good); color:var(--good);}
+  .btn.liberar-btn:hover{background:var(--good); color:#0d1410;}
+  .btn.liberar-btn.on{background:var(--good); color:#0d1410;}
+  .fiscal-corpo{border-top:1px solid var(--line); padding:6px 16px 14px;}
+
   table.items tr.row-atrasado{background:rgba(209,8,15,0.12);}
   table.items tr.row-atrasado td:first-child{border-left:3px solid var(--brand-red);}
-  table.items tr.row-concluido{background:rgba(95,184,138,0.15);}
-  table.items tr.row-concluido td{color:var(--good);}
-  table.items tr.row-concluido td:first-child{border-left:3px solid var(--good);}
-  table.items tr.row-concluido input:not([type="checkbox"]):not([type="date"]){color:var(--good);}
+
+  /* MP chegou — linha AMARELA forte */
+  table.items tr.row-mp td{background:#f2c200 !important; color:#1a1400 !important; border-color:#c9a300;}
+  table.items tr.row-mp td:first-child{border-left:4px solid #8a7000;}
+  table.items tr.row-mp input, table.items tr.row-mp select{color:#1a1400; background:rgba(255,255,255,0.65); border-color:#c9a300;}
+
+  /* Programado — linha AZUL forte */
+  table.items tr.row-programado td{background:#2f7de0 !important; color:#ffffff !important; border-color:#1f5fb0;}
+  table.items tr.row-programado td:first-child{border-left:4px solid #123f7a;}
+  table.items tr.row-programado input, table.items tr.row-programado select{color:#0d1b33; background:rgba(255,255,255,0.85); border-color:#1f5fb0;}
+
+  /* Concluído — linha VERDE forte (prioridade visual) */
+  table.items tr.row-concluido td{background:#2fae6e !important; color:#08210f !important; border-color:#1e8a54;}
+  table.items tr.row-concluido td:first-child{border-left:4px solid #0f5c34;}
+  table.items tr.row-concluido input, table.items tr.row-concluido select{color:#08210f; background:rgba(255,255,255,0.75); border-color:#1e8a54;}
 
   table.grade5{width:100%; border-collapse:separate; border-spacing:7px; table-layout:fixed;}
   table.grade5 th{
@@ -730,7 +763,7 @@
 
     <div class="panel no-print">
       <h2><span class="n">·</span>Pedidos pendentes de agendamento</h2>
-      <div id="pendentesEmptyMsg" class="empty-msg">Nenhum pedido pendente de agendamento.</div>
+      <div id="pendentesEmptyMsg" class="empty-msg">Nenhum pedido pendente de agendamento. Só aparecem aqui os pedidos com a matéria-prima já marcada como chegada (coluna MP na aba Pedidos).</div>
       <div id="pendentesList"></div>
     </div>
 
@@ -3007,9 +3040,18 @@ function pedidoTemAnexos(p){
     (Array.isArray(p.anexosExtras) && p.anexosExtras.some(ax=> ax && anexoValido(ax.anexo))));
 }
 
+function classeLinhaPedido(p){
+  // prioridade visual: concluído (verde) > programado (azul) > MP chegou (amarelo) > atrasado (vermelho)
+  if (p.concluido) return 'row-concluido';
+  if (p.programado) return 'row-programado';
+  if (p.mpComprada) return 'row-mp';
+  if (isAtrasado(p)) return 'row-atrasado';
+  return '';
+}
+
 function linhaPedidoHtml(p){
   return `
-    <tr data-id="${p.id}" class="${isAtrasado(p)?'row-atrasado':''}${p.concluido?' row-concluido':''}">
+    <tr data-id="${p.id}" class="${classeLinhaPedido(p)}">
       <td>${p.numero}${isAtrasado(p)?' <span style="color:var(--brand-red);font-size:10px;">ATRASADO</span>':''}</td>
       <td style="text-align:left;">
         <div style="display:flex; gap:4px; align-items:center;">
@@ -3051,7 +3093,8 @@ function ligarEventosLinhaPedido(body){
           renderPedidos();
           return;
         }
-        if (f === 'concluido'){
+        // ao mudar concluído, MP ou programado, re-renderiza pra atualizar a cor da linha
+        if (f === 'concluido' || f === 'mpComprada' || f === 'programado'){
           savePedidos(all);
           renderPedidos();
           return;
@@ -3330,37 +3373,12 @@ function htmlItensFiscais(p){
 
 const fiscalSelecionados = new Set();
 
-function renderFiscal(){
-  renderFiscalStats();
-  const buscaCliente = document.getElementById('fiscalBuscaCliente').value.trim().toLowerCase();
-  const tipoF = document.getElementById('fiscalFiltroTipo').value;
-  const statusF = document.getElementById('fiscalFiltroStatus').value;
-  let pedidos = loadPedidos().filter(p=> p.concluido);
-  pedidos = pedidos.filter(p=>{
-    if (buscaCliente && !(p.cliente||'').toLowerCase().includes(buscaCliente)) return false;
-    if (tipoF === 'nenhum' && p.tipoFiscal) return false;
-    if (tipoF && tipoF !== 'nenhum' && p.tipoFiscal !== tipoF) return false;
-    if (statusF === 'pendente' && p.faturado) return false;
-    if (statusF === 'faturado' && !p.faturado) return false;
-    if (statusF === 'aguardandoEnvio' && !(p.faturado && p.envioFisico && !p.envioFisicoFeito)) return false;
-    return true;
-  });
-
-  const wrap = document.getElementById('fiscalList');
-  const emptyMsg = document.getElementById('fiscalEmptyMsg');
-  if (pedidos.length === 0){
-    emptyMsg.style.display = 'block';
-    wrap.innerHTML = '';
-    return;
-  }
-  emptyMsg.style.display = 'none';
-
-  wrap.innerHTML = pedidos.map(p=>{
-    const ehInd = p.tipoFiscal === 'industrializacao';
-    const ehItens = p.tipoFiscal === 'simples' || p.tipoFiscal === 'servico';
-    const ehVenda = p.tipoFiscal === 'venda';
-    return `
-    <div class="panel" style="margin-bottom:12px; ${p.faturado?'opacity:0.6;':''}">
+function htmlPedidoFiscalInterno(p){
+  const ehInd = p.tipoFiscal === 'industrializacao';
+  const ehItens = p.tipoFiscal === 'simples' || p.tipoFiscal === 'servico';
+  const ehVenda = p.tipoFiscal === 'venda';
+  return `
+    <div class="panel" style="margin-bottom:12px; ${p.faturado?'opacity:0.7;':''}">
       <div class="row" style="align-items:flex-end;">
         <div class="field no-print" style="flex:0 0 auto;">
           <label>&nbsp;</label>
@@ -3452,6 +3470,78 @@ function renderFiscal(){
         </label>
       </div>
     </div>`;
+}
+
+function renderFiscal(){
+  renderFiscalStats();
+  const buscaCliente = document.getElementById('fiscalBuscaCliente').value.trim().toLowerCase();
+  const tipoF = document.getElementById('fiscalFiltroTipo').value;
+  const statusF = document.getElementById('fiscalFiltroStatus').value;
+  let pedidos = loadPedidos().filter(p=> p.concluido);
+  pedidos = pedidos.filter(p=>{
+    if (buscaCliente && !(p.cliente||'').toLowerCase().includes(buscaCliente)) return false;
+    if (tipoF === 'nenhum' && p.tipoFiscal) return false;
+    if (tipoF && tipoF !== 'nenhum' && p.tipoFiscal !== tipoF) return false;
+    if (statusF === 'pendente' && p.faturado) return false;
+    if (statusF === 'faturado' && !p.faturado) return false;
+    if (statusF === 'aguardandoEnvio' && !(p.faturado && p.envioFisico && !p.envioFisicoFeito)) return false;
+    return true;
+  });
+
+  const wrap = document.getElementById('fiscalList');
+  const emptyMsg = document.getElementById('fiscalEmptyMsg');
+  if (pedidos.length === 0){
+    emptyMsg.style.display = 'block';
+    wrap.innerHTML = '';
+    return;
+  }
+  emptyMsg.style.display = 'none';
+
+  // Agrupa pedidos do mesmo orçamento (ex.: LASER + DOBRA chegam juntos).
+  // Pedidos manuais (sem orcamentoNumero) ficam sozinhos.
+  const grupos = [];
+  const mapaGrupo = {};
+  pedidos.forEach(p=>{
+    const chave = p.orcamentoNumero ? ('orc:'+p.orcamentoNumero) : ('ped:'+p.id);
+    if (!mapaGrupo[chave]){ mapaGrupo[chave] = { chave, pedidos: [] }; grupos.push(mapaGrupo[chave]); }
+    mapaGrupo[chave].pedidos.push(p);
+  });
+
+  wrap.innerHTML = grupos.map(g=>{
+    const ps = g.pedidos;
+    const cliente = ps[0].cliente || '(sem cliente)';
+    const valorTotal = ps.reduce((s,p)=> s + (p.valorFaturar||0), 0);
+    const tipos = Array.from(new Set(ps.map(p=> TIPO_FISCAL_LABEL[p.tipoFiscal||''])));
+    const tipoTxt = tipos.join(' + ');
+    const todosLiberados = ps.every(p=> p.liberadoFiscal);
+    const todosFaturados = ps.every(p=> p.faturado);
+    const idsAttr = ps.map(p=> p.id).join(',');
+    const sub = ps.map(p=> `${p.tipo} Nº ${p.numero}`).join(' + ') +
+      (ps[0].orcamentoNumero ? ` · orçamento nº ${ps[0].orcamentoNumero}` : ' · pedido manual');
+
+    let badge;
+    if (todosFaturados) badge = '<span class="fr-badge fat">Faturado</span>';
+    else if (todosLiberados) badge = '<span class="fr-badge lib">Liberado</span>';
+    else badge = '<span class="fr-badge pend">Conferir</span>';
+
+    const corpo = ps.map(p=> htmlPedidoFiscalInterno(p)).join('');
+
+    return `
+    <div class="fiscal-grupo${todosLiberados?' liberado':''}${todosFaturados?' faturado':''}" data-grupo="${g.chave}" style="${todosFaturados?'opacity:0.6;':''}">
+      <div class="fiscal-resumo" data-toggle-grupo="${g.chave}">
+        <span class="fr-expand">+</span>
+        <div class="fr-cliente">${cliente}<span class="fr-sub">${sub}</span></div>
+        <div class="fr-tipo">${tipoTxt}</div>
+        <div class="fr-valor">${fmt(valorTotal)}</div>
+        ${badge}
+        <div class="fr-liberar no-print">
+          <button class="btn small liberar-btn${todosLiberados?' on':''}" data-liberar-grupo="${idsAttr}">${todosLiberados?'✓ Liberado':'Liberar'}</button>
+        </div>
+      </div>
+      <div class="fiscal-corpo" data-corpo-grupo="${g.chave}" style="display:none;">
+        ${corpo}
+      </div>
+    </div>`;
   }).join('');
 
   function comPedido(id, mutador){
@@ -3470,6 +3560,34 @@ function renderFiscal(){
     savePedidos(all);
     renderFiscalStats();
   }
+
+  // Expandir / colapsar grupo ao clicar no resumo (sem disparar em cliques no botão Liberar)
+  wrap.querySelectorAll('[data-toggle-grupo]').forEach(res=>{
+    res.addEventListener('click', (e)=>{
+      if (e.target.closest('[data-liberar-grupo]')) return;
+      const chave = res.dataset.toggleGrupo;
+      const corpo = wrap.querySelector(`[data-corpo-grupo="${chave}"]`);
+      const sinal = res.querySelector('.fr-expand');
+      if (!corpo) return;
+      const abrindo = corpo.style.display === 'none';
+      corpo.style.display = abrindo ? 'block' : 'none';
+      if (sinal) sinal.textContent = abrindo ? '–' : '+';
+    });
+  });
+
+  // Botão Liberar — alterna liberadoFiscal em todos os pedidos do grupo
+  wrap.querySelectorAll('[data-liberar-grupo]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const ids = btn.dataset.liberarGrupo.split(',').map(Number);
+      const all = loadPedidos();
+      const doGrupo = all.filter(p=> ids.includes(p.id));
+      const liberarAgora = !doGrupo.every(p=> p.liberadoFiscal);
+      doGrupo.forEach(p=> p.liberadoFiscal = liberarAgora);
+      savePedidos(all);
+      renderFiscal();
+    });
+  });
 
   document.getElementById('fiscalSelContador').textContent = fiscalSelecionados.size + ' selecionados';
   wrap.querySelectorAll('[data-fiscalsel]').forEach(chk=>{
@@ -4465,10 +4583,37 @@ function proximosDias(n){
   return arr;
 }
 
+function getHoraParte(p){
+  if (Number.isFinite(p.tempoHoras)) return p.tempoHoras;
+  return Math.floor(p.tempoEstimadoH||0);
+}
+function getMinParte(p){
+  if (Number.isFinite(p.tempoMin)) return p.tempoMin;
+  return Math.round(((p.tempoEstimadoH||0) % 1) * 60);
+}
+
+function formatarHM(horasDecimais){
+  const totalMin = Math.round((parseFloat(horasDecimais)||0) * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${String(m).padStart(2,'0')}min`;
+}
+
+function formatarHMS(horasDecimais){
+  const totalSeg = Math.round((parseFloat(horasDecimais)||0) * 3600);
+  const h = Math.floor(totalSeg / 3600);
+  const m = Math.floor((totalSeg % 3600) / 60);
+  const s = totalSeg % 60;
+  const pad = n => String(n).padStart(2,'0');
+  return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+}
+
 function renderPendentes(){
   const wrap = document.getElementById('pendentesList');
   const emptyMsg = document.getElementById('pendentesEmptyMsg');
-  const pedidos = loadPedidos().filter(p=> !p.maquina && !p.concluido);
+  const pedidos = loadPedidos().filter(p=> !p.maquina && !p.concluido && p.mpComprada);
   if (pedidos.length === 0){
     emptyMsg.style.display = 'block';
     wrap.innerHTML = '';
@@ -4485,7 +4630,12 @@ function renderPendentes(){
         <option value="">escolha o dia</option>
         ${dias.map(d=>`<option value="${d.br}">${d.label}</option>`).join('')}
       </select>
-      <input type="number" data-agtempo="${p.id}" value="${p.tempoEstimadoH||0}" step="0.1" title="tempo estimado (h)" style="width:70px;">
+      <div style="display:flex; align-items:center; gap:4px; font-family:var(--mono); font-size:12px; color:var(--text-dim);">
+        <input type="number" data-agh="${p.id}" value="${getHoraParte(p)}" min="0" step="1" title="horas" style="width:52px;">
+        <span>h</span>
+        <input type="number" data-agm="${p.id}" value="${getMinParte(p)}" min="0" max="59" step="1" title="minutos" style="width:52px;">
+        <span>min</span>
+      </div>
       <button class="btn small" data-agendar="${p.id}">Agendar</button>
     </div>`).join('');
   wrap.querySelectorAll('[data-agendar]').forEach(btn=>{
@@ -4493,7 +4643,10 @@ function renderPendentes(){
       const id = +btn.dataset.agendar;
       const maq = wrap.querySelector(`[data-agmaq="${id}"]`).value;
       const data = wrap.querySelector(`[data-agdata="${id}"]`).value;
-      const tempo = parseFloat(wrap.querySelector(`[data-agtempo="${id}"]`).value)||0;
+      const h = parseInt(wrap.querySelector(`[data-agh="${id}"]`).value, 10) || 0;
+      let m = parseInt(wrap.querySelector(`[data-agm="${id}"]`).value, 10) || 0;
+      if (m > 59) m = 59;
+      const tempo = h + m/60;
       if (!data){ alert('Escolha o dia de agendamento.'); return; }
       const segmentos = agendarHoras(id, maq, data, tempo);
       const all = loadPedidos();
@@ -4504,6 +4657,8 @@ function renderPendentes(){
       p.dataAgendada = segmentos[0] ? segmentos[0].data : data;
       p.seq = segmentos[0] ? segmentos[0].seq : null;
       p.tempoEstimadoH = tempo;
+      p.tempoHoras = h;
+      p.tempoMin = m;
       savePedidos(all);
       renderPendentes();
       renderFila();
@@ -4550,19 +4705,24 @@ function renderFila(){
     return `
     <div style="margin-bottom:14px;">
       <div style="font-family:var(--mono); color:var(--accent); font-weight:700; margin-bottom:6px;">
-        ${data} <span style="color:var(--text-dim); font-weight:400; font-size:11px;">(${totalDia.toFixed(1)}h / ${capacidade}h)</span>
+        ${data} <span style="color:var(--text-dim); font-weight:400; font-size:11px;">(${formatarHM(totalDia)} / ${capacidade}h)</span>
       </div>
       <table class="items" style="font-size:12px;">
-        <thead><tr><th>Seq</th><th>Pedido</th><th>Tempo (h)</th><th class="no-print">Concluído</th><th class="no-print"></th></tr></thead>
+        <thead><tr><th>Seq</th><th>Pedido</th><th>Tempo</th><th class="no-print">Concluído</th><th class="no-print"></th></tr></thead>
         <tbody>
           ${grupos[data].map(l=>{
             const p = l.pedido, seg = l.seg;
             const ehParcial = getSegmentos(p).length > 1;
+            const segH = Math.floor(seg.horas||0);
+            const segM = Math.round(((seg.horas||0) % 1) * 60);
             return `
             <tr>
               <td><input type="number" data-seq="${p.id}:${seg.data}" value="${seg.seq||0}" step="1" style="width:50px;"></td>
               <td>${p.tipo} Nº ${p.numero} — ${p.cliente||'(sem cliente)'}${ehParcial?' <span class="est" style="display:inline;">(parcial)</span>':''}</td>
-              <td><input type="number" data-tempo="${p.id}:${seg.data}" value="${seg.horas||0}" step="0.1" style="width:60px;"></td>
+              <td style="white-space:nowrap;">
+                <input type="number" data-tempoh="${p.id}:${seg.data}" value="${segH}" min="0" step="1" style="width:42px;"> <span style="font-family:var(--mono); font-size:11px; color:var(--text-dim);">h</span>
+                <input type="number" data-tempom="${p.id}:${seg.data}" value="${segM}" min="0" max="59" step="1" style="width:42px;"> <span style="font-family:var(--mono); font-size:11px; color:var(--text-dim);">min</span>
+              </td>
               <td class="no-print chk-cell${p.concluido?' chk-on':''}"><input type="checkbox" data-conc="${p.id}" ${p.concluido?'checked':''}></td>
               <td class="no-print" style="white-space:nowrap;">
                 ${p.concluido?'':`<button class="btn secondary small" data-empurrar="${p.id}:${seg.data}" title="não terminou hoje — joga o restante pro dia seguinte, remanejando se precisar">→ próx. dia</button>`}
@@ -4588,11 +4748,20 @@ function renderFila(){
       renderFila();
     });
   });
-  wrap.querySelectorAll('[data-tempo]').forEach(inp=>{
+  function ajustarSegmentoHM(id, dataSeg){
+    const inpH = wrap.querySelector(`[data-tempoh="${id}:${dataSeg}"]`);
+    const inpM = wrap.querySelector(`[data-tempom="${id}:${dataSeg}"]`);
+    const h = parseInt(inpH.value,10)||0;
+    let m = parseInt(inpM.value,10)||0;
+    if (m > 59) m = 59;
+    ajustarSegmento(id, dataSeg, h + m/60);
+  }
+  wrap.querySelectorAll('[data-tempoh], [data-tempom]').forEach(inp=>{
     inp.addEventListener('change', ()=>{
-      const partes = inp.dataset.tempo.split(':');
+      const attr = inp.dataset.tempoh || inp.dataset.tempom;
+      const partes = attr.split(':');
       const id = +partes[0], dataSeg = partes.slice(1).join(':');
-      ajustarSegmento(id, dataSeg, parseFloat(inp.value)||0);
+      ajustarSegmentoHM(id, dataSeg);
     });
   });
   wrap.querySelectorAll('[data-conc]').forEach(chk=>{
@@ -4717,7 +4886,7 @@ function renderGrade5Dias(){
       const itensHtml = linhas.length
         ? linhas.map(l=>{
             const p = l.p;
-            const parcial = getSegmentos(p).length > 1 ? (' ('+l.seg.horas.toFixed(1)+'h)') : '';
+            const parcial = getSegmentos(p).length > 1 ? (' ('+formatarHM(l.seg.horas)+')') : '';
             return `
             <span class="cell-item${p.tipo!=='LASER'?' is-pd':''}">
               <span class="tag-tipo">${p.tipo==='LASER'?'L':'PD'}</span>
@@ -4726,7 +4895,7 @@ function renderGrade5Dias(){
             </span>`;
           }).join('')
         : '<span class="cell-empty">livre</span>';
-      html += `<td><div class="day-cell ${cls}">${itensHtml}<span class="cell-total">${total.toFixed(1)}h / ${capacidade}h</span></div></td>`;
+      html += `<td><div class="day-cell ${cls}">${itensHtml}<span class="cell-total">${formatarHM(total)} / ${capacidade}h</span></div></td>`;
     });
     html += '</tr>';
   });
