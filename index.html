@@ -374,6 +374,7 @@
 <script src="https://unpkg.com/@mmote/niimbluelib@0.0.1-alpha.24/dist/umd/niimbluelib.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyAGwTJYBScgBbWNyoXRmHC7As8__3RmHos",
@@ -385,9 +386,35 @@
   };
   firebase.initializeApp(firebaseConfig);
   window.db = firebase.firestore();
+  window.auth = firebase.auth();
+  window.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .catch(e=> console.error('Erro ao definir persistência de login:', e));
+  window.isAdmin = false;
 </script>
 </head>
 <body>
+
+<!-- ===================== TELA DE LOGIN ===================== -->
+<div id="loginOverlay" style="position:fixed; inset:0; z-index:99999; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px;">
+  <div style="width:100%; max-width:360px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:28px 26px; box-shadow:0 12px 40px rgba(0,0,0,0.55);">
+    <div style="text-align:center;">
+      <div style="font-size:20px; font-weight:800; color:var(--text); letter-spacing:0.5px;">LUMATRI <span style="color:var(--accent);">Industrial</span></div>
+      <div style="font-size:12px; color:var(--text-dim); margin-top:5px;">Acesso restrito — faça login para continuar</div>
+    </div>
+    <div style="margin-top:22px;">
+      <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;">E-mail</label>
+      <input id="loginEmail" type="email" autocomplete="username" style="width:100%; box-sizing:border-box; background:var(--bg2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:11px 12px; font-size:14px; outline:none;">
+    </div>
+    <div style="margin-top:14px;">
+      <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px;">Senha</label>
+      <input id="loginSenha" type="password" autocomplete="current-password" style="width:100%; box-sizing:border-box; background:var(--bg2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:11px 12px; font-size:14px; outline:none;">
+    </div>
+    <div id="loginErro" style="display:none; margin-top:14px; font-size:13px; color:#ff6b6b;"></div>
+    <button id="btnEntrar" style="width:100%; margin-top:20px; background:var(--accent); border:none; color:#15171a; font-weight:800; font-size:14px; letter-spacing:0.5px; padding:12px; border-radius:8px; cursor:pointer;">Entrar</button>
+  </div>
+</div>
+<!-- =================== FIM TELA DE LOGIN =================== -->
+
 <div class="wrap">
 
 <datalist id="listaClientes"></datalist>
@@ -399,6 +426,7 @@
     <button class="navbtn" data-view="viewSistema">Sistema</button>
     <button class="navbtn" data-view="viewFiscal">Fiscal</button>
     <button class="navbtn" data-view="viewClientes">Clientes</button>
+    <button id="btnSair" style="margin-left:auto; background:none; border:none; color:var(--text-dim); font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:0.5px; padding:10px 16px; cursor:pointer;">Sair</button>
   </nav>
 
   <div id="viewOrcamento" class="view">
@@ -2167,6 +2195,12 @@ function writeConfig(parcial){
     .catch(e=> console.error('Erro ao salvar config:', e));
 }
 
+// os listeners do Firestore só começam DEPOIS do login (startApp é chamado no onAuthStateChanged)
+let _appIniciado = false;
+function startApp(){
+  if (_appIniciado) return;   // evita registrar os listeners duas vezes
+  _appIniciado = true;
+
 // listeners em tempo real — qualquer mudança (deste ou de outro usuário) atualiza a tela
 db.collection('config').doc('geral').onSnapshot(doc=>{
   if (doc.exists) configCache = Object.assign(configCache, doc.data());
@@ -2206,6 +2240,74 @@ db.collection('clientes').onSnapshot(snap=>{
   populateListaClientes();
   refreshCurrentView();
 }, e=> console.error('Erro no listener de clientes:', e));
+
+} // ===================== fim startApp =====================
+
+/* ============================================================
+   AUTENTICAÇÃO — controla o acesso a todo o sistema
+   (mesmo padrão do Metal Matrizes; contas compartilhadas,
+    mesmo projeto Firebase sistema-laser-847d7)
+   ============================================================ */
+async function checkAdmin(user){
+  window.isAdmin = false;
+  if (!user) return;
+  try {
+    const doc = await db.collection('usuarios').doc(user.uid).get();
+    if (doc.exists && doc.data().role === 'admin') window.isAdmin = true;
+  } catch(e){
+    // sem permissão ou sem documento: segue como não-admin, sem travar o app
+    console.warn('checkAdmin: não foi possível verificar admin —', e.message);
+  }
+}
+
+function mostrarLogin(){ const ov = document.getElementById('loginOverlay'); if (ov) ov.style.display = 'flex'; }
+function esconderLogin(){ const ov = document.getElementById('loginOverlay'); if (ov) ov.style.display = 'none'; }
+function mostrarErroLogin(msg){
+  const el = document.getElementById('loginErro');
+  if (!el) return;
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function fazerLogin(){
+  const email = (document.getElementById('loginEmail').value||'').trim();
+  const senha = document.getElementById('loginSenha').value||'';
+  const btn = document.getElementById('btnEntrar');
+  if (!email || !senha){ mostrarErroLogin('Preencha e-mail e senha.'); return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try {
+    await auth.signInWithEmailAndPassword(email, senha);
+    // o onAuthStateChanged abaixo cuida de esconder o login e iniciar o app
+  } catch(e){
+    let msg = 'Não foi possível entrar. Verifique e-mail e senha.';
+    if (e.code === 'auth/invalid-email') msg = 'E-mail inválido.';
+    else if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') msg = 'E-mail ou senha incorretos.';
+    else if (e.code === 'auth/too-many-requests') msg = 'Muitas tentativas seguidas. Aguarde um pouco e tente de novo.';
+    mostrarErroLogin(msg);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+}
+
+document.getElementById('btnEntrar').addEventListener('click', fazerLogin);
+document.getElementById('loginSenha').addEventListener('keydown', e=>{ if (e.key === 'Enter') fazerLogin(); });
+document.getElementById('loginEmail').addEventListener('keydown', e=>{ if (e.key === 'Enter') document.getElementById('loginSenha').focus(); });
+
+const _btnSair = document.getElementById('btnSair');
+if (_btnSair) _btnSair.addEventListener('click', ()=>{ auth.signOut(); });
+
+auth.onAuthStateChanged(async (user)=>{
+  if (user){
+    const erro = document.getElementById('loginErro'); if (erro) erro.style.display = 'none';
+    const senha = document.getElementById('loginSenha'); if (senha) senha.value = '';
+    await checkAdmin(user);
+    esconderLogin();
+    startApp();            // registra os listeners do Firestore (só na 1ª vez)
+    refreshCurrentView();
+  } else {
+    window.isAdmin = false;
+    mostrarLogin();
+  }
+});
 
 /* ============================================================
    PERSISTÊNCIA — NUMERAÇÃO, DATA E HISTÓRICO DE ORÇAMENTOS
