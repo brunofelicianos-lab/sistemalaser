@@ -2204,10 +2204,7 @@ function startApp(){
 // listeners em tempo real — qualquer mudança (deste ou de outro usuário) atualiza a tela
 db.collection('config').doc('geral').onSnapshot(doc=>{
   if (doc.exists) configCache = Object.assign(configCache, doc.data());
-  const campoNumero = document.getElementById('orcNumero');
-  if (campoNumero && !pendingApproveIdx && items.length === 0){
-    campoNumero.value = padNumero(configCache.orcCounter || 1);
-  }
+  atualizarNumeroNovoOrc();
 }, e=> console.error('Erro no listener de config:', e));
 
 db.collection('config').doc('maquinas').onSnapshot(doc=>{
@@ -2223,6 +2220,7 @@ db.collection('orcamentos').onSnapshot(snap=>{
   if (snap.metadata.hasPendingWrites) return;
   if (_gravacoesPendentes['orcamentos']) return; // não sobrescreve edições locais não salvas
   savedListCache = snap.docs.map(d=> d.data()).sort((a,b)=> (b.savedAt||'').localeCompare(a.savedAt||''));
+  atualizarNumeroNovoOrc();
   refreshCurrentView();
 }, e=> console.error('Erro no listener de orçamentos:', e));
 
@@ -2316,6 +2314,23 @@ auth.onAuthStateChanged(async (user)=>{
 function loadCounter(){ return configCache.orcCounter || 1; }
 function saveCounter(n){ configCache.orcCounter = n; writeConfig({orcCounter:n}); }
 function padNumero(n){ return String(n).padStart(4,'0'); }
+
+// Próximo número = maior número já salvo + 1 (auto-incrementa sozinho, sem contador).
+function proximoNumeroOrc(){
+  const nums = (savedListCache||[])
+    .map(o=> parseInt(o.numero, 10))
+    .filter(n=> !isNaN(n));
+  const maior = nums.length ? Math.max(...nums) : 0;
+  return maior + 1;
+}
+// Preenche o campo do número só quando é um orçamento novo (nenhum item carregado),
+// pra nunca sobrescrever o número de um orçamento que você abriu pra ver/editar.
+function atualizarNumeroNovoOrc(){
+  const campo = document.getElementById('orcNumero');
+  if (campo && !pendingApproveIdx && items.length === 0){
+    campo.value = padNumero(proximoNumeroOrc());
+  }
+}
 function todayBR(){
   const d = new Date();
   return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
@@ -2451,19 +2466,28 @@ document.getElementById('saveOrcBtn').addEventListener('click', ()=>{
   const snap = buildSnapshot();
   const list = loadSavedList();
   const idx = list.findIndex(o=> o.numero === snap.numero);
+  const eraNovo = idx < 0;
   if (idx >= 0) list[idx] = snap; else list.unshift(snap);
   persistSavedList(list);
   renderSavedList();
   alert('Orçamento nº ' + snap.numero + ' salvo. Re-salvar com o mesmo número atualiza o registro.');
+  // Se era um orçamento novo, já abre o próximo em branco (o número avança sozinho).
+  if (eraNovo){
+    items = [];
+    document.getElementById('clienteNome').value = '';
+    document.getElementById('orcNumero').value = padNumero(proximoNumeroOrc());
+    document.getElementById('orcData').value = todayBR();
+    document.getElementById('orcValidade').value = '7 dias';
+    syncLetterhead();
+    renderItems();
+  }
 });
 
 document.getElementById('newOrcBtn').addEventListener('click', ()=>{
   if (items.length > 0 && !confirm('Iniciar um novo orçamento vai limpar os itens atuais da tela. Se ainda não salvou, eles serão perdidos. Continuar?')) return;
-  const counter = loadCounter() + 1;
-  saveCounter(counter);
   items = [];
   document.getElementById('clienteNome').value = '';
-  document.getElementById('orcNumero').value = padNumero(counter);
+  document.getElementById('orcNumero').value = padNumero(proximoNumeroOrc());
   document.getElementById('orcData').value = todayBR();
   document.getElementById('orcValidade').value = '7 dias';
   syncLetterhead();
@@ -5406,7 +5430,7 @@ document.getElementById('csvBtn').addEventListener('click', ()=>{
 /* ============================================================
    INIT
    ============================================================ */
-document.getElementById('orcNumero').value = padNumero(loadCounter());
+document.getElementById('orcNumero').value = padNumero(proximoNumeroOrc());
 document.getElementById('orcData').value = todayBR();
 document.getElementById('orcValidade').value = '7 dias';
 document.getElementById('empresaNome').value = DEFAULT_EMPRESA_NOME;
