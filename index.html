@@ -435,6 +435,8 @@
     <button class="navbtn" data-view="viewSistema">Sistema</button>
     <button class="navbtn" data-view="viewFiscal">Fiscal</button>
     <button class="navbtn" data-view="viewClientes">Clientes</button>
+    <button class="navbtn" data-view="viewVistas">Vistas STP</button>
+    <button class="navbtn" data-view="viewGerador">Gerador</button>
     <button id="btnSair" style="margin-left:auto; background:none; border:none; color:var(--text-dim); font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:0.5px; padding:10px 16px; cursor:pointer;">Sair</button>
   </nav>
 
@@ -995,6 +997,108 @@
       <div id="clientesList"></div>
     </div>
   </div><!-- /viewClientes -->
+
+  <div id="viewVistas" class="view no-print" style="display:none;">
+    <header class="top no-print">
+      <h1>Vistas STP <span>·</span> extração de DXF</h1>
+      <div class="tag">importa um arquivo STEP (.stp/.step) e gera as vistas em DXF para o laser</div>
+    </header>
+
+    <div class="panel no-print">
+      <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end;">
+        <div class="field" style="max-width:340px;">
+          <label>Arquivo STEP (.stp / .step)</label>
+          <input type="file" id="vistasStpInput" accept=".stp,.step,.STP,.STEP">
+        </div>
+        <div class="field" style="max-width:340px;">
+          <label>PDF de referência (opcional)</label>
+          <input type="file" id="vistasPdfInput" accept=".pdf,.PDF">
+        </div>
+      </div>
+      <div class="footnote">
+        O comprimento da peça é detectado automaticamente e posicionado na horizontal.
+        Tubos fechados geram uma vista por face (faces idênticas são unificadas) mais a seção.
+        Furos redondos passantes saem como <b>CIRCLE</b> no DXF; rasgos e arcos parciais viram linhas.
+        O PDF serve apenas como referência visual lado a lado — nenhuma cota é extraída dele.
+      </div>
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn" id="vistasGerarBtn" disabled>Gerar vistas</button>
+        <button class="btn" id="vistasDownloadBtn" style="display:none;">⬇ Baixar DXF</button>
+      </div>
+      <div id="vistasStatus" class="footnote" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="n">·</span>Pré-visualização</h2>
+      <div id="vistasInfo" class="footnote" style="margin-bottom:8px;"></div>
+      <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start;">
+        <div style="flex:1; min-width:320px;">
+          <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Vistas geradas</div>
+          <div style="border:1px solid var(--line); border-radius:8px; overflow:auto; background:#fff;">
+            <svg id="vistasSvg" style="width:100%; height:auto; display:block;"></svg>
+          </div>
+        </div>
+        <div id="vistasPdfWrap" style="flex:1; min-width:320px; display:none;">
+          <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">PDF de referência</div>
+          <iframe id="vistasPdfFrame" style="width:100%; height:520px; border:1px solid var(--line); border-radius:8px; background:#fff;"></iframe>
+        </div>
+      </div>
+    </div>
+  </div><!-- /viewVistas -->
+
+  <div id="viewGerador" class="view no-print" style="display:none;">
+    <header class="top no-print">
+      <h1>Gerador <span>·</span> peças planas para DXF</h1>
+      <div class="tag">desenhe uma peça pelas medidas e exporte o DXF de corte</div>
+    </header>
+
+    <div style="display:grid; grid-template-columns:360px 1fr; gap:16px; align-items:start;">
+      <!-- coluna de controles -->
+      <div>
+        <div class="panel no-print">
+          <h2><span class="n">·</span>Forma externa</h2>
+          <div id="gerShapeTabs" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:14px;">
+            <button class="btn secondary ger-shape active" data-shape="rect" style="padding:8px 2px; font-size:11px;">Retângulo</button>
+            <button class="btn secondary ger-shape" data-shape="disc" style="padding:8px 2px; font-size:11px;">Disco</button>
+            <button class="btn secondary ger-shape" data-shape="L" style="padding:8px 2px; font-size:11px;">Perfil L</button>
+            <button class="btn secondary ger-shape" data-shape="polygon" style="padding:8px 2px; font-size:11px;">Polígono</button>
+          </div>
+          <div id="gerShapeParams"></div>
+        </div>
+
+        <div class="panel no-print">
+          <h2><span class="n">·</span>Furos e recortes</h2>
+          <div id="gerFeatList"></div>
+          <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:4px;">
+            <button class="btn secondary ger-add" data-add="hole" style="font-size:12px;">+ Furo redondo</button>
+            <button class="btn secondary ger-add" data-add="slot" style="font-size:12px;">+ Oblongo</button>
+            <button class="btn secondary ger-add" data-add="rect" style="font-size:12px;">+ Retângulo interno</button>
+            <button class="btn secondary ger-add" data-add="corner" style="font-size:12px;">+ Recorte de canto</button>
+          </div>
+          <div class="footnote">Medidas em mm a partir do canto inferior-esquerdo (X→direita, Y→cima).</div>
+        </div>
+
+        <div class="panel no-print">
+          <button class="btn" id="gerDownloadBtn" style="width:100%;">⬇ Baixar DXF</button>
+          <div class="footnote">Contorno na layer CONTORNO, furos na layer FUROS — prontos pro laser.</div>
+        </div>
+      </div>
+
+      <!-- coluna de preview -->
+      <div class="panel">
+        <h2><span class="n">·</span>Pré-visualização <span id="gerDims" style="color:var(--muted); font-weight:400; font-size:13px;"></span></h2>
+        <div style="border:1px solid var(--line); border-radius:6px; background:#0d1117; overflow:hidden;
+          background-image:linear-gradient(#1e2831 1px,transparent 1px),linear-gradient(90deg,#1e2831 1px,transparent 1px);
+          background-size:32px 32px;">
+          <svg id="gerCanvas" style="width:100%; height:520px; display:block;"></svg>
+        </div>
+        <div style="display:flex; gap:16px; font-size:12px; color:var(--muted); margin-top:8px;">
+          <span style="display:flex; align-items:center; gap:6px;"><i style="width:14px; height:3px; background:var(--accent); border-radius:2px; display:inline-block;"></i>Contorno</span>
+          <span style="display:flex; align-items:center; gap:6px;"><i style="width:14px; height:3px; background:#4ec9b0; border-radius:2px; display:inline-block;"></i>Furos / recortes</span>
+        </div>
+      </div>
+    </div>
+  </div><!-- /viewGerador -->
 
   <!-- Modal de novo pedido manual -->
   <div id="modalNovoPedido" class="modal-overlay no-print" style="display:none;">
@@ -2513,6 +2617,8 @@ function renderForView(viewId){
   if (viewId === 'viewCalendario') { renderMaquinas(); renderPendentes(); renderFila(); renderGrade5Dias(); }
   if (viewId === 'viewFiscal') renderFiscal();
   if (viewId === 'viewClientes') renderClientes();
+  if (viewId === 'viewVistas') initVistasSTP();
+  if (viewId === 'viewGerador') initGerador();
 }
 function refreshCurrentView(){
   renderForView(currentViewId);
@@ -5486,6 +5592,493 @@ renderMaterials();
 renderItems();
 renderSavedList();
 populateListaClientes();
+
+/* ============================================================
+   VISTAS STP — extração de vistas de arquivos STEP para DXF
+   Motor 100% client-side. Furos passantes -> CIRCLE.
+   ============================================================ */
+(function(){
+  // ---------- Parser STEP ----------
+  function parseStep(text){
+    const dp=text.split(/DATA;/)[1].split(/ENDSEC/)[0];
+    const ents={}; const stmts=dp.split(";");
+    const re=/^#(\d+)\s*=\s*([A-Z_0-9]+)\s*\(([\s\S]*)\)\s*$/;
+    for(let s of stmts){s=s.trim();const m=re.exec(s);if(m)ents[+m[1]]={type:m[2],args:m[3]};}
+    return ents;
+  }
+  const refs=s=>{const o=[];const r=/#(\d+)/g;let m;while((m=r.exec(s)))o.push(+m[1]);return o;};
+  const nums=s=>{const o=[];const r=/[-+]?\d*\.\d+(?:[eE][-+]?\d+)?|[-+]?\d+\./g;let m;while((m=r.exec(s)))o.push(parseFloat(m[0]));return o;};
+  const cartesian=(e,id)=>nums(e[id].args).slice(0,3);
+  const direction=(e,id)=>{const v=nums(e[id].args).slice(0,3);while(v.length<3)v.push(0);return v;};
+  const vertexPoint=(e,id)=>cartesian(e,refs(e[id].args)[0]);
+  const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+  const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const norm=a=>{const l=Math.hypot(a[0],a[1],a[2]);return l>1e-12?[a[0]/l,a[1]/l,a[2]/l]:[0,0,0];};
+
+  function extractSegments(ents){
+    const lines=[]; const rawArcs=[];
+    for(const id in ents){
+      const e=ents[id]; if(e.type!=="EDGE_CURVE")continue;
+      const r=refs(e.args);
+      const p0=vertexPoint(ents,r[0]),p1=vertexPoint(ents,r[1]);
+      const curve=ents[r[2]];
+      if(curve.type==="CIRCLE"){
+        const cr=refs(curve.args); const radius=nums(curve.args).slice(-1)[0];
+        const ar=refs(ents[cr[0]].args);
+        const center=cartesian(ents,ar[0]);
+        const normal=ar[1]!=null?direction(ents,ar[1]):[0,0,1];
+        const xdir=ar[2]!=null?direction(ents,ar[2]):[1,0,0];
+        rawArcs.push({center,normal,radius,p0,p1,xdir});
+      } else { lines.push({kind:"line",p0,p1}); }
+    }
+    const key=a=>{
+      const nn=norm(a.normal).map(x=>Math.round(x*1000)/1000);
+      return a.center.map(x=>Math.round(x*100)/100).join(",")+"|"+a.radius.toFixed(3)+"|"+nn.join(",");
+    };
+    const groups={};
+    for(const a of rawArcs){const k=key(a);(groups[k]=groups[k]||[]).push(a);}
+    const segs=[...lines];
+    for(const k in groups){
+      const g=groups[k]; const first=g[0];
+      const nn=norm(first.normal),xx=norm(first.xdir),yy=cross(nn,xx);
+      const ang=p=>{const w=sub(p,first.center);return Math.atan2(dot(w,yy),dot(w,xx));};
+      let cov=0;
+      for(const a of g){let d=ang(a.p1)-ang(a.p0);d=((d%(2*Math.PI))+2*Math.PI)%(2*Math.PI);if(d<1e-6)d=2*Math.PI;cov+=d;}
+      if(cov>=2*Math.PI-0.05){
+        segs.push({kind:"circle",center:first.center,normal:first.normal,radius:first.radius,xdir:first.xdir});
+      } else { for(const a of g) segs.push({kind:"arc",...a,full:false}); }
+    }
+    return segs;
+  }
+
+  function bbox(segs){
+    let mn=[Infinity,Infinity,Infinity],mx=[-Infinity,-Infinity,-Infinity];
+    const acc=p=>{if(!p)return;for(let i=0;i<3;i++){if(p[i]<mn[i])mn[i]=p[i];if(p[i]>mx[i])mx[i]=p[i];}};
+    for(const s of segs){
+      if(s.kind==="line"){acc(s.p0);acc(s.p1);}
+      else if(s.kind==="circle"){acc(s.center);}
+      else{acc(s.p0);acc(s.p1);acc(s.center);}
+    }
+    return {mn,mx,span:[mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2]]};
+  }
+  const lengthAxis=bb=>{const s=bb.span;let a=0;if(s[1]>s[a])a=1;if(s[2]>s[a])a=2;return a;};
+  function isTube(bb,la){const t=[0,1,2].filter(i=>i!==la).map(i=>bb.span[i]);return t[0]>3&&t[1]>3;}
+
+  function makeProjector(la,f){
+    const o=[0,1,2].filter(i=>i!==la);const A=o[0],B=o[1];
+    return p=>{const u=p[la];let v;switch(f&3){case 0:v=p[A];break;case 1:v=p[B];break;case 2:v=-p[A];break;case 3:v=-p[B];break;}return [u,v];};
+  }
+  const makeSectionProjector=la=>{const o=[0,1,2].filter(i=>i!==la);const A=o[0],B=o[1];return p=>[p[A],p[B]];};
+  function faceViewDir(la,f){const o=[0,1,2].filter(i=>i!==la);const A=o[0],B=o[1];const d=[0,0,0];switch(f&3){case 0:d[B]=1;break;case 1:d[A]=1;break;case 2:d[B]=-1;break;case 3:d[A]=-1;break;}return d;}
+
+  function arcTo2D(seg,proj,n){
+    n=n||40; const {center,normal,radius,p0,p1,xdir}=seg;
+    const full=seg.full||seg.kind==="circle";
+    const nn=norm(normal),xx=norm(xdir),yy=cross(nn,xx);
+    const ang=p=>{const w=sub(p,center);return Math.atan2(dot(w,yy),dot(w,xx));};
+    let a0,a1;
+    if(full){a0=0;a1=2*Math.PI;}else{a0=ang(p0);a1=ang(p1);if(a1<=a0)a1+=2*Math.PI;}
+    const pts=[];
+    for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;
+      pts.push(proj([center[0]+radius*(Math.cos(a)*xx[0]+Math.sin(a)*yy[0]),
+                     center[1]+radius*(Math.cos(a)*xx[1]+Math.sin(a)*yy[1]),
+                     center[2]+radius*(Math.cos(a)*xx[2]+Math.sin(a)*yy[2])]));}
+    return pts;
+  }
+  function circleForView(seg,la,f,proj){
+    if(seg.kind!=="circle")return null;
+    const vd=faceViewDir(la,f),nn=norm(seg.normal);
+    if(Math.abs(Math.abs(dot(nn,vd))-1)>=0.05)return null;
+    const c=proj(seg.center);return {cx:c[0],cy:c[1],r:seg.radius};
+  }
+
+  function buildViews(segs){
+    const bb=bbox(segs),la=lengthAxis(bb),tube=isTube(bb,la),nF=tube?4:2;
+    const views=[];
+    const fn=tube?["VISTA_FACE_A","VISTA_FACE_B","VISTA_FACE_C","VISTA_FACE_D"]:["VISTA_PRINCIPAL","VISTA_INFERIOR"];
+    for(let f=0;f<nF;f++){
+      const proj=makeProjector(la,f);const lines=[],circles=[];
+      for(const s of segs){
+        if(s.kind==="line"){lines.push([proj(s.p0),proj(s.p1)]);}
+        else if(s.kind==="circle"){
+          const c=circleForView(s,la,f,proj);
+          if(c)circles.push(c);
+          else{const pts=arcTo2D({...s,full:true},proj);for(let i=0;i<pts.length-1;i++)lines.push([pts[i],pts[i+1]]);}
+        } else {const pts=arcTo2D(s,proj);for(let i=0;i<pts.length-1;i++)lines.push([pts[i],pts[i+1]]);}
+      }
+      views.push({name:fn[f],lines,circles});
+    }
+    const sp=makeSectionProjector(la);const sl=[],sc=[];const vd=[0,0,0];vd[la]=1;
+    for(const s of segs){
+      if(s.kind==="line"){sl.push([sp(s.p0),sp(s.p1)]);}
+      else if(s.kind==="circle"){
+        const nn=norm(s.normal);
+        if(Math.abs(Math.abs(dot(nn,vd))-1)<0.05){const c=sp(s.center);sc.push({cx:c[0],cy:c[1],r:s.radius});}
+        else{const pts=arcTo2D(s,sp);for(let i=0;i<pts.length-1;i++)sl.push([pts[i],pts[i+1]]);}
+      } else {const pts=arcTo2D(s,sp);for(let i=0;i<pts.length-1;i++)sl.push([pts[i],pts[i+1]]);}
+    }
+    views.push({name:"VISTA_SECAO",lines:sl,circles:sc});
+
+    const q=x=>Math.round(x);
+    function sig(v){
+      const cs=v.circles.map(c=>[q(c.cx),q(Math.abs(c.cy)),q(c.r*10)].join(",")).sort().join(";");
+      const ls=v.lines.map(([a,b])=>{const len=Math.round(Math.hypot(b[0]-a[0],b[1]-a[1]));const uc=Math.round((a[0]+b[0])/2);return uc+":"+len;}).sort().join(";");
+      return cs+"||"+ls;
+    }
+    // Em tubo, cada face é uma superfície de trabalho distinta -> mantém as 4
+    // (padrão de desenho desdobrado). Colapso só para perfil aberto/chapa,
+    // onde faces espelhadas seriam redundância pura.
+    let out;
+    if(tube){
+      views.forEach(v=>{v.count=1;v.label=v.name;});
+      out=views;
+    } else {
+      const uniq=[],map={};
+      for(const v of views){const s=sig(v);if(map[s]!=null)uniq[map[s]].count++;else{map[s]=uniq.length;v.count=1;uniq.push(v);}}
+      uniq.forEach(v=>{v.label=v.count>1?v.name+" (x"+v.count+")":v.name;});
+      out=uniq;
+    }
+    return {views:out,allFaces:views,bb,lenAxis:la,tube};
+  }
+
+  function viewExtents(v){
+    let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
+    const acc=(x,y)=>{if(x<mnx)mnx=x;if(y<mny)mny=y;if(x>mxx)mxx=x;if(y>mxy)mxy=y;};
+    for(const [a,b] of v.lines){acc(a[0],a[1]);acc(b[0],b[1]);}
+    for(const c of v.circles){acc(c.cx-c.r,c.cy-c.r);acc(c.cx+c.r,c.cy+c.r);}
+    return {mnx,mny,mxx,mxy,w:mxx-mnx,h:mxy-mny};
+  }
+  function layout(result){
+    const gap=120,placed=[];let cy=0;
+    const faces=result.views.filter(v=>!v.name.startsWith("VISTA_SECAO"));
+    const secao=result.views.find(v=>v.name.startsWith("VISTA_SECAO"));
+    let maxW=0;for(const v of faces){const e=viewExtents(v);if(e.w>maxW)maxW=e.w;}
+    for(const v of faces){const e=viewExtents(v);placed.push({v,dx:-e.mnx,dy:cy-e.mny,e});cy+=e.h+gap;}
+    if(secao){const e=viewExtents(secao);placed.push({v:secao,dx:maxW+gap-e.mnx,dy:-e.mny,e});}
+    return placed;
+  }
+  function toDXF(placed){
+    const out=["0","SECTION","2","ENTITIES"];
+    const line=(l,x1,y1,x2,y2)=>out.push("0","LINE","8",l,"10",x1.toFixed(4),"20",y1.toFixed(4),"30","0.0","11",x2.toFixed(4),"21",y2.toFixed(4),"31","0.0");
+    const circle=(l,cx,cy,r)=>out.push("0","CIRCLE","8",l,"10",cx.toFixed(4),"20",cy.toFixed(4),"30","0.0","40",r.toFixed(4));
+    const text=(l,x,y,h,s)=>out.push("0","TEXT","8",l,"10",x.toFixed(4),"20",y.toFixed(4),"30","0.0","40",h.toFixed(2),"1",s);
+    for(const {v,dx,dy,e} of placed){
+      for(const [a,b] of v.lines) line(v.name,a[0]+dx,a[1]+dy,b[0]+dx,b[1]+dy);
+      for(const c of v.circles)   circle(v.name,c.cx+dx,c.cy+dy,c.r);
+      text("TEXTO",e.mnx+dx,e.mny+dy-40,25,(v.label||v.name).replace(/_/g," "));
+    }
+    out.push("0","ENDSEC","0","EOF");
+    return out.join("\n");
+  }
+  // preview SVG (Y invertido para tela)
+  function toSVG(placed){
+    let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
+    for(const {v,dx,dy} of placed){
+      const e=viewExtents(v);
+      mnx=Math.min(mnx,e.mnx+dx);mny=Math.min(mny,e.mny+dy);
+      mxx=Math.max(mxx,e.mxx+dx);mxy=Math.max(mxy,e.mxy+dy);
+    }
+    const pad=40,W=mxx-mnx+2*pad,H=mxy-mny+2*pad;
+    const X=x=>x-mnx+pad, Y=y=>(mxy-y)+pad; // flip Y
+    let el="";
+    for(const {v,dx,dy,e} of placed){
+      for(const [a,b] of v.lines)
+        el+=`<line x1="${X(a[0]+dx).toFixed(1)}" y1="${Y(a[1]+dy).toFixed(1)}" x2="${X(b[0]+dx).toFixed(1)}" y2="${Y(b[1]+dy).toFixed(1)}" stroke="#1e3a8a" stroke-width="1"/>`;
+      for(const c of v.circles)
+        el+=`<circle cx="${X(c.cx+dx).toFixed(1)}" cy="${Y(c.cy+dy).toFixed(1)}" r="${c.r.toFixed(1)}" fill="none" stroke="#dc2626" stroke-width="1"/>`;
+      el+=`<text x="${X(e.mnx+dx).toFixed(1)}" y="${Y(e.mny+dy-15).toFixed(1)}" font-size="22" fill="#059669">${(v.label||v.name).replace(/_/g," ")}</text>`;
+    }
+    return {svg:el,vb:`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`};
+  }
+
+  function process(stepText){
+    const ents=parseStep(stepText);
+    const segs=extractSegments(ents);
+    const result=buildViews(segs);
+    const placed=layout(result);
+    return {dxf:toDXF(placed),svg:toSVG(placed),result,segCount:segs.length};
+  }
+
+  // ---------- UI ----------
+  let _stpText=null, _lastDXF=null, _lastName="vistas";
+  window.initVistasSTP=function(){
+    const stpIn=document.getElementById('vistasStpInput');
+    const pdfIn=document.getElementById('vistasPdfInput');
+    const gerar=document.getElementById('vistasGerarBtn');
+    const dl=document.getElementById('vistasDownloadBtn');
+    const status=document.getElementById('vistasStatus');
+    if(stpIn._wired) return; stpIn._wired=true;
+
+    stpIn.addEventListener('change',e=>{
+      const f=e.target.files[0]; if(!f)return;
+      _lastName=f.name.replace(/\.(stp|step)$/i,'');
+      const r=new FileReader();
+      r.onload=ev=>{ _stpText=ev.target.result; gerar.disabled=false; status.textContent='Arquivo "'+f.name+'" carregado. Clique em "Gerar vistas".'; };
+      r.readAsText(f);
+    });
+    pdfIn.addEventListener('change',e=>{
+      const f=e.target.files[0]; if(!f)return;
+      const url=URL.createObjectURL(f);
+      document.getElementById('vistasPdfFrame').src=url;
+      document.getElementById('vistasPdfWrap').style.display='block';
+    });
+    gerar.addEventListener('click',()=>{
+      if(!_stpText)return;
+      status.textContent='Processando...';
+      try{
+        const {dxf,svg,result,segCount}=process(_stpText);
+        _lastDXF=dxf;
+        const svgEl=document.getElementById('vistasSvg');
+        svgEl.setAttribute('viewBox',svg.vb);
+        svgEl.innerHTML=svg.svg;
+        const nc=result.views.reduce((a,v)=>a+v.circles.length,0);
+        document.getElementById('vistasInfo').innerHTML=
+          'Eixo do comprimento: <b>'+['X','Y','Z'][result.lenAxis]+'</b> · '+
+          'peça: <b>'+(result.tube?'tubo (faces separadas)':'perfil aberto')+'</b> · '+
+          'dimensões: <b>'+result.bb.span.map(x=>x.toFixed(0)).join(' × ')+' mm</b> · '+
+          'vistas: <b>'+result.views.length+'</b> (de '+result.allFaces.length+') · '+
+          'furos como círculo: <b>'+nc+'</b>';
+        dl.style.display='inline-block';
+        status.textContent='Vistas geradas ('+segCount+' arestas processadas).';
+      }catch(err){
+        status.textContent='Erro ao processar: '+err.message;
+        console.error(err);
+      }
+    });
+    dl.addEventListener('click',()=>{
+      if(!_lastDXF)return;
+      const blob=new Blob([_lastDXF],{type:'application/dxf'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=_lastName+'_vistas.dxf';
+      a.click();
+    });
+  };
+})();
+
+
+/* ============================================================
+   GERADOR DE PEÇAS PLANAS -> DXF de corte
+   Formas externas + furos/oblongos/recortes. 100% client-side.
+   ============================================================ */
+(function(){
+  function E(){return ["0","SECTION","2","ENTITIES"];}
+  function line(o,l,x1,y1,x2,y2){o.push("0","LINE","8",l,"10",x1.toFixed(4),"20",y1.toFixed(4),"30","0.0","11",x2.toFixed(4),"21",y2.toFixed(4),"31","0.0");}
+  function arc(o,l,cx,cy,r,a0,a1){o.push("0","ARC","8",l,"10",cx.toFixed(4),"20",cy.toFixed(4),"30","0.0","40",r.toFixed(4),"50",a0.toFixed(4),"51",a1.toFixed(4));}
+  function circle(o,l,cx,cy,r){o.push("0","CIRCLE","8",l,"10",cx.toFixed(4),"20",cy.toFixed(4),"30","0.0","40",r.toFixed(4));}
+  function poly(o,l,pts,close){const n=pts.length,lim=close?n:n-1;for(let i=0;i<lim;i++){const a=pts[i],b=pts[(i+1)%n];line(o,l,a[0],a[1],b[0],b[1]);}}
+
+  function shapeRect(o,p){
+    const w=+p.w,h=+p.h,r=+(p.r||0),corners=p.corners||[];
+    const cut=c=>corners.find(k=>k.corner===c);
+    const bl=cut('inf-esq'),br=cut('inf-dir'),tr=cut('sup-dir'),tl=cut('sup-esq');
+    if(!r && (bl||br||tr||tl)){
+      const pts=[];
+      if(bl) pts.push([+bl.w,0]); else pts.push([0,0]);
+      if(br) pts.push([w-br.w,0],[w-br.w,+br.h],[w,+br.h]); else pts.push([w,0]);
+      if(tr) pts.push([w,h-tr.h],[w-tr.w,h-tr.h],[w-tr.w,h]); else pts.push([w,h]);
+      if(tl) pts.push([+tl.w,h],[+tl.w,h-tl.h],[0,h-tl.h]); else pts.push([0,h]);
+      if(bl) pts.push([0,+bl.h],[+bl.w,+bl.h]);
+      poly(o,"CONTORNO",pts,true); return {w,h};
+    }
+    if(!r){ poly(o,"CONTORNO",[[0,0],[w,0],[w,h],[0,h]],true); }
+    else{
+      line(o,"CONTORNO",r,0,w-r,0); arc(o,"CONTORNO",w-r,r,r,270,360);
+      line(o,"CONTORNO",w,r,w,h-r); arc(o,"CONTORNO",w-r,h-r,r,0,90);
+      line(o,"CONTORNO",w-r,h,r,h); arc(o,"CONTORNO",r,h-r,r,90,180);
+      line(o,"CONTORNO",0,h-r,0,r); arc(o,"CONTORNO",r,r,r,180,270);
+    }
+    return {w,h};
+  }
+  function shapeDisc(o,p){ const d=+p.d,r=d/2; circle(o,"CONTORNO",r,r,r); return {w:d,h:d}; }
+  function shapeL(o,p){ const W=+p.W,H=+p.H,tx=+p.tx,ty=+p.ty;
+    poly(o,"CONTORNO",[[0,0],[W,0],[W,ty],[tx,ty],[tx,H],[0,H]],true); return {w:W,h:H}; }
+  function shapePolygon(o,p){ const n=+p.n,R=+p.R,rot=+(p.rot||0); const pts=[];
+    for(let i=0;i<n;i++){const a=rot*Math.PI/180+i*2*Math.PI/n; pts.push([R+R*Math.cos(a),R+R*Math.sin(a)]);}
+    poly(o,"CONTORNO",pts,true); return {w:2*R,h:2*R}; }
+
+  function featHole(o,f){ circle(o,"FUROS",+f.x,+f.y,+f.d/2); }
+  function featSlot(o,f){ const w=+f.w,L=+f.L,x=+f.x,y=+f.y,r=w/2,straight=Math.max(0,L-w),half=straight/2;
+    if(f.orient==='V'){ const yT=y+half,yB=y-half;
+      line(o,"FUROS",x-r,yB,x-r,yT); line(o,"FUROS",x+r,yB,x+r,yT);
+      arc(o,"FUROS",x,yT,r,0,180); arc(o,"FUROS",x,yB,r,180,360);
+    }else{ const xR=x+half,xL=x-half;
+      line(o,"FUROS",xL,y-r,xR,y-r); line(o,"FUROS",xL,y+r,xR,y+r);
+      arc(o,"FUROS",xR,y,r,270,90); arc(o,"FUROS",xL,y,r,90,270);
+    }
+  }
+  function featRect(o,f){ const x=+f.x,y=+f.y,w=+f.w,h=+f.h,x0=x-w/2,y0=y-h/2;
+    poly(o,"FUROS",[[x0,y0],[x0+w,y0],[x0+w,y0+h],[x0,y0+h]],true); }
+
+  function buildDXF(spec){
+    const o=E(); let dims={w:0,h:0}; const s=spec.shape;
+    try{
+      if(s.type==='rect') dims=shapeRect(o,s);
+      else if(s.type==='disc') dims=shapeDisc(o,s);
+      else if(s.type==='L') dims=shapeL(o,s);
+      else if(s.type==='polygon') dims=shapePolygon(o,s);
+      for(const f of (spec.features||[])){
+        if(f.type==='hole') featHole(o,f);
+        else if(f.type==='slot') featSlot(o,f);
+        else if(f.type==='rect') featRect(o,f);
+      }
+    }catch(e){}
+    o.push("0","ENDSEC","0","EOF");
+    return {dxf:o.join("\n"),dims};
+  }
+
+  const gstate={ shape:{type:'rect', w:340, h:200, r:0, corners:[]}, features:[] };
+  const shapeDefs={
+    rect:{fields:[['w','Largura (mm)',340],['h','Altura (mm)',200],['r','Raio cantos (mm)',0]]},
+    disc:{fields:[['d','Diâmetro (mm)',200]]},
+    L:{fields:[['W','Largura total',200],['H','Altura total',200],['tx','Esp. vertical',60],['ty','Esp. horizontal',60]]},
+    polygon:{fields:[['n','Nº lados',6],['R','Raio (mm)',100],['rot','Rotação (°)',0]]}
+  };
+  const featDefs={
+    hole:{label:'Furo redondo', fields:[['x','X centro',50],['y','Y centro',50],['d','Diâmetro',20]]},
+    slot:{label:'Oblongo', fields:[['x','X centro',50],['y','Y centro',50],['w','Largura',19],['L','Comprimento',30]]},
+    rect:{label:'Retângulo interno', fields:[['x','X centro',50],['y','Y centro',50],['w','Largura',40],['h','Altura',20]]},
+    corner:{label:'Recorte de canto', fields:[['w','Largura',30],['h','Altura',30]]}
+  };
+
+  function q(id){return document.getElementById(id);}
+
+  function renderShapeParams(){
+    const def=shapeDefs[gstate.shape.type]; const el=q('gerShapeParams'); let html='';
+    for(let i=0;i<def.fields.length;i+=2){
+      html+='<div class="row" style="display:flex; gap:10px;">';
+      for(let j=i;j<Math.min(i+2,def.fields.length);j++){
+        const [k,lbl,dv]=def.fields[j];
+        const v=gstate.shape[k]!=null?gstate.shape[k]:dv;
+        html+=`<div class="field" style="flex:1;"><label>${lbl}</label><input type="number" step="any" data-gshape="${k}" value="${v}"></div>`;
+      }
+      html+='</div>';
+    }
+    el.innerHTML=html;
+    el.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{ gstate.shape[inp.dataset.gshape]=inp.value; gerRender(); }));
+  }
+
+  function addFeature(type){
+    const def=featDefs[type]; const f={type};
+    def.fields.forEach(([k,,dv])=>f[k]=dv);
+    if(type==='slot') f.orient='V';
+    if(type==='corner'){ gstate.shape.corners.push({corner:'sup-dir',w:30,h:30}); }
+    else gstate.features.push(f);
+    renderFeatures(); gerRender();
+  }
+
+  function renderFeatures(){
+    const el=q('gerFeatList'); let html='';
+    gstate.features.forEach((f,idx)=>{
+      const def=featDefs[f.type];
+      html+=`<div class="panel" style="padding:12px; margin-bottom:10px; background:var(--bg);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <b style="color:#4ec9b0; font-size:12px;">${def.label}</b>
+        <button class="iconbtn ger-delf" data-idx="${idx}" style="color:#f85149;">×</button></div>`;
+      if(f.type==='slot'){
+        html+=`<div class="field"><label>Orientação</label><select data-gfeat="${idx}" data-k="orient">
+          <option value="V"${f.orient==='V'?' selected':''}>Vertical</option>
+          <option value="H"${f.orient==='H'?' selected':''}>Horizontal</option></select></div>`;
+      }
+      for(let i=0;i<def.fields.length;i+=2){
+        html+='<div class="row" style="display:flex; gap:10px;">';
+        for(let j=i;j<Math.min(i+2,def.fields.length);j++){
+          const [k,lbl]=def.fields[j];
+          html+=`<div class="field" style="flex:1;"><label>${lbl}</label><input type="number" step="any" data-gfeat="${idx}" data-k="${k}" value="${f[k]}"></div>`;
+        }
+        html+='</div>';
+      }
+      html+='</div>';
+    });
+    gstate.shape.corners.forEach((c,idx)=>{
+      html+=`<div class="panel" style="padding:12px; margin-bottom:10px; background:var(--bg);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <b style="color:#4ec9b0; font-size:12px;">Recorte de canto</b>
+        <button class="iconbtn ger-delc" data-idx="${idx}" style="color:#f85149;">×</button></div>
+        <div class="field"><label>Canto</label><select data-gcorner="${idx}" data-k="corner">
+          <option value="inf-esq"${c.corner==='inf-esq'?' selected':''}>Inferior esquerdo</option>
+          <option value="inf-dir"${c.corner==='inf-dir'?' selected':''}>Inferior direito</option>
+          <option value="sup-dir"${c.corner==='sup-dir'?' selected':''}>Superior direito</option>
+          <option value="sup-esq"${c.corner==='sup-esq'?' selected':''}>Superior esquerdo</option></select></div>
+        <div class="row" style="display:flex; gap:10px;">
+          <div class="field" style="flex:1;"><label>Largura</label><input type="number" step="any" data-gcorner="${idx}" data-k="w" value="${c.w}"></div>
+          <div class="field" style="flex:1;"><label>Altura</label><input type="number" step="any" data-gcorner="${idx}" data-k="h" value="${c.h}"></div>
+        </div></div>`;
+    });
+    el.innerHTML=html;
+    el.querySelectorAll('[data-gfeat]').forEach(inp=>inp.addEventListener('input',()=>{ gstate.features[+inp.dataset.gfeat][inp.dataset.k]=inp.value; gerRender(); }));
+    el.querySelectorAll('[data-gcorner]').forEach(inp=>inp.addEventListener('input',()=>{ gstate.shape.corners[+inp.dataset.gcorner][inp.dataset.k]=inp.value; gerRender(); }));
+    el.querySelectorAll('.ger-delf').forEach(b=>b.addEventListener('click',()=>{ gstate.features.splice(+b.dataset.idx,1); renderFeatures(); gerRender(); }));
+    el.querySelectorAll('.ger-delc').forEach(b=>b.addEventListener('click',()=>{ gstate.shape.corners.splice(+b.dataset.idx,1); renderFeatures(); gerRender(); }));
+  }
+
+  function parseEnts(dxf){
+    const L=dxf.split("\n"); let i=0; const ents=[];
+    while(i<L.length){
+      const k=L[i];
+      if(k==='LINE'||k==='ARC'||k==='CIRCLE'){
+        const d={}; let j=i+1;
+        while(j<L.length-1){ if(L[j]==='0')break; d[L[j]]=L[j+1]; j+=2; }
+        const layer=d['8'];
+        if(k==='LINE') ents.push({t:'L',layer,x1:+d['10'],y1:+d['20'],x2:+d['11'],y2:+d['21']});
+        else if(k==='CIRCLE') ents.push({t:'C',layer,cx:+d['10'],cy:+d['20'],r:+d['40']});
+        else ents.push({t:'A',layer,cx:+d['10'],cy:+d['20'],r:+d['40'],a0:+d['50'],a1:+d['51']});
+        i=j;
+      } else i++;
+    }
+    return ents;
+  }
+  let _gerDXF="";
+  function gerRender(){
+    const {dxf,dims}=buildDXF(gstate); _gerDXF=dxf;
+    const svg=q('gerCanvas'); const ents=parseEnts(dxf);
+    const W=+dims.w||100,H=+dims.h||100,pad=Math.max(W,H)*0.12+20,vbW=W+2*pad,vbH=H+2*pad;
+    const fx=x=>x+pad, fy=y=>(H-y)+pad, sw=vbW*0.003;
+    const col=layer=>layer==='FUROS'?'#4ec9b0':'#ff7a1a';
+    let el='';
+    for(const e of ents){
+      if(e.t==='L') el+=`<line x1="${fx(e.x1)}" y1="${fy(e.y1)}" x2="${fx(e.x2)}" y2="${fy(e.y2)}" stroke="${col(e.layer)}" stroke-width="${sw}"/>`;
+      else if(e.t==='C') el+=`<circle cx="${fx(e.cx)}" cy="${fy(e.cy)}" r="${e.r}" fill="none" stroke="${col(e.layer)}" stroke-width="${sw}"/>`;
+      else{
+        const a0=e.a0*Math.PI/180,a1=e.a1*Math.PI/180;
+        const large=((e.a1-e.a0+360)%360)>180?1:0;
+        const x0=fx(e.cx+e.r*Math.cos(a0)),y0=fy(e.cy+e.r*Math.sin(a0));
+        const x1=fx(e.cx+e.r*Math.cos(a1)),y1=fy(e.cy+e.r*Math.sin(a1));
+        el+=`<path d="M ${x0} ${y0} A ${e.r} ${e.r} 0 ${large} 0 ${x1} ${y1}" fill="none" stroke="${col(e.layer)}" stroke-width="${sw}"/>`;
+      }
+    }
+    svg.setAttribute('viewBox',`0 0 ${vbW} ${vbH}`);
+    svg.innerHTML=el;
+    q('gerDims').textContent=`— ${(+dims.w||0).toFixed(1)} × ${(+dims.h||0).toFixed(1)} mm · ${gstate.features.length+gstate.shape.corners.length} feature(s)`;
+  }
+
+  window.initGerador=function(){
+    const tabs=q('gerShapeTabs');
+    if(tabs._wired){ gerRender(); return; }
+    tabs._wired=true;
+    tabs.addEventListener('click',e=>{
+      const b=e.target.closest('.ger-shape'); if(!b)return;
+      tabs.querySelectorAll('.ger-shape').forEach(t=>t.classList.remove('active'));
+      b.classList.add('active');
+      const type=b.dataset.shape; const def=shapeDefs[type]; const ns={type};
+      def.fields.forEach(([k,,dv])=>ns[k]=dv);
+      if(type==='rect') ns.corners=[];
+      gstate.shape=ns; renderShapeParams(); renderFeatures(); gerRender();
+    });
+    document.querySelectorAll('.ger-add').forEach(b=>b.addEventListener('click',()=>{
+      if(b.dataset.add==='corner' && gstate.shape.type!=='rect'){ alert('Recorte de canto só no Retângulo.'); return; }
+      addFeature(b.dataset.add);
+    }));
+    q('gerDownloadBtn').addEventListener('click',()=>{
+      const blob=new Blob([_gerDXF],{type:'application/dxf'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download='peca_'+gstate.shape.type+'_'+Date.now()+'.dxf'; a.click();
+    });
+    renderShapeParams(); renderFeatures(); gerRender();
+  };
+})();
+
 </script>
 </body>
 </html>
