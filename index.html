@@ -187,6 +187,15 @@
   .btn.liberar-btn.on{background:var(--good); color:#0d1410;}
   .fiscal-corpo{border-top:1px solid var(--line); padding:6px 16px 14px;}
 
+  /* Caixa de anotação para o fiscal */
+  .fiscal-anotacao{background:#fff8e1; border:2px solid #f0b429; border-left:6px solid #f0b429; border-radius:8px; padding:12px 14px; margin:8px 0 14px;}
+  .fiscal-anotacao .fa-titulo{font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#8a5a00; display:flex; align-items:center; gap:7px; margin-bottom:8px;}
+  .fiscal-anotacao textarea{width:100%; min-height:60px; resize:vertical; border:1px solid #e0b84a; border-radius:6px; padding:9px 11px; font-family:inherit; font-size:14px; color:#4a3a10; background:#fffdf5; box-sizing:border-box; line-height:1.5;}
+  .fiscal-anotacao textarea:focus{outline:none; border-color:#f0b429; box-shadow:0 0 0 2px rgba(240,180,41,0.25);}
+  .fiscal-anotacao textarea::placeholder{color:#b39440;}
+  .fiscal-anotacao .fa-somenteleitura{white-space:pre-wrap; font-size:15px; font-weight:600; color:#5c4a1a; line-height:1.5;}
+  .fiscal-anotacao .fa-vazio{color:#b39440; font-style:italic; font-weight:400;}
+
   table.items tr.row-atrasado{background:rgba(209,8,15,0.12);}
   table.items tr.row-atrasado td:first-child{border-left:3px solid var(--brand-red);}
 
@@ -3387,6 +3396,7 @@ function htmlLinhasProducaoFiscal(p){
     if (c.valorCorte > 0.005) partes.push('corte '+fmt(c.valorCorte));
     if (c.valorDobra > 0.005) partes.push('dobra '+fmt(c.valorDobra));
     if (c.valorDobraTempo > 0.005) partes.push('dobra tempo '+fmt(c.valorDobraTempo));
+    if (c.valorPrensaTempo > 0.005) partes.push('prensa '+fmt(c.valorPrensaTempo));
     return `
       <div style="display:flex; justify-content:space-between; align-items:baseline; padding:4px 0; border-bottom:1px solid var(--line-soft);">
         <span style="font-size:13px;">${l.material||''} ${l.espessura||''}mm <span class="footnote" style="display:inline;">(${partes.join(', ')})</span></span>
@@ -3652,6 +3662,20 @@ function renderFiscal(){
 
     const corpo = ps.map(p=> htmlPedidoFiscalInterno(p)).join('');
 
+    // Caixa de anotação para o fiscal — salva no primeiro pedido do grupo.
+    const anotacao = ps[0].anotacaoFiscal || '';
+    const anotacaoHtml = window.isAdmin
+      ? `<div class="fiscal-anotacao">
+           <div class="fa-titulo">📌 Instruções para o fiscal</div>
+           <textarea data-anotacao-pedido="${ps[0].id}" placeholder="Ex.: faturar apenas o item 1 deste orçamento...">${anotacao.replace(/</g,'&lt;')}</textarea>
+         </div>`
+      : (anotacao
+          ? `<div class="fiscal-anotacao">
+               <div class="fa-titulo">📌 Instruções para o fiscal</div>
+               <div class="fa-somenteleitura">${anotacao.replace(/</g,'&lt;')}</div>
+             </div>`
+          : '');
+
     return `
     <div class="fiscal-grupo${todosLiberados?' liberado':''}${todosFaturados?' faturado':''}" data-grupo="${g.chave}" style="${todosFaturados?'opacity:0.6;':''}">
       <div class="fiscal-resumo" data-toggle-grupo="${g.chave}">
@@ -3665,6 +3689,7 @@ function renderFiscal(){
         </div>
       </div>
       <div class="fiscal-corpo" data-corpo-grupo="${g.chave}" style="display:none;">
+        ${anotacaoHtml}
         ${corpo}
       </div>
     </div>`;
@@ -3743,6 +3768,9 @@ function renderFiscal(){
   });
   wrap.querySelectorAll('[data-fiscalnota]').forEach(inp=>{
     inp.addEventListener('input', ()=> comPedido(+inp.dataset.fiscalnota, p=> p.notaIndustrializacao = inp.value));
+  });
+  wrap.querySelectorAll('[data-anotacao-pedido]').forEach(ta=>{
+    ta.addEventListener('input', ()=> comPedido(+ta.dataset.anotacaoPedido, p=> p.anotacaoFiscal = ta.value));
   });
   wrap.querySelectorAll('[data-fiscalpc]').forEach(inp=>{
     inp.addEventListener('input', ()=> comPedido(+inp.dataset.fiscalpc, p=> p.pedidoCompra = inp.value));
@@ -3894,7 +3922,8 @@ function calcularLinhaProducao(l){
   const valorCorte = (l.horasCorte||0) * custoMin * 60;
   const valorDobra = (l.qtdDobras||0) * custoDobraUnit;
   const valorDobraTempo = (l.horasDobra||0) * 300;
-  return { peso, valorMaterial, valorCorte, valorDobra, valorDobraTempo, valor: valorMaterial + valorCorte + valorDobra + valorDobraTempo };
+  const valorPrensaTempo = (l.horasPrensa||0) * 100;
+  return { peso, valorMaterial, valorCorte, valorDobra, valorDobraTempo, valorPrensaTempo, valor: valorMaterial + valorCorte + valorDobra + valorDobraTempo + valorPrensaTempo };
 }
 
 function renderOP(p){
@@ -3978,7 +4007,7 @@ function renderOP(p){
     <div class="footnote">Informe cada chapa/processo usado de verdade na produção (pode ter vários, se o pedido usou tipos diferentes de material). O valor é calculado automaticamente com base nas tabelas do Orçamento (R$/kg de cada material, R$/min da máquina, R$ por dobra).</div>
     <div style="overflow-x:auto;">
       <table class="items op-table" style="font-size:12px; margin-top:8px;" id="opFinalTable">
-        <thead><tr><th>Material</th><th>Esp.(mm)</th><th>C (mm)</th><th>L (mm)</th><th>Tempo corte (h : m : s)</th><th>Qtd dobras</th><th>Tempo dobra (h : m : s)</th><th>Peso(kg)</th><th>Valor material (R$)</th><th>Valor corte (R$)</th><th>Valor total (R$)</th><th class="no-print"></th></tr></thead>
+        <thead><tr><th>Material</th><th>Esp.(mm)</th><th>C (mm)</th><th>L (mm)</th><th>Tempo corte (h : m : s)</th><th>Qtd dobras</th><th>Tempo dobra (h : m : s)</th><th>Tempo prensa (h : m : s)</th><th>Peso(kg)</th><th>Valor material (R$)</th><th>Valor corte (R$)</th><th>Valor total (R$)</th><th class="no-print"></th></tr></thead>
         <tbody id="opFinalBody"></tbody>
       </table>
     </div>
@@ -4110,6 +4139,10 @@ function renderOP(p){
         const hms = decimalParaHMS(l.horasDobra||0);
         l.dobraH = hms.h; l.dobraM = hms.m; l.dobraS = hms.s;
       }
+      if (l.prensaH===undefined && l.prensaM===undefined && l.prensaS===undefined){
+        const hms = decimalParaHMS(l.horasPrensa||0);
+        l.prensaH = hms.h; l.prensaM = hms.m; l.prensaS = hms.s;
+      }
     });
     body.innerHTML = p.linhasProducao.map((l,idx)=>{
       const mat = materials.find(m=>m.nome===l.material) || materials[0] || {thicknesses:[]};
@@ -4136,9 +4169,16 @@ function renderOP(p){
               <input type="number" data-oplin="${idx}" data-oplf="dobraS" value="${l.dobraS!==undefined?l.dobraS:''}" min="0" max="59" style="width:38px;" placeholder="s" title="segundos">
             </div>
           </td>
+          <td>
+            <div style="display:flex; gap:2px; align-items:center;">
+              <input type="number" data-oplin="${idx}" data-oplf="prensaH" value="${l.prensaH!==undefined?l.prensaH:''}" min="0" style="width:38px;" placeholder="h" title="horas">:
+              <input type="number" data-oplin="${idx}" data-oplf="prensaM" value="${l.prensaM!==undefined?l.prensaM:''}" min="0" max="59" style="width:38px;" placeholder="m" title="minutos">:
+              <input type="number" data-oplin="${idx}" data-oplf="prensaS" value="${l.prensaS!==undefined?l.prensaS:''}" min="0" max="59" style="width:38px;" placeholder="s" title="segundos">
+            </div>
+          </td>
           <td data-opcalcpeso="${idx}">${calc.peso.toFixed(2)}</td>
           <td data-opcalcmaterial="${idx}">${fmt(calc.valorMaterial)}</td>
-          <td data-opcalccorte="${idx}">${fmt(calc.valorCorte + calc.valorDobra + calc.valorDobraTempo)}</td>
+          <td data-opcalccorte="${idx}">${fmt(calc.valorCorte + calc.valorDobra + calc.valorDobraTempo + calc.valorPrensaTempo)}</td>
           <td data-opcalcvalor="${idx}">${fmt(calc.valor)}</td>
           <td class="no-print"><button class="rmrow" data-oplinrm="${idx}">×</button></td>
         </tr>`;
@@ -4175,6 +4215,10 @@ function renderOP(p){
           const l = p.linhasProducao[idx];
           p.linhasProducao[idx].horasDobra = (l.dobraH||0) + (l.dobraM||0)/60 + (l.dobraS||0)/3600;
         }
+        if (f==='prensaH' || f==='prensaM' || f==='prensaS'){
+          const l = p.linhasProducao[idx];
+          p.linhasProducao[idx].horasPrensa = (l.prensaH||0) + (l.prensaM||0)/60 + (l.prensaS||0)/3600;
+        }
         salvarCampoPedido('linhasProducao', p.linhasProducao);
         const calc = calcularLinha(p.linhasProducao[idx]);
         const tdPeso = body.querySelector(`[data-opcalcpeso="${idx}"]`);
@@ -4183,7 +4227,7 @@ function renderOP(p){
         const tdValor = body.querySelector(`[data-opcalcvalor="${idx}"]`);
         if (tdPeso) tdPeso.textContent = calc.peso.toFixed(2);
         if (tdMaterial) tdMaterial.textContent = fmt(calc.valorMaterial);
-        if (tdCorte) tdCorte.textContent = fmt(calc.valorCorte + calc.valorDobra + calc.valorDobraTempo);
+        if (tdCorte) tdCorte.textContent = fmt(calc.valorCorte + calc.valorDobra + calc.valorDobraTempo + calc.valorPrensaTempo);
         if (tdValor) tdValor.textContent = fmt(calc.valor);
         atualizarTotalGeral();
       });
@@ -4201,7 +4245,7 @@ function renderOP(p){
     p.linhasProducao.forEach(l=>{
       const c = calcularLinha(l);
       totMaterial += c.valorMaterial;
-      totCorte += c.valorCorte + c.valorDobra + c.valorDobraTempo;
+      totCorte += c.valorCorte + c.valorDobra + c.valorDobraTempo + c.valorPrensaTempo;
       totGeral += c.valor;
     });
     const elMat = document.getElementById('opFinalTotalMaterial');
@@ -4214,7 +4258,7 @@ function renderOP(p){
 
   document.getElementById('opFinalAddBtn').addEventListener('click', ()=>{
     const primeiro = materials[0] || {nome:'', thicknesses:[{esp:0}]};
-    p.linhasProducao.push({ material: primeiro.nome, espessura: primeiro.thicknesses[0] ? primeiro.thicknesses[0].esp : 0, dimC:0, dimL:0, horasCorte:0, qtdDobras:0, horasDobra:0, corteH:0, corteM:0, corteS:0, dobraH:0, dobraM:0, dobraS:0 });
+    p.linhasProducao.push({ material: primeiro.nome, espessura: primeiro.thicknesses[0] ? primeiro.thicknesses[0].esp : 0, dimC:0, dimL:0, horasCorte:0, qtdDobras:0, horasDobra:0, horasPrensa:0, corteH:0, corteM:0, corteS:0, dobraH:0, dobraM:0, dobraS:0, prensaH:0, prensaM:0, prensaS:0 });
     salvarCampoPedido('linhasProducao', p.linhasProducao);
     renderOPFinalLinhas();
   });
