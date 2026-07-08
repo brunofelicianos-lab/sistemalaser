@@ -446,7 +446,7 @@
   <div id="viewOrcamento" class="view">
 
   <header class="top no-print">
-    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.salvamento-2</span></h1>
+    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.salvamento-3</span></h1>
     <div class="tag">geração automática a partir de arquivos .DXF</div>
   </header>
 
@@ -2250,6 +2250,23 @@ function comTimeout(promise, ms, rotulo){
   });
 }
 
+const _snapshotDocs = {}; // colecao -> { docId: json }
+
+// registra a "impressão digital" dos docs vindos do Firebase, para que a próxima
+// gravação saiba o que realmente mudou e grave só isso (não os 22 pedidos).
+function registrarSnapshotCarregado(nomeColecao, lista, idFn){
+  const snaps = _snapshotDocs[nomeColecao] || (_snapshotDocs[nomeColecao] = {});
+  const vistos = new Set();
+  (lista||[]).forEach(item=>{
+    const id = String(idFn(item));
+    vistos.add(id);
+    snaps[id] = JSON.stringify(limparParaFirestore(item));
+  });
+  // remove do snapshot ids que não existem mais
+  Object.keys(snaps).forEach(id=>{ if (!vistos.has(id)) delete snaps[id]; });
+  _lastDocIds[nomeColecao] = Array.from(vistos);
+}
+
 function syncCollection(nomeColecao, novaLista, idFn){
   const promessas = [];
   const erros = [];
@@ -2257,37 +2274,51 @@ function syncCollection(nomeColecao, novaLista, idFn){
     const col = db.collection(nomeColecao);
     const idsAntigos = new Set(_lastDocIds[nomeColecao] || []);
     const idsNovos = new Set(novaLista.map(item=> String(idFn(item))));
+    const snaps = _snapshotDocs[nomeColecao] || (_snapshotDocs[nomeColecao] = {});
+
+    // exclusões (itens removidos)
     idsAntigos.forEach(id=>{
       if (!idsNovos.has(id)){
         promessas.push(
           comTimeout(col.doc(id).delete(), 15000, 'excluir '+id)
             .catch(e=>{ console.error('Erro ao excluir', nomeColecao, id, e); erros.push('excluir '+id+': '+((e&&e.message)?e.message:e)); })
         );
+        delete snaps[id];
       }
     });
+
+    let gravados = 0;
     novaLista.forEach(item=>{
       const limpo = limparParaFirestore(item);
       const docId = String(idFn(item));
-      // Firestore rejeita documentos > 1 MB. Anexos grandes (PDF/imagem em base64) estouram esse limite.
-      const tamanho = tamanhoAproxDoc(limpo);
+      const json = JSON.stringify(limpo);
+
+      // pula documentos idênticos ao que já foi gravado (nada mudou nele)
+      if (snaps[docId] === json) return;
+
+      // Firestore rejeita documentos > 1 MB.
+      const tamanho = json.length;
       if (tamanho > 1000000){
-        avisarSalvamento('⚠ Um item ('+nomeColecao+' '+docId+') tem anexo grande demais ('+(tamanho/1048576).toFixed(1)+' MB) e NÃO foi salvo na nuvem. Remova ou reduza o anexo (o limite é 1 MB por registro).', true);
+        avisarSalvamento('⚠ Um item ('+nomeColecao+' '+docId+') tem anexo grande demais ('+(tamanho/1048576).toFixed(1)+' MB) e NÃO foi salvo. Reduza o anexo (limite 1 MB por registro).', true);
         erros.push('tamanho '+docId);
-        return; // não tenta gravar; evitaria falha silenciosa que "desfaz" a alteração ao recarregar
+        return;
       }
+      gravados++;
       promessas.push(
-        comTimeout(col.doc(docId).set(limpo), 15000, nomeColecao+' '+docId).catch(e=>{
-          console.error('Erro ao salvar', nomeColecao, docId, e);
-          erros.push((e && e.message) ? e.message : String(e));
-        })
+        comTimeout(col.doc(docId).set(limpo), 15000, nomeColecao+' '+docId)
+          .then(()=>{ snaps[docId] = json; }) // só marca como gravado se confirmou
+          .catch(e=>{
+            console.error('Erro ao salvar', nomeColecao, docId, e);
+            erros.push((e && e.message) ? e.message : String(e));
+          })
       );
     });
+    if (gravados > 0) console.log('Salvando '+gravados+' de '+novaLista.length+' em '+nomeColecao+' (só o que mudou).');
     _lastDocIds[nomeColecao] = Array.from(idsNovos);
   }catch(e){
     console.error('Erro de sincronização Firestore:', e);
     erros.push((e && e.message) ? e.message : String(e));
   }
-  // resolve com a lista de erros (vazia = tudo certo) só depois que TODAS confirmarem (ou derem timeout)
   return Promise.all(promessas).then(()=> erros);
 }
 
@@ -2365,6 +2396,7 @@ db.collection('orcamentos').onSnapshot(snap=>{
   if (snap.metadata.hasPendingWrites) return;
   if (_gravacoesPendentes['orcamentos']) return; // não sobrescreve edições locais não salvas
   savedListCache = snap.docs.map(d=> d.data()).sort((a,b)=> (b.savedAt||'').localeCompare(a.savedAt||''));
+  registrarSnapshotCarregado('orcamentos', savedListCache, o=> o.id);
   atualizarNumeroNovoOrc();
   refreshCurrentView();
 }, e=> console.error('Erro no listener de orçamentos:', e));
@@ -2373,6 +2405,7 @@ db.collection('pedidos').onSnapshot(snap=>{
   if (snap.metadata.hasPendingWrites) return;
   if (_gravacoesPendentes['pedidos']) return; // não sobrescreve edições locais não salvas
   pedidosCache = snap.docs.map(d=> d.data());
+  registrarSnapshotCarregado('pedidos', pedidosCache, p=> p.id);
   refreshCurrentView();
 }, e=> console.error('Erro no listener de pedidos:', e));
 
@@ -2380,6 +2413,7 @@ db.collection('clientes').onSnapshot(snap=>{
   if (snap.metadata.hasPendingWrites) return;
   if (_gravacoesPendentes['clientes']) return; // não sobrescreve edições locais não salvas
   clientesCache = snap.docs.map(d=> d.data());
+  registrarSnapshotCarregado('clientes', clientesCache, c=> c.id);
   populateListaClientes();
   refreshCurrentView();
 }, e=> console.error('Erro no listener de clientes:', e));
@@ -4281,7 +4315,7 @@ function renderOP(p){
   }
 
   const blankRowsProducao = Array.from({length:10}).map(()=>`
-    <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('');
+    <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('');
 
   const itensExtra = `
     <div class="op-valores-bloco">
@@ -4314,12 +4348,13 @@ function renderOP(p){
       <div class="field"><label>Cliente</label><input type="text" id="opCliente" value="${p.cliente||''}" placeholder="(sem cliente)"></div>
       <div class="field"><label>Cód./Ped. cliente</label><input type="text" id="opCodPed" value="${p.codPedCliente||''}"></div>
     </div>
-    <div class="row">
+    <div class="row no-print">
       <div class="field"><label>Data inicial (entrada do pedido)</label><div style="padding:7px 0;">${p.dataEntrada}</div></div>
       <div class="field"><label>Data final</label><div style="padding:7px 0;">${p.dataEntrega||'—'}</div></div>
     </div>
     <div class="row">
       <div class="field"><label>Data inicial do processo</label><input type="date" id="opDataInicialProcesso" value="${brParaIso(p.opDataInicialProcesso)}"></div>
+      <div class="field"><label>Data final do processo</label><input type="date" id="opDataFinalProcesso" value="${brParaIso(p.opDataFinalProcesso)}"></div>
     </div>
     <div class="field"><label>Observação</label><textarea id="opObservacao" rows="3" placeholder="alguma observação sobre esse pedido...">${p.observacaoOP||''}</textarea></div>
 
@@ -4337,8 +4372,8 @@ function renderOP(p){
 
     <h2 style="margin-top:20px;"><span class="n">·</span>Registro de produção</h2>
     <div class="field" style="max-width:320px;"><label>Processo</label><input type="text" id="opProcesso" value="${p.opProcesso||''}" placeholder="ex: DOBRA PRENSA-1"></div>
-    <table class="items op-registro-table op-table" style="font-size:12px; margin-top:8px;">
-      <thead><tr><th>Data</th><th>Hora início</th><th>Hora fim</th><th>Qtd prod (chapas)</th><th>Dimensão material (CxL)</th><th>Setup (min)</th></tr></thead>
+    <table class="items op-registro-table op-table" style="font-size:11px; margin-top:8px;">
+      <thead><tr><th>Data</th><th>Início</th><th>Fim</th><th>Qtd</th><th>Material</th><th>Esp.</th><th>Dim. (CxL)</th><th>Setup</th></tr></thead>
       <tbody>${blankRowsProducao}</tbody>
     </table>
 
@@ -4380,6 +4415,7 @@ function renderOP(p){
   document.getElementById('opMaterial').addEventListener('input', (e)=> salvarCampoPedido('opMaterial', e.target.value));
   document.getElementById('opProcesso').addEventListener('input', (e)=> salvarCampoPedido('opProcesso', e.target.value));
   document.getElementById('opDataInicialProcesso').addEventListener('change', (e)=> salvarCampoPedido('opDataInicialProcesso', isoParaBr(e.target.value)));
+  document.getElementById('opDataFinalProcesso').addEventListener('change', (e)=> salvarCampoPedido('opDataFinalProcesso', isoParaBr(e.target.value)));
   document.getElementById('opObservacao').addEventListener('input', (e)=> salvarCampoPedido('observacaoOP', e.target.value));
 
   if (!Array.isArray(p.linhasProducao)) p.linhasProducao = [];
