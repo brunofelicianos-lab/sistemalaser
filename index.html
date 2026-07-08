@@ -446,7 +446,7 @@
   <div id="viewOrcamento" class="view">
 
   <header class="top no-print">
-    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.salvamento-3</span></h1>
+    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.anexos-separados-1</span></h1>
     <div class="tag">geração automática a partir de arquivos .DXF</div>
   </header>
 
@@ -2378,6 +2378,64 @@ function startApp(){
   _appIniciado = true;
 
 // listeners em tempo real — qualquer mudança (deste ou de outro usuário) atualiza a tela
+/* ============================================================
+   ANEXOS EM DOCUMENTOS SEPARADOS
+   Cada anexo (PDF/imagem) é gravado como documento próprio na
+   coleção "anexos" — assim cada um tem seu próprio limite de 1 MB
+   e o pedido fica leve (guarda só a referência {name, anexoId}).
+   Compatível com anexos antigos que ainda têm dataUrl embutido.
+   ============================================================ */
+const _anexoCache = {}; // anexoId -> dataUrl (carregado sob demanda)
+
+function gerarAnexoId(){
+  return 'ax_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+}
+
+// grava o conteúdo do anexo num documento separado; retorna a referência leve
+function salvarAnexoSeparado(name, dataUrl){
+  return new Promise((resolve, reject)=>{
+    const anexoId = gerarAnexoId();
+    _anexoCache[anexoId] = dataUrl; // já deixa em cache local pra exibir sem reler
+    comTimeout(db.collection('anexos').doc(anexoId).set({ name, dataUrl, criadoEm: Date.now() }), 20000, 'anexo '+anexoId)
+      .then(()=> resolve({ name, anexoId }))
+      .catch(e=>{ console.error('Erro ao salvar anexo separado:', e); reject(e); });
+  });
+}
+
+// busca o dataUrl de um anexo (por referência nova) — usa cache se já tiver
+function buscarAnexoDataUrl(anexoId){
+  if (_anexoCache[anexoId]) return Promise.resolve(_anexoCache[anexoId]);
+  return comTimeout(db.collection('anexos').doc(anexoId).get(), 20000, 'get anexo '+anexoId)
+    .then(doc=>{
+      if (doc.exists && doc.data().dataUrl){
+        _anexoCache[anexoId] = doc.data().dataUrl;
+        return doc.data().dataUrl;
+      }
+      return null;
+    });
+}
+
+// remove o documento do anexo separado (quando o usuário exclui o anexo)
+function excluirAnexoSeparado(anexoId){
+  if (!anexoId) return Promise.resolve();
+  delete _anexoCache[anexoId];
+  return db.collection('anexos').doc(anexoId).delete().catch(e=> console.error('Erro ao excluir anexo:', e));
+}
+
+// abre/baixa um anexo, seja no formato novo (anexoId) ou antigo (dataUrl embutido)
+function abrirAnexo(anexoObj){
+  if (!anexoObj) return;
+  const nome = anexoObj.name || 'anexo';
+  const baixar = (dataUrl)=>{
+    if (!dataUrl){ alert('Não foi possível carregar este anexo. Verifique a internet e tente de novo.'); return; }
+    const a = document.createElement('a');
+    a.href = dataUrl; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+  };
+  if (anexoObj.dataUrl){ baixar(anexoObj.dataUrl); return; }           // formato antigo
+  if (anexoObj.anexoId){ buscarAnexoDataUrl(anexoObj.anexoId).then(baixar).catch(()=> baixar(null)); return; }
+  baixar(null);
+}
+
 db.collection('config').doc('geral').onSnapshot(doc=>{
   if (doc.exists) configCache = Object.assign(configCache, doc.data());
   atualizarNumeroNovoOrc();
@@ -3175,8 +3233,10 @@ async function confirmarAprovacao(tipos){
   }
   const arquivoNF = document.getElementById('modalAprovarAnexoNF').files[0];
   const arquivoPC = document.getElementById('modalAprovarAnexoPC').files[0];
-  const anexoNF = arquivoNF ? await new Promise(res=> lerArquivoComoBase64(arquivoNF, res)) : null;
-  const anexoPC = arquivoPC ? await new Promise(res=> lerArquivoComoBase64(arquivoPC, res)) : null;
+  const anexoNFbruto = arquivoNF ? await new Promise(res=> lerArquivoComoBase64(arquivoNF, res)) : null;
+  const anexoPCbruto = arquivoPC ? await new Promise(res=> lerArquivoComoBase64(arquivoPC, res)) : null;
+  const anexoNF = anexoNFbruto ? await salvarAnexoSeparado(anexoNFbruto.name, anexoNFbruto.dataUrl).catch(()=>null) : null;
+  const anexoPC = anexoPCbruto ? await salvarAnexoSeparado(anexoPCbruto.name, anexoPCbruto.dataUrl).catch(()=>null) : null;
   const dadosFiscais = {
     tipoFiscal: document.getElementById('modalAprovarTipoFiscal').value,
     notaIndustrializacao: document.getElementById('modalAprovarNotaInd').value,
@@ -3241,8 +3301,10 @@ async function executarCriacaoPedidoManual(){
 
   const arquivoNF = document.getElementById('npAnexoNF').files[0];
   const arquivoPC = document.getElementById('npAnexoPC').files[0];
-  const anexoNF = arquivoNF ? await new Promise(res=> lerArquivoComoBase64(arquivoNF, res)) : null;
-  const anexoPC = arquivoPC ? await new Promise(res=> lerArquivoComoBase64(arquivoPC, res)) : null;
+  const anexoNFbruto = arquivoNF ? await new Promise(res=> lerArquivoComoBase64(arquivoNF, res)) : null;
+  const anexoPCbruto = arquivoPC ? await new Promise(res=> lerArquivoComoBase64(arquivoPC, res)) : null;
+  const anexoNF = anexoNFbruto ? await salvarAnexoSeparado(anexoNFbruto.name, anexoNFbruto.dataUrl).catch(()=>null) : null;
+  const anexoPC = anexoPCbruto ? await salvarAnexoSeparado(anexoPCbruto.name, anexoPCbruto.dataUrl).catch(()=>null) : null;
 
   const pedido = {
     id: gerarIdUnico(), numero: counter, tipo,
@@ -3323,18 +3385,21 @@ function ligarEventosModalDocs(){
       const id = +inp.dataset.anexo, campo = inp.dataset.campoanexo;
       const file = inp.files[0];
       if (!file) return;
-      // Firestore guarda o anexo dentro do pedido (limite 1 MB por registro).
-      // Deixamos margem pro resto dos dados do pedido: bloqueia acima de 700 KB.
-      if (file.size > 700*1024){
-        alert('Este arquivo tem ' + (file.size/1048576).toFixed(1) + ' MB e é grande demais para anexar (limite ~0,7 MB por arquivo).\n\nComo resolver:\n• Comprima o PDF (ex.: ilovepdf.com → "Comprimir PDF") e anexe a versão menor; ou\n• Guarde o PDF em outro lugar (Drive/pasta) e anexe só se couber.\n\nIsso evita que a nuvem rejeite o registro e desfaça alterações (como "faturado") ao recarregar.');
+      // Cada anexo agora é um documento próprio no Firestore (limite 1 MB por documento).
+      // Em base64 o arquivo cresce ~33%, então o arquivo original cabe até ~760 KB.
+      if (file.size > 760*1024){
+        alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComo resolver:\n• Comprima o PDF (ex.: ilovepdf.com → "Comprimir PDF") e anexe a versão menor.\n\nAgora cada anexo é guardado separado, então vários anexos no mesmo pedido não somam mais — só cada arquivo precisa caber nesse limite.');
         inp.value = '';
         return;
       }
       lerArquivoComoBase64(file, (anexo)=>{
-        const all = loadPedidos();
-        const p = all.find(x=> x.id === id);
-        if (p){ p[campo] = anexo; savePedidos(all); }
-        renderModalDocs(id);
+        if (!anexo) return;
+        salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
+          const all = loadPedidos();
+          const p = all.find(x=> x.id === id);
+          if (p){ p[campo] = ref; savePedidos(all); }
+          renderModalDocs(id);
+        }).catch(()=> alert('Não consegui salvar o anexo na nuvem. Verifique a internet e tente de novo.'));
       });
     });
   });
@@ -3344,8 +3409,18 @@ function ligarEventosModalDocs(){
       if (!confirm('Remover esse anexo?')) return;
       const all = loadPedidos();
       const p = all.find(x=> x.id === id);
-      if (p){ p[campo] = null; savePedidos(all); }
+      if (p){
+        if (p[campo] && p[campo].anexoId) excluirAnexoSeparado(p[campo].anexoId);
+        p[campo] = null; savePedidos(all);
+      }
       renderModalDocs(id);
+    });
+  });
+  modal.querySelectorAll('[data-abrircampo]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const [id, campo] = btn.dataset.abrircampo.split(':');
+      const p = loadPedidos().find(x=> x.id === +id);
+      if (p) abrirAnexo(p[campo]);
     });
   });
 }
@@ -3420,7 +3495,7 @@ function renderPedidosStats(){
 }
 
 function anexoValido(a){
-  return !!(a && typeof a === 'object' && (a.dataUrl || a.name));
+  return !!(a && typeof a === 'object' && (a.dataUrl || a.anexoId || a.name));
 }
 function pedidoTemAnexos(p){
   return !!(anexoValido(p.anexoNF) || anexoValido(p.anexoPC) || anexoValido(p.anexoPedidoVenda) ||
@@ -3611,11 +3686,7 @@ function renderFiscalStats(){
 }
 
 function lerArquivoComoBase64(file, callback){
-  if (file && file.size > 700*1024){
-    alert('O arquivo "' + file.name + '" tem ' + (file.size/1048576).toFixed(1) + ' MB e é grande demais (limite ~0,7 MB).\n\nComprima o PDF (ex.: ilovepdf.com) e tente de novo. Anexos grandes fazem a nuvem rejeitar o registro e desfazem alterações ao recarregar.');
-    callback(null);
-    return;
-  }
+  if (!file){ callback(null); return; }
   const reader = new FileReader();
   reader.onload = (e)=> callback({ name: file.name, dataUrl: e.target.result });
   reader.readAsDataURL(file);
@@ -3682,7 +3753,7 @@ function htmlAnexoFiscal(pid, campo, label, anexoObj){
       <label>${label}</label>
       ${anexoObj ? `
         <div style="display:flex; align-items:center; gap:8px; padding-top:4px;">
-          <a href="${anexoObj.dataUrl}" download="${anexoObj.name}" style="font-size:12px; color:var(--accent); text-decoration:underline; word-break:break-all;">📎 ${anexoObj.name}</a>
+          <button type="button" class="link-anexo" data-abrircampo="${pid}:${campo}" style="background:none; border:none; padding:0; cursor:pointer; font-size:12px; color:var(--accent); text-decoration:underline; word-break:break-all; text-align:left;">📎 ${anexoObj.name}</button>
           <button class="iconbtn no-print" data-rmanexo="${pid}" data-campoanexo="${campo}" title="remover anexo" style="margin-top:0;">×</button>
         </div>` : `
         <input type="file" class="no-print" data-anexo="${pid}" data-campoanexo="${campo}" accept=".pdf,.jpg,.jpeg,.png">
@@ -3695,7 +3766,7 @@ function htmlAnexosExtras(p){
   const lista = extras.map((ax, idx)=>`
     <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
       <span style="font-size:12px; min-width:140px; color:var(--text);">${ax.nome || 'Anexo'}:</span>
-      <a href="${ax.anexo.dataUrl}" download="${ax.anexo.name}" style="font-size:12px; color:var(--accent); text-decoration:underline; word-break:break-all;">📎 ${ax.anexo.name}</a>
+      <button type="button" class="link-anexo" data-abrirextra="${p.id}:${idx}" style="background:none; border:none; padding:0; cursor:pointer; font-size:12px; color:var(--accent); text-decoration:underline; word-break:break-all; text-align:left;">📎 ${ax.anexo.name}</button>
       <button class="iconbtn no-print" data-rmextra="${p.id}:${idx}" title="remover">×</button>
     </div>`).join('');
   return `
@@ -3715,17 +3786,25 @@ function ligarEventosAnexosExtras(container, onDone){
       const pid = +inp.dataset.extraarquivo;
       const file = inp.files[0];
       if (!file) return;
+      if (file.size > 760*1024){
+        alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor.');
+        inp.value = '';
+        return;
+      }
       const nomeInput = container.querySelector(`[data-extranome="${pid}"]`);
       const nome = (nomeInput && nomeInput.value.trim()) || 'Anexo';
       lerArquivoComoBase64(file, (anexo)=>{
-        const all = loadPedidos();
-        const p = all.find(x=> x.id === pid);
-        if (p){
-          if (!Array.isArray(p.anexosExtras)) p.anexosExtras = [];
-          p.anexosExtras.push({ nome, anexo });
-          savePedidos(all);
-        }
-        onDone();
+        if (!anexo) return;
+        salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
+          const all = loadPedidos();
+          const p = all.find(x=> x.id === pid);
+          if (p){
+            if (!Array.isArray(p.anexosExtras)) p.anexosExtras = [];
+            p.anexosExtras.push({ nome, anexo: ref });
+            savePedidos(all);
+          }
+          onDone();
+        }).catch(()=> alert('Não consegui salvar o anexo na nuvem. Verifique a internet e tente de novo.'));
       });
     });
   });
@@ -3736,8 +3815,20 @@ function ligarEventosAnexosExtras(container, onDone){
       if (!confirm('Remover esse anexo?')) return;
       const all = loadPedidos();
       const p = all.find(x=> x.id === pid);
-      if (p && Array.isArray(p.anexosExtras)){ p.anexosExtras.splice(idx,1); savePedidos(all); }
+      if (p && Array.isArray(p.anexosExtras)){
+        const ax = p.anexosExtras[idx];
+        if (ax && ax.anexo && ax.anexo.anexoId) excluirAnexoSeparado(ax.anexo.anexoId);
+        p.anexosExtras.splice(idx,1); savePedidos(all);
+      }
       onDone();
+    });
+  });
+  container.querySelectorAll('[data-abrirextra]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const partes = btn.dataset.abrirextra.split(':');
+      const pid = +partes[0], idx = +partes[1];
+      const p = loadPedidos().find(x=> x.id === pid);
+      if (p && Array.isArray(p.anexosExtras) && p.anexosExtras[idx]) abrirAnexo(p.anexosExtras[idx].anexo);
     });
   });
 }
@@ -4174,15 +4265,23 @@ function renderFiscal(){
     });
   });
 
-  // anexos (arquivos)
+  // anexos (arquivos) — guardados como documentos separados
   wrap.querySelectorAll('[data-anexo]').forEach(inp=>{
     inp.addEventListener('change', ()=>{
       const id = +inp.dataset.anexo, campo = inp.dataset.campoanexo;
       const file = inp.files[0];
       if (!file) return;
+      if (file.size > 760*1024){
+        alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor.\n\nAgora cada anexo é guardado separado, então vários anexos no mesmo pedido não somam mais.');
+        inp.value = '';
+        return;
+      }
       lerArquivoComoBase64(file, (anexo)=>{
-        comPedido(id, p=> p[campo] = anexo);
-        renderFiscal();
+        if (!anexo) return;
+        salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
+          comPedido(id, p=> p[campo] = ref);
+          renderFiscal();
+        }).catch(()=> alert('Não consegui salvar o anexo na nuvem. Verifique a internet e tente de novo.'));
       });
     });
   });
@@ -4190,8 +4289,17 @@ function renderFiscal(){
     btn.addEventListener('click', ()=>{
       const id = +btn.dataset.rmanexo, campo = btn.dataset.campoanexo;
       if (!confirm('Remover esse anexo?')) return;
+      const p0 = loadPedidos().find(x=> x.id === id);
+      if (p0 && p0[campo] && p0[campo].anexoId) excluirAnexoSeparado(p0[campo].anexoId);
       comPedido(id, p=> p[campo] = null);
       renderFiscal();
+    });
+  });
+  wrap.querySelectorAll('[data-abrircampo]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const [id, campo] = btn.dataset.abrircampo.split(':');
+      const p = loadPedidos().find(x=> x.id === +id);
+      if (p) abrirAnexo(p[campo]);
     });
   });
 
