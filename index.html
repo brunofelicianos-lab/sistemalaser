@@ -398,14 +398,6 @@
   };
   firebase.initializeApp(firebaseConfig);
   window.db = firebase.firestore();
-  // Persistência offline: gravações vão primeiro para o disco local (IndexedDB) e
-  // sincronizam com a nuvem quando a conexão permite. Isso evita o travamento em
-  // "Salvando…" quando a internet oscila — o .set() resolve na hora (grava local).
-  window.db.enablePersistence({ synchronizeTabs: true })
-    .catch(e=>{
-      // 'failed-precondition' = várias abas abertas sem suporte; 'unimplemented' = navegador sem suporte.
-      console.warn('Persistência offline não ativada:', e && e.code ? e.code : e);
-    });
   window.auth = firebase.auth();
   window.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     .catch(e=> console.error('Erro ao definir persistência de login:', e));
@@ -454,7 +446,7 @@
   <div id="viewOrcamento" class="view">
 
   <header class="top no-print">
-    <h1>LUMATRI Industrial</h1>
+    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.salvamento-2</span></h1>
     <div class="tag">geração automática a partir de arquivos .DXF</div>
   </header>
 
@@ -2797,8 +2789,21 @@ function salvarAlteracoesPendentes(){
 
   avisarSalvamento('Salvando na nuvem…', false, true);
 
+  // rede de segurança: se por qualquer motivo o Promise.all abaixo não resolver,
+  // este timeout garante que a tela nunca fica presa em "Salvando…" para sempre.
+  let _resolvido = false;
+  const _seguranca = setTimeout(()=>{
+    if (_resolvido) return;
+    console.error('Salvamento não confirmou a tempo (trava de segurança 20s).');
+    rodada.forEach(({col, g})=>{ _gravacoesPendentes[col] = g; });
+    marcarAlteracoesNaoSalvas(true);
+    salvarBackupLocal();
+    avisarSalvamento('⚠ O salvamento demorou demais e não confirmou. Suas alterações continuam pendentes (backup local feito). Verifique a internet e clique em Salvar de novo.', true);
+  }, 20000);
+
   const execs = rodada.map(({col, g})=> syncCollection(col, g.list, g.idFn));
   return Promise.all(execs).then(resultados=>{
+    _resolvido = true; clearTimeout(_seguranca);
     const todosErros = resultados.flat().filter(Boolean);
     if (todosErros.length === 0){
       marcarAlteracoesNaoSalvas(false);
@@ -2813,6 +2818,7 @@ function salvarAlteracoesPendentes(){
     }
     return todosErros;
   }).catch(e=>{
+    _resolvido = true; clearTimeout(_seguranca);
     rodada.forEach(({col, g})=>{ _gravacoesPendentes[col] = g; });
     marcarAlteracoesNaoSalvas(true);
     salvarBackupLocal();
