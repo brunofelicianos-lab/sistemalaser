@@ -2239,12 +2239,18 @@ function gerarIdUnico(){
 }
 
 function syncCollection(nomeColecao, novaLista, idFn){
+  const promessas = [];
+  const erros = [];
   try{
     const col = db.collection(nomeColecao);
     const idsAntigos = new Set(_lastDocIds[nomeColecao] || []);
     const idsNovos = new Set(novaLista.map(item=> String(idFn(item))));
     idsAntigos.forEach(id=>{
-      if (!idsNovos.has(id)) col.doc(id).delete().catch(e=> console.error('Erro ao excluir', nomeColecao, id, e));
+      if (!idsNovos.has(id)){
+        promessas.push(
+          col.doc(id).delete().catch(e=>{ console.error('Erro ao excluir', nomeColecao, id, e); erros.push('excluir '+id); })
+        );
+      }
     });
     novaLista.forEach(item=>{
       const limpo = limparParaFirestore(item);
@@ -2253,16 +2259,23 @@ function syncCollection(nomeColecao, novaLista, idFn){
       const tamanho = tamanhoAproxDoc(limpo);
       if (tamanho > 1000000){
         avisarSalvamento('⚠ Um item ('+nomeColecao+' '+docId+') tem anexo grande demais ('+(tamanho/1048576).toFixed(1)+' MB) e NÃO foi salvo na nuvem. Remova ou reduza o anexo (o limite é 1 MB por registro).', true);
+        erros.push('tamanho '+docId);
         return; // não tenta gravar; evitaria falha silenciosa que "desfaz" a alteração ao recarregar
       }
-      col.doc(docId).set(limpo)
-        .catch(e=>{
+      promessas.push(
+        col.doc(docId).set(limpo).catch(e=>{
           console.error('Erro ao salvar', nomeColecao, docId, e);
-          avisarSalvamento('⚠ Não consegui salvar uma alteração na nuvem ('+nomeColecao+'). Verifique a internet — a mudança pode se perder ao recarregar. Detalhe: '+(e && e.message ? e.message : e), true);
-        });
+          erros.push((e && e.message) ? e.message : String(e));
+        })
+      );
     });
     _lastDocIds[nomeColecao] = Array.from(idsNovos);
-  }catch(e){ console.error('Erro de sincronização Firestore:', e); }
+  }catch(e){
+    console.error('Erro de sincronização Firestore:', e);
+    erros.push((e && e.message) ? e.message : String(e));
+  }
+  // resolve com a lista de erros (vazia = tudo certo) só depois que TODAS confirmarem
+  return Promise.all(promessas).then(()=> erros);
 }
 
 // remove campos undefined/NaN/função que fazem o Firestore rejeitar o documento inteiro
@@ -2288,7 +2301,7 @@ function tamanhoAproxDoc(obj){
 }
 
 let _avisoSalvamentoTimer = null;
-function avisarSalvamento(msg, erro){
+function avisarSalvamento(msg, erro, persistente){
   let el = document.getElementById('avisoSalvamentoGlobal');
   if (!el){
     el = document.createElement('div');
@@ -2298,12 +2311,15 @@ function avisarSalvamento(msg, erro){
     el.addEventListener('click', ()=>{ el.style.display='none'; });
     document.body.appendChild(el);
   }
-  el.style.background = erro ? '#d1080f' : '#2b7d4f';
+  el.style.background = erro ? '#d1080f' : (persistente ? '#8a6d1f' : '#2b7d4f');
   el.style.color = '#fff';
   el.textContent = msg;
   el.style.display = 'block';
   if (_avisoSalvamentoTimer) clearTimeout(_avisoSalvamentoTimer);
-  _avisoSalvamentoTimer = setTimeout(()=>{ if(el) el.style.display='none'; }, erro ? 12000 : 4000);
+  // "salvando…" fica na tela até a próxima chamada (não some sozinho)
+  if (!persistente){
+    _avisoSalvamentoTimer = setTimeout(()=>{ if(el) el.style.display='none'; }, erro ? 12000 : 4000);
+  }
 }
 
 function writeConfig(parcial){
@@ -2639,7 +2655,12 @@ function trocarViewAgora(viewId){
 function showView(viewId){
   if (_temAlteracoesNaoSalvas && viewId !== currentViewId){
     abrirDialogoSalvar({
-      onSalvar: ()=>{ salvarAlteracoesPendentes(); trocarViewAgora(viewId); },
+      onSalvar: ()=>{
+        salvarAlteracoesPendentes().then(erros=>{
+          // só sai da tela se realmente salvou; se falhou, permanece para não perder dados
+          if (!erros || erros.length === 0) trocarViewAgora(viewId);
+        });
+      },
       onDescartar: ()=>{ descartarAlteracoesPendentes(); trocarViewAgora(viewId); },
       onCancelar: ()=>{ /* fica na tela atual */ }
     });
@@ -2712,14 +2733,36 @@ function marcarAlteracoesNaoSalvas(tem){
 
 function salvarAlteracoesPendentes(){
   const colecoes = Object.keys(_gravacoesPendentes);
-  if (colecoes.length === 0){ marcarAlteracoesNaoSalvas(false); return; }
-  colecoes.forEach(col=>{
+  if (colecoes.length === 0){ marcarAlteracoesNaoSalvas(false); return Promise.resolve(); }
+
+  // captura as gravações desta rodada e limpa a fila (novas edições viram nova rodada)
+  const rodada = colecoes.map(col=>{
     const g = _gravacoesPendentes[col];
-    syncCollection(col, g.list, g.idFn);
     delete _gravacoesPendentes[col];
+    return { col, g };
   });
-  marcarAlteracoesNaoSalvas(false);
-  avisarSalvamento('Alterações salvas na nuvem ✔', false);
+
+  avisarSalvamento('Salvando na nuvem…', false, true);
+
+  const execs = rodada.map(({col, g})=> syncCollection(col, g.list, g.idFn));
+  return Promise.all(execs).then(resultados=>{
+    const todosErros = resultados.flat().filter(Boolean);
+    if (todosErros.length === 0){
+      marcarAlteracoesNaoSalvas(false);
+      avisarSalvamento('Alterações salvas na nuvem ✔', false);
+    } else {
+      // re-agenda as gravações que falharam para você poder tentar de novo
+      rodada.forEach(({col, g})=>{ _gravacoesPendentes[col] = g; });
+      marcarAlteracoesNaoSalvas(true);
+      avisarSalvamento('⚠ NÃO foi possível confirmar o salvamento de '+todosErros.length+' registro(s). Suas alterações continuam pendentes — verifique a internet e clique em Salvar de novo. Detalhe: '+todosErros[0], true);
+    }
+    return todosErros;
+  }).catch(e=>{
+    rodada.forEach(({col, g})=>{ _gravacoesPendentes[col] = g; });
+    marcarAlteracoesNaoSalvas(true);
+    avisarSalvamento('⚠ Erro ao salvar na nuvem: '+((e&&e.message)?e.message:e)+'. Alterações continuam pendentes.', true);
+    return [String(e)];
+  });
 }
 
 // joga fora as alterações não salvas e recarrega os dados atuais do banco
@@ -2966,6 +3009,8 @@ function abrirModalAprovacao(idx){
   document.getElementById('modalAprovarTipoFiscal').value = tipoPadrao;
   document.getElementById('modalAprovarNotaInd').value = '';
   document.getElementById('modalAprovarPedidoCompra').value = '';
+  document.getElementById('modalAprovarAnexoNF').value = '';
+  document.getElementById('modalAprovarAnexoPC').value = '';
   const mostraInd = tipoPadrao === 'industrializacao';
   document.getElementById('modalAprovarIndustrializacaoFields').style.display = mostraInd ? '' : 'none';
   document.getElementById('modalAprovarIndustrializacaoAnexos').style.display = mostraInd ? '' : 'none';
@@ -3068,6 +3113,8 @@ function abrirModalNovoPedido(){
   document.getElementById('npTipoFiscal').value = '';
   document.getElementById('npNotaInd').value = '';
   document.getElementById('npPedidoCompra').value = '';
+  document.getElementById('npAnexoNF').value = '';
+  document.getElementById('npAnexoPC').value = '';
   document.getElementById('npIndustrializacaoFields').style.display = 'none';
   document.getElementById('npIndustrializacaoAnexos').style.display = 'none';
   document.getElementById('modalNovoPedido').style.display = 'flex';
@@ -3493,12 +3540,18 @@ function htmlDadosClienteFiscal(p){
     </div>`;
 }
 
+function valorLinhaFiscal(l){
+  // valor editado na fiscal tem prioridade; senão usa o calculado da OP
+  if (l.valorFiscal !== undefined && l.valorFiscal !== null && l.valorFiscal !== '')
+    return parseFloat(l.valorFiscal)||0;
+  return calcularLinhaProducao(l).valor;
+}
 function htmlLinhasProducaoFiscal(p){
-  const itensComTempo = (p.itens||[]).filter(it=> (it.tempoRealSeg||0) > 0);
   const temLinhas = Array.isArray(p.linhasProducao) && p.linhasProducao.length > 0;
-  if (!temLinhas && itensComTempo.length === 0) return '';
+  if (!temLinhas) return '';
 
-  const linhasHtml = temLinhas ? p.linhasProducao.map(l=>{
+  let total = 0;
+  const linhasHtml = p.linhasProducao.map((l,idx)=>{
     const c = calcularLinhaProducao(l);
     const partes = [];
     if (c.valorMaterial > 0.005) partes.push('material '+fmt(c.valorMaterial));
@@ -3506,19 +3559,12 @@ function htmlLinhasProducaoFiscal(p){
     if (c.valorDobra > 0.005) partes.push('dobra '+fmt(c.valorDobra));
     if (c.valorDobraTempo > 0.005) partes.push('dobra tempo '+fmt(c.valorDobraTempo));
     if (c.valorPrensaTempo > 0.005) partes.push('prensa '+fmt(c.valorPrensaTempo));
+    const valor = valorLinhaFiscal(l);
+    total += valor;
     return `
-      <div style="display:flex; justify-content:space-between; align-items:baseline; padding:4px 0; border-bottom:1px solid var(--line-soft);">
-        <span style="font-size:13px;">${l.material||''} ${l.espessura||''}mm <span class="footnote" style="display:inline;">(${partes.join(', ')})</span></span>
-        <span style="font-weight:700; font-family:var(--mono);">${fmt(c.valor)}</span>
-      </div>`;
-  }).join('') : '';
-
-  const itensHtml = itensComTempo.map((it,idx)=>{
-    const valor = calcularValorCorteItem(it);
-    return `
-      <div style="display:flex; justify-content:space-between; align-items:baseline; padding:4px 0; border-bottom:1px solid var(--line-soft);">
-        <span style="font-size:13px;">${it.fileName||('item '+(idx+1))} <span class="footnote" style="display:inline;">(${it.tempoRealSeg}s de corte real)</span></span>
-        <span style="font-weight:700; font-family:var(--mono);">${fmt(valor)}</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:4px 0; border-bottom:1px solid var(--line-soft);">
+        <span style="font-size:13px; flex:1;">${l.material||''} ${l.espessura||''}mm <span class="footnote" style="display:inline;">(${partes.join(', ')})</span></span>
+        <input type="number" step="0.01" data-fiscalvalorlinha="${p.id}:${idx}" value="${valor.toFixed(2)}" style="width:100px; text-align:right; font-family:var(--mono); font-weight:700;">
       </div>`;
   }).join('');
 
@@ -3526,7 +3572,10 @@ function htmlLinhasProducaoFiscal(p){
     <div style="margin-bottom:4px;">
       <label style="display:block; margin-bottom:4px;">Detalhamento da produção (vindo da OP)</label>
       ${linhasHtml}
-      ${itensHtml}
+      <div style="display:flex; justify-content:space-between; align-items:baseline; padding:6px 0 0; margin-top:2px;">
+        <span style="font-size:12px; font-weight:700; color:var(--text-dim);">Subtotal produção</span>
+        <span style="font-weight:800; font-family:var(--mono);" data-fiscalsubtotallinha="${p.id}">${fmt(total)}</span>
+      </div>
     </div>`;
 }
 
@@ -3618,34 +3667,41 @@ function htmlItensFiscais(p){
 
 const fiscalSelecionados = new Set();
 
+function valorCorteFiscalItem(it){
+  // valor editado na fiscal tem prioridade; senão usa o calculado da OP
+  if (it.valorCorteFiscal !== undefined && it.valorCorteFiscal !== null && it.valorCorteFiscal !== '')
+    return parseFloat(it.valorCorteFiscal)||0;
+  return calcularValorCorteItem(it);
+}
 function htmlPecasPedidoFiscal(p){
-  const itens = (p.itens||[]).filter(it=> (it.tempoRealSeg||0) > 0);
+  // guarda o índice original de cada item para salvar corretamente
+  const itens = (p.itens||[]).map((it,idx)=>({it,idx})).filter(o=> (o.it.tempoRealSeg||0) > 0);
   if (itens.length === 0) return '';
   const custoMin = parseFloat((document.getElementById('custoMin')||{}).value)||0;
   const taxaHora = (custoMin*60).toFixed(2);
-  let total = 0;
-  const linhas = itens.map((it,idx)=>{
-    const valor = calcularValorCorteItem(it);
-    total += valor;
+  let total = 0, n = 0;
+  const linhas = itens.map(({it,idx})=>{
+    const valor = valorCorteFiscalItem(it);
+    total += valor; n++;
     return `<tr>
-      <td>${idx+1}</td>
+      <td>${n}</td>
       <td style="text-align:left;">${(it.fileName||('item '+(idx+1))).replace(/</g,'&lt;')}</td>
       <td style="text-align:left;">${(it.material||'').replace(/</g,'&lt;')}</td>
       <td>${it.espessura||''}</td>
       <td>${it.qtd||0}</td>
       <td>${it.tempoRealSeg||0}s</td>
-      <td>${fmt(valor)}</td>
+      <td><input type="number" step="0.01" data-fiscalvalorcorte="${p.id}:${idx}" value="${valor.toFixed(2)}" style="width:90px; text-align:right;"></td>
     </tr>`;
   }).join('');
   return `
     <div class="op-valores-bloco" style="border-top:1px solid var(--line); margin-top:14px; padding-top:14px;">
       <label style="display:block; margin-bottom:8px; font-size:11px; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-dim);">Peças deste pedido — tempo de corte real</label>
-      <div class="footnote">Referência informativa do tempo real de corte por peça. Taxa de hora-máquina: R$${taxaHora}/hora.</div>
+      <div class="footnote">Tempo real de corte por peça (referência). O valor de corte pode ser ajustado aqui na fiscal sem alterar a OP. Taxa de hora-máquina: R$${taxaHora}/hora.</div>
       <div style="overflow-x:auto;">
         <table class="items" style="font-size:12px; margin-top:8px;">
           <thead><tr><th>Item</th><th>Descrição</th><th>Material</th><th>Esp.</th><th>Qtd</th><th>Tempo real</th><th>Valor corte (R$)</th></tr></thead>
           <tbody>${linhas}</tbody>
-          <tfoot><tr><td colspan="6" style="text-align:right; font-weight:700;">Subtotal corte (referência)</td><td style="font-weight:800;">${fmt(total)}</td></tr></tfoot>
+          <tfoot><tr><td colspan="6" style="text-align:right; font-weight:700;">Subtotal corte (referência)</td><td style="font-weight:800;" data-fiscalsubtotalcorte="${p.id}">${fmt(total)}</td></tr></tfoot>
         </table>
       </div>
     </div>`;
@@ -3945,6 +4001,41 @@ function renderFiscal(){
     inp.addEventListener('input', ()=>{
       comPedido(+inp.dataset.fiscalvalor, p=> p.valorFaturar = parseFloat(inp.value)||0);
       renderFiscalStats();
+    });
+  });
+  // valor de corte editável no quadro "Peças deste pedido" (só na fiscal)
+  wrap.querySelectorAll('[data-fiscalvalorcorte]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const [pid, idx] = inp.dataset.fiscalvalorcorte.split(':');
+      comPedido(+pid, p=>{
+        if (p.itens && p.itens[+idx]) p.itens[+idx].valorCorteFiscal = inp.value;
+      });
+      // recalcula o subtotal na tela sem re-render
+      const all = loadPedidos();
+      const p = all.find(x=> x.id === +pid);
+      if (p){
+        let sub = 0;
+        (p.itens||[]).forEach(it=>{ if ((it.tempoRealSeg||0)>0) sub += valorCorteFiscalItem(it); });
+        const totEl = wrap.querySelector(`[data-fiscalsubtotalcorte="${pid}"]`);
+        if (totEl) totEl.textContent = fmt(sub);
+      }
+    });
+  });
+  // valor editável no "Detalhamento da produção" (só na fiscal, não altera a OP)
+  wrap.querySelectorAll('[data-fiscalvalorlinha]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const [pid, idx] = inp.dataset.fiscalvalorlinha.split(':');
+      comPedido(+pid, p=>{
+        if (p.linhasProducao && p.linhasProducao[+idx]) p.linhasProducao[+idx].valorFiscal = inp.value;
+      });
+      const all = loadPedidos();
+      const p = all.find(x=> x.id === +pid);
+      if (p){
+        let sub = 0;
+        (p.linhasProducao||[]).forEach(l=> sub += valorLinhaFiscal(l));
+        const totEl = wrap.querySelector(`[data-fiscalsubtotallinha="${pid}"]`);
+        if (totEl) totEl.textContent = fmt(sub);
+      }
     });
   });
   wrap.querySelectorAll('[data-fiscalpagamento]').forEach(sel=>{
