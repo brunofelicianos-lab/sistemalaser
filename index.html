@@ -446,7 +446,7 @@
   <div id="viewOrcamento" class="view">
 
   <header class="top no-print">
-    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.anexos-separados-1</span></h1>
+    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.anexos-safari-5</span></h1>
     <div class="tag">geração automática a partir de arquivos .DXF</div>
   </header>
 
@@ -2422,18 +2422,64 @@ function excluirAnexoSeparado(anexoId){
   return db.collection('anexos').doc(anexoId).delete().catch(e=> console.error('Erro ao excluir anexo:', e));
 }
 
+// converte um dataURL (base64) em Blob
+function dataUrlParaBlob(dataUrl){
+  try{
+    const partes = dataUrl.split(',');
+    const mime = (partes[0].match(/:(.*?);/) || [,'application/octet-stream'])[1];
+    const bin = atob(partes[1]);
+    const len = bin.length;
+    const bytes = new Uint8Array(len);
+    for (let i=0; i<len; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }catch(e){ console.error('Erro ao converter anexo:', e); return null; }
+}
+
+const _ehSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+
+// dispara o download de um dataURL já em mãos (chamada síncrona, do clique)
+function dispararDownload(dataUrl, nome){
+  if (!dataUrl){ alert('Não foi possível carregar este anexo. Verifique a internet e tente de novo.'); return; }
+  const blob = dataUrlParaBlob(dataUrl);
+  if (!blob){ alert('Não foi possível abrir este anexo (arquivo corrompido).'); return; }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  // no Safari, target=_blank em download é bloqueado; sem target ele baixa direto
+  if (!_ehSafari){ a.target = '_blank'; a.rel = 'noopener'; }
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 60000);
+}
+
 // abre/baixa um anexo, seja no formato novo (anexoId) ou antigo (dataUrl embutido)
 function abrirAnexo(anexoObj){
   if (!anexoObj) return;
   const nome = anexoObj.name || 'anexo';
-  const baixar = (dataUrl)=>{
-    if (!dataUrl){ alert('Não foi possível carregar este anexo. Verifique a internet e tente de novo.'); return; }
-    const a = document.createElement('a');
-    a.href = dataUrl; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
-  };
-  if (anexoObj.dataUrl){ baixar(anexoObj.dataUrl); return; }           // formato antigo
-  if (anexoObj.anexoId){ buscarAnexoDataUrl(anexoObj.anexoId).then(baixar).catch(()=> baixar(null)); return; }
-  baixar(null);
+
+  // formato antigo: dado já está em mãos -> baixa na hora (síncrono, Safari aceita)
+  if (anexoObj.dataUrl){ dispararDownload(anexoObj.dataUrl, nome); return; }
+
+  // formato novo: precisa buscar na nuvem (assíncrono).
+  if (anexoObj.anexoId){
+    // se já está no cache local, baixa na hora (síncrono)
+    if (_anexoCache[anexoObj.anexoId]){ dispararDownload(_anexoCache[anexoObj.anexoId], nome); return; }
+    // senão, busca e baixa. No Safari o download após espera pode ser bloqueado,
+    // então avisamos e, se falhar, o usuário clica de novo (aí já vem do cache, síncrono).
+    avisarSalvamento('Carregando anexo… clique de novo se não baixar.', false, true);
+    buscarAnexoDataUrl(anexoObj.anexoId)
+      .then(du=>{
+        const aviso = document.getElementById('avisoSalvamentoGlobal');
+        if (aviso) aviso.style.display = 'none';
+        if (!du){ alert('Não foi possível carregar este anexo. Verifique a internet e tente de novo.'); return; }
+        dispararDownload(du, nome);
+      })
+      .catch(()=> alert('Não foi possível carregar este anexo. Verifique a internet e tente de novo.'));
+    return;
+  }
+  alert('Não foi possível carregar este anexo.');
 }
 
 db.collection('config').doc('geral').onSnapshot(doc=>{
@@ -2803,6 +2849,27 @@ function loadPedidos(){ return pedidosCache; }
 function savePedidos(list){
   pedidosCache = list;
   registrarGravacao('pedidos', list, p=> p.id);
+}
+
+// Grava UM pedido direto no Firebase, sem esperar o botão "Salvar".
+// Usado quando o usuário anexa/remove um arquivo — é uma ação que deve
+// persistir na hora, senão ao recarregar a referência do anexo se perde.
+function salvarPedidoImediato(id){
+  const p = pedidosCache.find(x=> x.id === id);
+  if (!p) return Promise.resolve();
+  const limpo = limparParaFirestore(p);
+  const docId = String(id);
+  return comTimeout(db.collection('pedidos').doc(docId).set(limpo), 20000, 'pedido '+docId)
+    .then(()=>{
+      // atualiza o snapshot pra gravação incremental não reenviar esse doc
+      if (!_snapshotDocs['pedidos']) _snapshotDocs['pedidos'] = {};
+      _snapshotDocs['pedidos'][docId] = JSON.stringify(limpo);
+      avisarSalvamento('Anexo salvo na nuvem ✔', false);
+    })
+    .catch(e=>{
+      console.error('Erro ao salvar pedido imediato:', e);
+      avisarSalvamento('⚠ Não consegui confirmar o salvamento do anexo. Verifique a internet.', true);
+    });
 }
 
 function loadPedidoCounter(tipo){
@@ -3397,7 +3464,7 @@ function ligarEventosModalDocs(){
         salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
           const all = loadPedidos();
           const p = all.find(x=> x.id === id);
-          if (p){ p[campo] = ref; savePedidos(all); }
+          if (p){ p[campo] = ref; savePedidos(all); salvarPedidoImediato(id); }
           renderModalDocs(id);
         }).catch(()=> alert('Não consegui salvar o anexo na nuvem. Verifique a internet e tente de novo.'));
       });
@@ -3411,7 +3478,7 @@ function ligarEventosModalDocs(){
       const p = all.find(x=> x.id === id);
       if (p){
         if (p[campo] && p[campo].anexoId) excluirAnexoSeparado(p[campo].anexoId);
-        p[campo] = null; savePedidos(all);
+        p[campo] = null; savePedidos(all); salvarPedidoImediato(id);
       }
       renderModalDocs(id);
     });
@@ -3802,6 +3869,7 @@ function ligarEventosAnexosExtras(container, onDone){
             if (!Array.isArray(p.anexosExtras)) p.anexosExtras = [];
             p.anexosExtras.push({ nome, anexo: ref });
             savePedidos(all);
+            salvarPedidoImediato(pid);
           }
           onDone();
         }).catch(()=> alert('Não consegui salvar o anexo na nuvem. Verifique a internet e tente de novo.'));
@@ -3819,6 +3887,7 @@ function ligarEventosAnexosExtras(container, onDone){
         const ax = p.anexosExtras[idx];
         if (ax && ax.anexo && ax.anexo.anexoId) excluirAnexoSeparado(ax.anexo.anexoId);
         p.anexosExtras.splice(idx,1); savePedidos(all);
+        salvarPedidoImediato(pid);
       }
       onDone();
     });
@@ -4014,6 +4083,31 @@ function renderFiscal(){
 
   const wrap = document.getElementById('fiscalList');
   const emptyMsg = document.getElementById('fiscalEmptyMsg');
+  // delegação de evento: captura cliques em botões de anexo mesmo após re-render
+  if (!wrap._anexoDelegado){
+    wrap._anexoDelegado = true;
+    wrap.addEventListener('click', (e)=>{
+      const bCampo = e.target.closest('[data-abrircampo]');
+      if (bCampo){
+        e.preventDefault(); e.stopPropagation();
+        const raw = bCampo.dataset.abrircampo;
+        const sep = raw.indexOf(':');
+        const id = +raw.slice(0, sep), campo = raw.slice(sep+1);
+        const p = loadPedidos().find(x=> x.id === id);
+        if (p) abrirAnexo(p[campo]);
+        return;
+      }
+      const bExtra = e.target.closest('[data-abrirextra]');
+      if (bExtra){
+        e.preventDefault(); e.stopPropagation();
+        const partes = bExtra.dataset.abrirextra.split(':');
+        const pid = +partes[0], idx = +partes[1];
+        const p = loadPedidos().find(x=> x.id === pid);
+        if (p && Array.isArray(p.anexosExtras) && p.anexosExtras[idx]) abrirAnexo(p.anexosExtras[idx].anexo);
+        return;
+      }
+    });
+  }
   if (pedidos.length === 0){
     emptyMsg.style.display = 'block';
     wrap.innerHTML = '';
@@ -4280,6 +4374,7 @@ function renderFiscal(){
         if (!anexo) return;
         salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
           comPedido(id, p=> p[campo] = ref);
+          salvarPedidoImediato(id);
           renderFiscal();
         }).catch(()=> alert('Não consegui salvar o anexo na nuvem. Verifique a internet e tente de novo.'));
       });
@@ -4292,14 +4387,8 @@ function renderFiscal(){
       const p0 = loadPedidos().find(x=> x.id === id);
       if (p0 && p0[campo] && p0[campo].anexoId) excluirAnexoSeparado(p0[campo].anexoId);
       comPedido(id, p=> p[campo] = null);
+      salvarPedidoImediato(id);
       renderFiscal();
-    });
-  });
-  wrap.querySelectorAll('[data-abrircampo]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const [id, campo] = btn.dataset.abrircampo.split(':');
-      const p = loadPedidos().find(x=> x.id === +id);
-      if (p) abrirAnexo(p[campo]);
     });
   });
 
