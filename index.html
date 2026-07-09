@@ -446,7 +446,7 @@
   <div id="viewOrcamento" class="view">
 
   <header class="top no-print">
-    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.anexos-ok-8</span></h1>
+    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.diag-anexar-10</span></h1>
     <div class="tag">geração automática a partir de arquivos .DXF</div>
   </header>
 
@@ -2483,6 +2483,8 @@ function abrirAnexo(anexoObj){
 // (aba fiscal, modal de documentos, etc.), na fase de captura, para nenhum outro
 // handler "engolir" o clique. Registrada uma única vez.
 document.addEventListener('click', function(e){
+  // nunca interferir em inputs, botões de arquivo ou remoção — só nos botões de baixar anexo
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.closest('[data-anexo]') || e.target.closest('[data-extraarquivo]') || e.target.closest('[data-rmanexo]') || e.target.closest('[data-rmextra]'))) return;
   const bCampo = e.target.closest && e.target.closest('[data-abrircampo]');
   if (bCampo){
     e.preventDefault(); e.stopPropagation();
@@ -2503,6 +2505,75 @@ document.addEventListener('click', function(e){
     return;
   }
 }, true);
+
+// Delegação GLOBAL de "change" para inputs de anexo (data-anexo e data-extraarquivo),
+// em qualquer lugar da página. Substitui os handlers individuais que às vezes não
+// disparavam após re-render. É a mesma abordagem que resolveu o clique de baixar.
+document.addEventListener('change', function(e){
+  const inp = e.target;
+  if (!inp || inp.tagName !== 'INPUT' || inp.type !== 'file') return;
+
+  const diag = (msg)=>{ try{ avisarSalvamento('🔍 '+msg, false, true); }catch(x){} console.log('[anexar] '+msg); };
+
+  // --- anexo principal (NF, PC, boleto, etc.) ---
+  if (inp.hasAttribute('data-anexo')){
+    diag('arquivo selecionado…');
+    const id = +inp.getAttribute('data-anexo');
+    const campo = inp.getAttribute('data-campoanexo');
+    const file = inp.files[0];
+    if (!file){ diag('nenhum arquivo'); return; }
+    diag(file.name+' ('+(file.size/1024).toFixed(0)+' KB) — lendo…');
+    if (file.size > 760*1024){
+      alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor.');
+      inp.value = ''; return;
+    }
+    lerArquivoComoBase64(file, (anexo)=>{
+      if (!anexo){ diag('falha ao ler'); return; }
+      diag('salvando na nuvem…');
+      salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
+        diag('salvo ✔');
+        comPedido(id, p=> p[campo] = ref);
+        salvarPedidoImediato(id);
+        if (document.getElementById('modalDocs') && document.getElementById('modalDocs').style.display !== 'none') renderModalDocs(id);
+        else renderFiscal();
+      }).catch(err=>{ diag('ERRO: '+((err&&err.message)?err.message:err)); alert('Não consegui salvar o anexo: '+((err&&err.message)?err.message:err)); });
+    });
+    return;
+  }
+
+  // --- anexo extra (nota de retorno, etc.) ---
+  if (inp.hasAttribute('data-extraarquivo')){
+    diag('arquivo extra selecionado…');
+    const pid = +inp.getAttribute('data-extraarquivo');
+    const file = inp.files[0];
+    if (!file){ diag('nenhum arquivo'); return; }
+    diag(file.name+' ('+(file.size/1024).toFixed(0)+' KB) — lendo…');
+    if (file.size > 760*1024){
+      alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF e anexe a versão menor.');
+      inp.value = ''; return;
+    }
+    const nomeInput = document.querySelector('[data-extranome="'+pid+'"]');
+    const nome = (nomeInput && nomeInput.value.trim()) || 'Anexo';
+    lerArquivoComoBase64(file, (anexo)=>{
+      if (!anexo){ diag('falha ao ler'); return; }
+      diag('salvando na nuvem…');
+      salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
+        diag('salvo ✔');
+        const all = loadPedidos();
+        const p = all.find(x=> x.id === pid);
+        if (p){
+          if (!Array.isArray(p.anexosExtras)) p.anexosExtras = [];
+          p.anexosExtras.push({ nome, anexo: ref });
+          savePedidos(all);
+          salvarPedidoImediato(pid);
+        }
+        if (document.getElementById('modalDocs') && document.getElementById('modalDocs').style.display !== 'none') renderModalDocs(pid);
+        else renderFiscal();
+      }).catch(err=>{ diag('ERRO: '+((err&&err.message)?err.message:err)); alert('Não consegui salvar o anexo: '+((err&&err.message)?err.message:err)); });
+    });
+    return;
+  }
+});
 
 db.collection('config').doc('geral').onSnapshot(doc=>{
   if (doc.exists) configCache = Object.assign(configCache, doc.data());
@@ -3469,29 +3540,7 @@ function ligarEventosModalDocs(){
       abrirModalClienteRapido(btn.dataset.cadastrarcliente);
     });
   });
-  modal.querySelectorAll('[data-anexo]').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
-      const id = +inp.dataset.anexo, campo = inp.dataset.campoanexo;
-      const file = inp.files[0];
-      if (!file) return;
-      // Cada anexo agora é um documento próprio no Firestore (limite 1 MB por documento).
-      // Em base64 o arquivo cresce ~33%, então o arquivo original cabe até ~760 KB.
-      if (file.size > 760*1024){
-        alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComo resolver:\n• Comprima o PDF (ex.: ilovepdf.com → "Comprimir PDF") e anexe a versão menor.\n\nAgora cada anexo é guardado separado, então vários anexos no mesmo pedido não somam mais — só cada arquivo precisa caber nesse limite.');
-        inp.value = '';
-        return;
-      }
-      lerArquivoComoBase64(file, (anexo)=>{
-        if (!anexo) return;
-        salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
-          const all = loadPedidos();
-          const p = all.find(x=> x.id === id);
-          if (p){ p[campo] = ref; savePedidos(all); salvarPedidoImediato(id); }
-          renderModalDocs(id);
-        }).catch(()=> alert('Não consegui salvar o anexo na nuvem. Verifique a internet e tente de novo.'));
-      });
-    });
-  });
+  // inputs de anexo (data-anexo) tratados pela delegação global de "change"
   modal.querySelectorAll('[data-rmanexo]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = +btn.dataset.rmanexo, campo = btn.dataset.campoanexo;
@@ -3863,34 +3912,7 @@ function htmlAnexosExtras(p){
 }
 
 function ligarEventosAnexosExtras(container, onDone){
-  container.querySelectorAll('[data-extraarquivo]').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
-      const pid = +inp.dataset.extraarquivo;
-      const file = inp.files[0];
-      if (!file) return;
-      if (file.size > 760*1024){
-        alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor.');
-        inp.value = '';
-        return;
-      }
-      const nomeInput = container.querySelector(`[data-extranome="${pid}"]`);
-      const nome = (nomeInput && nomeInput.value.trim()) || 'Anexo';
-      lerArquivoComoBase64(file, (anexo)=>{
-        if (!anexo) return;
-        salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
-          const all = loadPedidos();
-          const p = all.find(x=> x.id === pid);
-          if (p){
-            if (!Array.isArray(p.anexosExtras)) p.anexosExtras = [];
-            p.anexosExtras.push({ nome, anexo: ref });
-            savePedidos(all);
-            salvarPedidoImediato(pid);
-          }
-          onDone();
-        }).catch(()=> alert('Não consegui salvar o anexo na nuvem. Verifique a internet e tente de novo.'));
-      });
-    });
-  });
+  // inputs de anexo extra (data-extraarquivo) tratados pela delegação global de "change"
   container.querySelectorAll('[data-rmextra]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const partes = btn.dataset.rmextra.split(':');
@@ -3907,7 +3929,6 @@ function ligarEventosAnexosExtras(container, onDone){
       onDone();
     });
   });
-  container.querySelectorAll('[data-abrirextra]').forEach(()=>{}); // cliques tratados pela delegação global
 }
 
 function htmlItensFiscais(p){
@@ -4343,26 +4364,7 @@ function renderFiscal(){
   });
 
   // anexos (arquivos) — guardados como documentos separados
-  wrap.querySelectorAll('[data-anexo]').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
-      const id = +inp.dataset.anexo, campo = inp.dataset.campoanexo;
-      const file = inp.files[0];
-      if (!file) return;
-      if (file.size > 760*1024){
-        alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor.\n\nAgora cada anexo é guardado separado, então vários anexos no mesmo pedido não somam mais.');
-        inp.value = '';
-        return;
-      }
-      lerArquivoComoBase64(file, (anexo)=>{
-        if (!anexo) return;
-        salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
-          comPedido(id, p=> p[campo] = ref);
-          salvarPedidoImediato(id);
-          renderFiscal();
-        }).catch(()=> alert('Não consegui salvar o anexo na nuvem. Verifique a internet e tente de novo.'));
-      });
-    });
-  });
+  // inputs de anexo tratados pela delegação global de "change"
   wrap.querySelectorAll('[data-rmanexo]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = +btn.dataset.rmanexo, campo = btn.dataset.campoanexo;
