@@ -446,7 +446,7 @@
   <div id="viewOrcamento" class="view">
 
   <header class="top no-print">
-    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.anexos-safari-5</span></h1>
+    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.diag-anexo-6</span></h1>
     <div class="tag">geração automática a partir de arquivos .DXF</div>
   </header>
 
@@ -2456,30 +2456,30 @@ function dispararDownload(dataUrl, nome){
 
 // abre/baixa um anexo, seja no formato novo (anexoId) ou antigo (dataUrl embutido)
 function abrirAnexo(anexoObj){
-  if (!anexoObj) return;
+  // ---- DIAGNÓSTICO TEMPORÁRIO ----
+  const diag = (msg)=>{ try{ avisarSalvamento('🔍 '+msg, false, true); }catch(e){} console.log('[anexo] '+msg); };
+  if (!anexoObj){ diag('clique chegou, mas anexoObj está VAZIO (nada pra baixar)'); return; }
+  diag('clique OK. Campos: '+Object.keys(anexoObj).join(', ')+' | nome='+(anexoObj.name||'?'));
+  // ---- FIM DIAGNÓSTICO ----
   const nome = anexoObj.name || 'anexo';
 
   // formato antigo: dado já está em mãos -> baixa na hora (síncrono, Safari aceita)
-  if (anexoObj.dataUrl){ dispararDownload(anexoObj.dataUrl, nome); return; }
+  if (anexoObj.dataUrl){ diag('formato ANTIGO (dataUrl presente) — baixando…'); dispararDownload(anexoObj.dataUrl, nome); return; }
 
   // formato novo: precisa buscar na nuvem (assíncrono).
   if (anexoObj.anexoId){
-    // se já está no cache local, baixa na hora (síncrono)
-    if (_anexoCache[anexoObj.anexoId]){ dispararDownload(_anexoCache[anexoObj.anexoId], nome); return; }
-    // senão, busca e baixa. No Safari o download após espera pode ser bloqueado,
-    // então avisamos e, se falhar, o usuário clica de novo (aí já vem do cache, síncrono).
-    avisarSalvamento('Carregando anexo… clique de novo se não baixar.', false, true);
+    if (_anexoCache[anexoObj.anexoId]){ diag('formato NOVO (em cache) — baixando…'); dispararDownload(_anexoCache[anexoObj.anexoId], nome); return; }
+    diag('formato NOVO — buscando na nuvem (anexoId='+anexoObj.anexoId+')…');
     buscarAnexoDataUrl(anexoObj.anexoId)
       .then(du=>{
-        const aviso = document.getElementById('avisoSalvamentoGlobal');
-        if (aviso) aviso.style.display = 'none';
-        if (!du){ alert('Não foi possível carregar este anexo. Verifique a internet e tente de novo.'); return; }
+        if (!du){ diag('a nuvem NÃO retornou o arquivo (permissão da regra ou anexo inexistente)'); return; }
+        diag('nuvem retornou o arquivo — baixando…');
         dispararDownload(du, nome);
       })
-      .catch(()=> alert('Não foi possível carregar este anexo. Verifique a internet e tente de novo.'));
+      .catch(e=>{ diag('ERRO ao buscar na nuvem: '+((e&&e.message)?e.message:e)); });
     return;
   }
-  alert('Não foi possível carregar este anexo.');
+  diag('anexoObj não tem dataUrl NEM anexoId — formato desconhecido: '+JSON.stringify(anexoObj).slice(0,120));
 }
 
 db.collection('config').doc('geral').onSnapshot(doc=>{
