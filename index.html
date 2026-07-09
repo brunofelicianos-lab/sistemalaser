@@ -446,7 +446,7 @@
   <div id="viewOrcamento" class="view">
 
   <header class="top no-print">
-    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.diag-anexo-6</span></h1>
+    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.anexos-ok-8</span></h1>
     <div class="tag">geração automática a partir de arquivos .DXF</div>
   </header>
 
@@ -2456,31 +2456,53 @@ function dispararDownload(dataUrl, nome){
 
 // abre/baixa um anexo, seja no formato novo (anexoId) ou antigo (dataUrl embutido)
 function abrirAnexo(anexoObj){
-  // ---- DIAGNÓSTICO TEMPORÁRIO ----
-  const diag = (msg)=>{ try{ avisarSalvamento('🔍 '+msg, false, true); }catch(e){} console.log('[anexo] '+msg); };
-  if (!anexoObj){ diag('clique chegou, mas anexoObj está VAZIO (nada pra baixar)'); return; }
-  diag('clique OK. Campos: '+Object.keys(anexoObj).join(', ')+' | nome='+(anexoObj.name||'?'));
-  // ---- FIM DIAGNÓSTICO ----
+  if (!anexoObj){ alert('Não há anexo para baixar neste campo.'); return; }
   const nome = anexoObj.name || 'anexo';
 
   // formato antigo: dado já está em mãos -> baixa na hora (síncrono, Safari aceita)
-  if (anexoObj.dataUrl){ diag('formato ANTIGO (dataUrl presente) — baixando…'); dispararDownload(anexoObj.dataUrl, nome); return; }
+  if (anexoObj.dataUrl){ dispararDownload(anexoObj.dataUrl, nome); return; }
 
-  // formato novo: precisa buscar na nuvem (assíncrono).
+  // formato novo: precisa buscar na nuvem (assíncrono)
   if (anexoObj.anexoId){
-    if (_anexoCache[anexoObj.anexoId]){ diag('formato NOVO (em cache) — baixando…'); dispararDownload(_anexoCache[anexoObj.anexoId], nome); return; }
-    diag('formato NOVO — buscando na nuvem (anexoId='+anexoObj.anexoId+')…');
+    if (_anexoCache[anexoObj.anexoId]){ dispararDownload(_anexoCache[anexoObj.anexoId], nome); return; }
+    avisarSalvamento('Carregando anexo… clique de novo se não baixar.', false, true);
     buscarAnexoDataUrl(anexoObj.anexoId)
       .then(du=>{
-        if (!du){ diag('a nuvem NÃO retornou o arquivo (permissão da regra ou anexo inexistente)'); return; }
-        diag('nuvem retornou o arquivo — baixando…');
+        const aviso = document.getElementById('avisoSalvamentoGlobal');
+        if (aviso) aviso.style.display = 'none';
+        if (!du){ alert('Não foi possível carregar este anexo. Verifique a internet e tente de novo.'); return; }
         dispararDownload(du, nome);
       })
-      .catch(e=>{ diag('ERRO ao buscar na nuvem: '+((e&&e.message)?e.message:e)); });
+      .catch(()=> alert('Não foi possível carregar este anexo. Verifique a internet e tente de novo.'));
     return;
   }
-  diag('anexoObj não tem dataUrl NEM anexoId — formato desconhecido: '+JSON.stringify(anexoObj).slice(0,120));
+  alert('Não foi possível carregar este anexo (formato não reconhecido).');
 }
+
+// Delegação GLOBAL: captura cliques em botões de anexo em QUALQUER lugar da página
+// (aba fiscal, modal de documentos, etc.), na fase de captura, para nenhum outro
+// handler "engolir" o clique. Registrada uma única vez.
+document.addEventListener('click', function(e){
+  const bCampo = e.target.closest && e.target.closest('[data-abrircampo]');
+  if (bCampo){
+    e.preventDefault(); e.stopPropagation();
+    const raw = bCampo.getAttribute('data-abrircampo');
+    const sep = raw.indexOf(':');
+    const id = +raw.slice(0, sep), campo = raw.slice(sep+1);
+    const p = loadPedidos().find(x=> x.id === id);
+    abrirAnexo(p ? p[campo] : null);
+    return;
+  }
+  const bExtra = e.target.closest && e.target.closest('[data-abrirextra]');
+  if (bExtra){
+    e.preventDefault(); e.stopPropagation();
+    const partes = bExtra.getAttribute('data-abrirextra').split(':');
+    const pid = +partes[0], idx = +partes[1];
+    const p = loadPedidos().find(x=> x.id === pid);
+    abrirAnexo(p && Array.isArray(p.anexosExtras) && p.anexosExtras[idx] ? p.anexosExtras[idx].anexo : null);
+    return;
+  }
+}, true);
 
 db.collection('config').doc('geral').onSnapshot(doc=>{
   if (doc.exists) configCache = Object.assign(configCache, doc.data());
@@ -3483,13 +3505,6 @@ function ligarEventosModalDocs(){
       renderModalDocs(id);
     });
   });
-  modal.querySelectorAll('[data-abrircampo]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const [id, campo] = btn.dataset.abrircampo.split(':');
-      const p = loadPedidos().find(x=> x.id === +id);
-      if (p) abrirAnexo(p[campo]);
-    });
-  });
 }
 
 function abrirModalDocs(pedidoId){
@@ -3892,14 +3907,7 @@ function ligarEventosAnexosExtras(container, onDone){
       onDone();
     });
   });
-  container.querySelectorAll('[data-abrirextra]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const partes = btn.dataset.abrirextra.split(':');
-      const pid = +partes[0], idx = +partes[1];
-      const p = loadPedidos().find(x=> x.id === pid);
-      if (p && Array.isArray(p.anexosExtras) && p.anexosExtras[idx]) abrirAnexo(p.anexosExtras[idx].anexo);
-    });
-  });
+  container.querySelectorAll('[data-abrirextra]').forEach(()=>{}); // cliques tratados pela delegação global
 }
 
 function htmlItensFiscais(p){
@@ -4083,31 +4091,6 @@ function renderFiscal(){
 
   const wrap = document.getElementById('fiscalList');
   const emptyMsg = document.getElementById('fiscalEmptyMsg');
-  // delegação de evento: captura cliques em botões de anexo mesmo após re-render
-  if (!wrap._anexoDelegado){
-    wrap._anexoDelegado = true;
-    wrap.addEventListener('click', (e)=>{
-      const bCampo = e.target.closest('[data-abrircampo]');
-      if (bCampo){
-        e.preventDefault(); e.stopPropagation();
-        const raw = bCampo.dataset.abrircampo;
-        const sep = raw.indexOf(':');
-        const id = +raw.slice(0, sep), campo = raw.slice(sep+1);
-        const p = loadPedidos().find(x=> x.id === id);
-        if (p) abrirAnexo(p[campo]);
-        return;
-      }
-      const bExtra = e.target.closest('[data-abrirextra]');
-      if (bExtra){
-        e.preventDefault(); e.stopPropagation();
-        const partes = bExtra.dataset.abrirextra.split(':');
-        const pid = +partes[0], idx = +partes[1];
-        const p = loadPedidos().find(x=> x.id === pid);
-        if (p && Array.isArray(p.anexosExtras) && p.anexosExtras[idx]) abrirAnexo(p.anexosExtras[idx].anexo);
-        return;
-      }
-    });
-  }
   if (pedidos.length === 0){
     emptyMsg.style.display = 'block';
     wrap.innerHTML = '';
