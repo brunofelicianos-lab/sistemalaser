@@ -446,7 +446,7 @@
   <div id="viewOrcamento" class="view">
 
   <header class="top no-print">
-    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.diag-anexar-10</span></h1>
+    <h1>LUMATRI Industrial <span id="versaoApp" style="font-size:11px; font-weight:400; color:var(--muted); vertical-align:middle;">v.anexos-ok-12</span></h1>
     <div class="tag">geração automática a partir de arquivos .DXF</div>
   </header>
 
@@ -2513,52 +2513,47 @@ document.addEventListener('change', function(e){
   const inp = e.target;
   if (!inp || inp.tagName !== 'INPUT' || inp.type !== 'file') return;
 
-  const diag = (msg)=>{ try{ avisarSalvamento('🔍 '+msg, false, true); }catch(x){} console.log('[anexar] '+msg); };
-
   // --- anexo principal (NF, PC, boleto, etc.) ---
   if (inp.hasAttribute('data-anexo')){
-    diag('arquivo selecionado…');
     const id = +inp.getAttribute('data-anexo');
     const campo = inp.getAttribute('data-campoanexo');
     const file = inp.files[0];
-    if (!file){ diag('nenhum arquivo'); return; }
-    diag(file.name+' ('+(file.size/1024).toFixed(0)+' KB) — lendo…');
+    if (!file) return;
     if (file.size > 760*1024){
       alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor.');
       inp.value = ''; return;
     }
+    avisarSalvamento('Salvando anexo na nuvem…', false, true);
     lerArquivoComoBase64(file, (anexo)=>{
-      if (!anexo){ diag('falha ao ler'); return; }
-      diag('salvando na nuvem…');
+      if (!anexo){ avisarSalvamento('⚠ Não consegui ler o arquivo.', true); return; }
       salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
-        diag('salvo ✔');
-        comPedido(id, p=> p[campo] = ref);
+        const all = loadPedidos();
+        const p = all.find(x=> x.id === id);
+        if (p){ p[campo] = ref; savePedidos(all); }
         salvarPedidoImediato(id);
+        avisarSalvamento('Anexo salvo na nuvem ✔', false);
         if (document.getElementById('modalDocs') && document.getElementById('modalDocs').style.display !== 'none') renderModalDocs(id);
         else renderFiscal();
-      }).catch(err=>{ diag('ERRO: '+((err&&err.message)?err.message:err)); alert('Não consegui salvar o anexo: '+((err&&err.message)?err.message:err)); });
+      }).catch(err=>{ alert('Não consegui salvar o anexo: '+((err&&err.message)?err.message:err)); });
     });
     return;
   }
 
   // --- anexo extra (nota de retorno, etc.) ---
   if (inp.hasAttribute('data-extraarquivo')){
-    diag('arquivo extra selecionado…');
     const pid = +inp.getAttribute('data-extraarquivo');
     const file = inp.files[0];
-    if (!file){ diag('nenhum arquivo'); return; }
-    diag(file.name+' ('+(file.size/1024).toFixed(0)+' KB) — lendo…');
+    if (!file) return;
     if (file.size > 760*1024){
       alert('Este arquivo tem ' + (file.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF e anexe a versão menor.');
       inp.value = ''; return;
     }
     const nomeInput = document.querySelector('[data-extranome="'+pid+'"]');
     const nome = (nomeInput && nomeInput.value.trim()) || 'Anexo';
+    avisarSalvamento('Salvando anexo na nuvem…', false, true);
     lerArquivoComoBase64(file, (anexo)=>{
-      if (!anexo){ diag('falha ao ler'); return; }
-      diag('salvando na nuvem…');
+      if (!anexo){ avisarSalvamento('⚠ Não consegui ler o arquivo.', true); return; }
       salvarAnexoSeparado(anexo.name, anexo.dataUrl).then(ref=>{
-        diag('salvo ✔');
         const all = loadPedidos();
         const p = all.find(x=> x.id === pid);
         if (p){
@@ -2567,9 +2562,10 @@ document.addEventListener('change', function(e){
           savePedidos(all);
           salvarPedidoImediato(pid);
         }
+        avisarSalvamento('Anexo salvo na nuvem ✔', false);
         if (document.getElementById('modalDocs') && document.getElementById('modalDocs').style.display !== 'none') renderModalDocs(pid);
         else renderFiscal();
-      }).catch(err=>{ diag('ERRO: '+((err&&err.message)?err.message:err)); alert('Não consegui salvar o anexo: '+((err&&err.message)?err.message:err)); });
+      }).catch(err=>{ alert('Não consegui salvar o anexo: '+((err&&err.message)?err.message:err)); });
     });
     return;
   }
@@ -4094,6 +4090,7 @@ function htmlPedidoFiscalInterno(p){
     </div>`;
 }
 
+const _gruposFiscalAbertos = new Set(); // lembra quais grupos da fiscal estão expandidos
 function renderFiscal(){
   renderFiscalStats();
   const buscaCliente = document.getElementById('fiscalBuscaCliente').value.trim().toLowerCase();
@@ -4223,6 +4220,19 @@ function renderFiscal(){
     wrap.innerHTML = grupos.map(htmlGrupo).join('');
   }
 
+  // reabre os grupos que estavam abertos antes do re-render (ex.: após anexar)
+  _gruposFiscalAbertos.forEach(chave=>{
+    const corpo = wrap.querySelector(`[data-corpo-grupo="${chave}"]`);
+    if (corpo){
+      corpo.style.display = 'block';
+      const res = wrap.querySelector(`[data-toggle-grupo="${chave}"]`);
+      const sinal = res && res.querySelector('.fr-expand');
+      if (sinal) sinal.textContent = '–';
+    } else {
+      _gruposFiscalAbertos.delete(chave); // grupo não existe mais
+    }
+  });
+
   function comPedido(id, mutador){
     const all = loadPedidos();
     const p = all.find(x=> x.id === id);
@@ -4251,6 +4261,9 @@ function renderFiscal(){
       const abrindo = corpo.style.display === 'none';
       corpo.style.display = abrindo ? 'block' : 'none';
       if (sinal) sinal.textContent = abrindo ? '–' : '+';
+      // lembra o estado para não fechar ao re-renderizar (ex.: após anexar)
+      if (abrindo) _gruposFiscalAbertos.add(chave);
+      else _gruposFiscalAbertos.delete(chave);
     });
   });
 
