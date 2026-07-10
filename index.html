@@ -381,6 +381,59 @@
       font-size:10.5px; color:#777; line-height:1.5;
     }
   }
+  /* ---------- EPI ---------- */
+  .epi-subnav{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:0;}
+  .epi-subnav button{
+    background:none; border:none; color:var(--text-dim); font-weight:700; text-transform:uppercase;
+    font-size:12px; letter-spacing:0.5px; padding:9px 14px; cursor:pointer; border-bottom:2px solid transparent;
+  }
+  .epi-subnav button:hover{color:var(--text);}
+  .epi-subnav button.active{color:var(--accent); border-bottom-color:var(--accent);}
+  .epi-table{width:100%; border-collapse:collapse; font-size:13px;}
+  .epi-table th{background:var(--bg2); color:var(--text-dim); text-transform:uppercase; font-size:10.5px; letter-spacing:0.4px; text-align:left; padding:8px 8px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  .epi-table td{padding:5px 8px; border-bottom:1px solid var(--line-soft); vertical-align:middle;}
+  .epi-table tr:hover td{background:rgba(255,255,255,0.02);}
+  .epi-table input, .epi-table select{width:100%; min-width:60px; padding:5px 6px; font-size:12.5px;}
+  .epi-table .col-num input{text-align:right;}
+  .epi-badge{display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap;}
+  .epi-badge.ok{background:rgba(95,184,138,0.18); color:var(--good);}
+  .epi-badge.baixo{background:rgba(255,122,26,0.18); color:var(--accent);}
+  .epi-badge.zerado{background:rgba(209,8,15,0.18); color:#ff6b6b;}
+  .epi-badge.venc{background:rgba(209,8,15,0.18); color:#ff6b6b;}
+  .epi-badge.vence{background:rgba(255,122,26,0.18); color:var(--accent);}
+  .epi-alertbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;}
+  .epi-alert-card{flex:1; min-width:150px; background:var(--bg2); border:1px solid var(--line); border-left:3px solid var(--text-dim); border-radius:6px; padding:10px 14px;}
+  .epi-alert-card.warn{border-left-color:var(--accent);}
+  .epi-alert-card.bad{border-left-color:var(--brand-red);}
+  .epi-alert-card .n{font-size:22px; font-weight:800; color:var(--text);}
+  .epi-alert-card .l{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.4px;}
+  .epi-del{background:none; border:none; color:var(--brand-red); cursor:pointer; font-size:16px; line-height:1; padding:2px 6px;}
+  .epi-tipo{display:inline-block; padding:1px 8px; border-radius:4px; font-size:11px; font-weight:700; text-transform:uppercase;}
+  .epi-tipo.entrada{background:rgba(95,184,138,0.18); color:var(--good);}
+  .epi-tipo.saida{background:rgba(209,8,15,0.15); color:#ff6b6b;}
+  .epi-tipo.entrega{background:rgba(255,122,26,0.18); color:var(--accent);}
+
+  /* Ficha de EPI — overlay que só aparece na impressão */
+  #epiFichaOverlay{display:none;}
+  .epi-ficha{background:#fff; color:#111; padding:24px 28px; font-family:var(--sans);}
+  .epi-ficha .ef-head{display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #111; padding-bottom:10px; margin-bottom:6px;}
+  .epi-ficha .ef-empresa{font-size:20px; font-weight:800;}
+  .epi-ficha .ef-contato{font-size:11px; color:#555;}
+  .epi-ficha .ef-logo img{max-height:54px; max-width:200px;}
+  .epi-ficha h2{font-size:15px; text-align:center; letter-spacing:1px; margin:14px 0;}
+  .epi-ficha .ef-func{font-size:13px; margin-bottom:6px; display:flex; gap:24px; flex-wrap:wrap;}
+  .epi-ficha .ef-decl{font-size:11.5px; color:#333; line-height:1.5; margin:10px 0 14px; text-align:justify;}
+  .epi-ficha table{width:100%; border-collapse:collapse; font-size:12px; margin-top:6px;}
+  .epi-ficha th{background:#111; color:#fff; padding:6px 8px; text-align:left; font-size:11px;}
+  .epi-ficha td{border:1px solid #999; padding:6px 8px; height:30px;}
+  .epi-ficha .ef-sign{margin-top:40px; display:flex; justify-content:space-between; gap:30px;}
+  .epi-ficha .ef-sign div{flex:1; border-top:1px solid #333; text-align:center; font-size:11px; padding-top:4px;}
+
+  @media print{
+    body.imprimindo-ficha .wrap{display:none !important;}
+    body.imprimindo-ficha #epiFichaOverlay{display:block !important;}
+    body.imprimindo-ficha #avisoSalvamentoGlobal{display:none !important;}
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/@mmote/niimbluelib@0.0.1-alpha.24/dist/umd/niimbluelib.min.js"></script>
@@ -441,6 +494,7 @@
     <button class="navbtn" data-view="viewVistas">Vistas STP</button>
     <button class="navbtn" data-view="viewGerador">Gerador</button>
     <button class="navbtn" data-view="viewNotaSimples">Nota Simples</button>
+    <button class="navbtn" data-view="viewEPI">EPI</button>
     <button id="btnSair" style="margin-left:auto; background:none; border:none; color:var(--text-dim); font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:0.5px; padding:10px 16px; cursor:pointer;">Sair</button>
   </nav>
 
@@ -1324,6 +1378,143 @@
     </div>
   </div><!-- /viewNotaSimples -->
 
+  <!-- ============================================================
+       VIEW: EPI — controle de estoque de EPI
+       ============================================================ -->
+  <div id="viewEPI" class="view no-print" style="display:none;">
+    <header class="top no-print">
+      <h1>EPI <span>·</span> estoque e entrega</h1>
+      <div class="tag">cadastro, entradas/saídas, entrega por funcionário e ficha (NR-6)</div>
+    </header>
+
+    <datalist id="listaFuncionarios"></datalist>
+
+    <div class="epi-subnav no-print">
+      <button type="button" data-epi="estoque" class="active">Estoque</button>
+      <button type="button" data-epi="mov">Movimentações</button>
+      <button type="button" data-epi="entregas">Entregas</button>
+      <button type="button" data-epi="func">Funcionários</button>
+    </div>
+
+    <!-- ESTOQUE -->
+    <div id="epiSubEstoque" class="epi-sub">
+      <div class="epi-alertbar" id="epiAlertBar"></div>
+      <div class="panel">
+        <h2><span class="n">·</span>EPIs cadastrados</h2>
+        <div style="overflow-x:auto;">
+          <table class="epi-table" id="epiEstoqueTable">
+            <thead>
+              <tr>
+                <th>EPI</th><th>Tamanho</th><th>CA</th><th>Validade CA</th>
+                <th>Unid.</th><th style="text-align:right;">Mínimo</th><th style="text-align:right;">Saldo</th>
+                <th>Situação</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="epiEstoqueBody"></tbody>
+          </table>
+        </div>
+        <div id="epiEstoqueEmpty" class="empty-msg">Nenhum EPI cadastrado ainda.</div>
+        <button class="btn secondary small" id="epiAddBtn" style="margin-top:12px;">+ Novo EPI</button>
+        <div class="footnote">O saldo é ajustado automaticamente pelas Movimentações e Entregas. Itens abaixo do mínimo ou com CA vencido aparecem destacados. Edite qualquer campo direto na tabela — salva sozinho.</div>
+      </div>
+    </div>
+
+    <!-- MOVIMENTAÇÕES -->
+    <div id="epiSubMov" class="epi-sub" style="display:none;">
+      <div class="panel">
+        <h2><span class="n">·</span>Registrar entrada / saída</h2>
+        <div class="row">
+          <div class="field" style="flex:2;"><label>EPI</label><select id="epiMovEpi"></select></div>
+          <div class="field"><label>Tipo</label><select id="epiMovTipo"><option value="entrada">Entrada (compra)</option><option value="saida">Saída (baixa)</option></select></div>
+          <div class="field" style="max-width:110px;"><label>Quantidade</label><input type="number" id="epiMovQtd" min="0" step="1"></div>
+          <div class="field" style="max-width:140px;"><label>Data</label><input type="text" id="epiMovData" placeholder="dd/mm/aaaa"></div>
+        </div>
+        <div class="field"><label>Observação</label><input type="text" id="epiMovObs" placeholder="nota fiscal, motivo, etc."></div>
+        <button class="btn" id="epiMovAddBtn">Registrar movimentação</button>
+      </div>
+      <div class="panel">
+        <h2><span class="n">·</span>Histórico de movimentações</h2>
+        <div style="overflow-x:auto;">
+          <table class="epi-table" id="epiMovTable">
+            <thead><tr><th>Data</th><th>Tipo</th><th>EPI</th><th style="text-align:right;">Qtd</th><th>Funcionário</th><th>Obs.</th><th></th></tr></thead>
+            <tbody id="epiMovBody"></tbody>
+          </table>
+        </div>
+        <div id="epiMovEmpty" class="empty-msg">Nenhuma movimentação registrada.</div>
+      </div>
+    </div>
+
+    <!-- ENTREGAS -->
+    <div id="epiSubEntregas" class="epi-sub" style="display:none;">
+      <div class="panel">
+        <h2><span class="n">·</span>Registrar entrega ao funcionário</h2>
+        <div class="row">
+          <div class="field" style="flex:2;"><label>Funcionário</label><select id="epiEntFunc"></select></div>
+          <div class="field" style="flex:2;"><label>EPI</label><select id="epiEntEpi"></select></div>
+          <div class="field" style="max-width:110px;"><label>Quantidade</label><input type="number" id="epiEntQtd" min="0" step="1" value="1"></div>
+          <div class="field" style="max-width:140px;"><label>Data</label><input type="text" id="epiEntData" placeholder="dd/mm/aaaa"></div>
+        </div>
+        <div class="field"><label>Observação</label><input type="text" id="epiEntObs" placeholder="opcional"></div>
+        <button class="btn" id="epiEntAddBtn">Registrar entrega (dá baixa no estoque)</button>
+      </div>
+      <div class="panel">
+        <h2><span class="n">·</span>Gerar ficha de EPI</h2>
+        <div class="row" style="align-items:flex-end;">
+          <div class="field" style="flex:2;"><label>Funcionário</label><select id="epiFichaFunc"></select></div>
+          <button class="btn" id="epiFichaBtn" style="margin-bottom:10px;">Gerar ficha (imprimir / PDF)</button>
+        </div>
+        <div class="footnote">A ficha lista todos os EPIs entregues ao funcionário, com data, CA e espaço para assinatura — no formato exigido pela NR-6.</div>
+      </div>
+      <div class="panel">
+        <h2><span class="n">·</span>Entregas registradas</h2>
+        <div style="overflow-x:auto;">
+          <table class="epi-table" id="epiEntTable">
+            <thead><tr><th>Data</th><th>Funcionário</th><th>EPI</th><th>CA</th><th style="text-align:right;">Qtd</th><th>Obs.</th><th>Assinatura</th><th></th></tr></thead>
+            <tbody id="epiEntBody"></tbody>
+          </table>
+        </div>
+        <div id="epiEntEmpty" class="empty-msg">Nenhuma entrega registrada.</div>
+      </div>
+    </div>
+
+    <!-- FUNCIONÁRIOS -->
+    <div id="epiSubFunc" class="epi-sub" style="display:none;">
+      <div class="panel">
+        <h2><span class="n">·</span>Funcionários</h2>
+        <div style="overflow-x:auto;">
+          <table class="epi-table" id="epiFuncTable">
+            <thead><tr><th>Nome</th><th>Função</th><th>Setor</th><th></th></tr></thead>
+            <tbody id="epiFuncBody"></tbody>
+          </table>
+        </div>
+        <div id="epiFuncEmpty" class="empty-msg">Nenhum funcionário cadastrado ainda.</div>
+        <button class="btn secondary small" id="epiFuncAddBtn" style="margin-top:12px;">+ Novo funcionário</button>
+        <div class="footnote">Os funcionários cadastrados aqui aparecem na hora de registrar a entrega de EPI e na ficha.</div>
+      </div>
+    </div>
+  </div><!-- /viewEPI -->
+
+  <!-- Overlay da ficha de EPI (só aparece na impressão) -->
+  <div id="epiFichaOverlay"></div>
+
+  <!-- Modal de assinatura digital do EPI -->
+  <div id="epiSigModal" class="modal-overlay no-print" style="display:none; z-index:1200;">
+    <div class="modal-box" style="max-width:540px;">
+      <h2 style="margin-top:0;">Assinatura do funcionário</h2>
+      <p class="footnote" id="epiSigInfo" style="font-size:13px; color:var(--text); margin-top:0;"></p>
+      <div style="background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden;">
+        <canvas id="epiSigCanvas" style="width:100%; height:210px; display:block; touch-action:none; cursor:crosshair;"></canvas>
+      </div>
+      <div class="footnote" style="margin-top:4px;">Assine no quadro acima com o dedo (tablet/celular) ou com o mouse.</div>
+      <div class="actions" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <button class="btn" id="epiSigConfirmar">Confirmar e registrar</button>
+        <button class="btn secondary small" id="epiSigLimpar">Limpar</button>
+        <button class="btn secondary small" id="epiSigPular">Registrar sem assinar</button>
+        <button class="btn secondary small" id="epiSigCancelar" style="margin-left:auto;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal rápido de cadastro/edição de cliente (acessível de qualquer tela) -->
   <div id="modalClienteRapido" class="modal-overlay no-print" style="display:none; z-index:1100;">
     <div class="modal-box" style="max-width:420px;">
@@ -1349,7 +1540,7 @@
 /* ============================================================
    ESTADO
    ============================================================ */
-const DEFAULT_LOGO_DATA = "data:image/png;base64,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";
+const DEFAULT_LOGO_DATA = "data:image/png;base64,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";
 const DEFAULT_EMPRESA_NOME = "LUMATRI INDUSTRIAL";
 const DEFAULT_EMPRESA_CONTATO = "(48) 99124-0852 · www.lumatriindustrial.com.br";
 
@@ -2323,6 +2514,10 @@ let configCache = { orcCounter: 1, pedidoCounterLaser: 0, pedidoCounterPD: 0, no
 let savedListCache = [];
 let pedidosCache = [];
 let clientesCache = [];
+let episCache = [];
+let funcionariosCache = [];
+let epiMovCache = [];
+let _epiSub = 'estoque';
 let maquinasCacheArr = null; // null = ainda não chegou do Firestore (usa DEFAULT_MAQUINAS por enquanto)
 let firestoreOnlineOk = true;
 const _lastDocIds = {};
@@ -2704,6 +2899,27 @@ db.collection('clientes').onSnapshot(snap=>{
   refreshCurrentView();
 }, e=> console.error('Erro no listener de clientes:', e));
 
+db.collection('epis').onSnapshot(snap=>{
+  if (snap.metadata.hasPendingWrites) return;
+  episCache = snap.docs.map(d=> d.data());
+  registrarSnapshotCarregado('epis', episCache, x=> x.id);
+  if (currentViewId === 'viewEPI') renderEPI();
+}, e=> console.error('Erro no listener de EPIs:', e));
+
+db.collection('funcionarios').onSnapshot(snap=>{
+  if (snap.metadata.hasPendingWrites) return;
+  funcionariosCache = snap.docs.map(d=> d.data());
+  registrarSnapshotCarregado('funcionarios', funcionariosCache, x=> x.id);
+  if (currentViewId === 'viewEPI') renderEPI();
+}, e=> console.error('Erro no listener de funcionários:', e));
+
+db.collection('epiMov').onSnapshot(snap=>{
+  if (snap.metadata.hasPendingWrites) return;
+  epiMovCache = snap.docs.map(d=> d.data());
+  registrarSnapshotCarregado('epiMov', epiMovCache, x=> x.id);
+  if (currentViewId === 'viewEPI') renderEPI();
+}, e=> console.error('Erro no listener de movimentações EPI:', e));
+
 } // ===================== fim startApp =====================
 
 // Ao iniciar: se ficou backup local de alterações que não confirmaram na nuvem
@@ -2993,6 +3209,7 @@ function renderForView(viewId){
   if (viewId === 'viewVistas') initVistasSTP();
   if (viewId === 'viewGerador') initGerador();
   if (viewId === 'viewNotaSimples') initNotaSimples();
+  if (viewId === 'viewEPI') { initEPI(); renderEPI(); }
 }
 function refreshCurrentView(){
   renderForView(currentViewId);
@@ -3172,6 +3389,386 @@ function initNotaSimples(){
   for (let i = 0; i < 8; i++) nsAddRow();
   nsSyncCabecalho();
   nsRecalc();
+}
+
+/* ============================================================
+   EPI — cadastro, estoque, entrega por funcionário e ficha (NR-6)
+   Coleções Firestore: epis, funcionarios, epiMov (gravação imediata)
+   ============================================================ */
+let _epiReady = false;
+
+function epiHoje(){ const d=new Date(); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+function epiParseData(s){
+  if(!s) return null;
+  const m=(''+s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(!m) return null;
+  let y=+m[3]; if(y<100) y+=2000;
+  const d=new Date(y, +m[2]-1, +m[1]);
+  return isNaN(d.getTime())?null:d;
+}
+function epiNum(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+function epiById(id){ return episCache.find(e=> String(e.id)===String(id)) || null; }
+function epiFuncById(id){ return funcionariosCache.find(f=> String(f.id)===String(id)) || null; }
+function epiEsc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function epiSalvar(colecao, item){
+  const limpo = limparParaFirestore(item);
+  const docId = String(item.id);
+  return comTimeout(db.collection(colecao).doc(docId).set(limpo), 20000, colecao+' '+docId)
+    .then(()=>{ if(!_snapshotDocs[colecao]) _snapshotDocs[colecao]={}; _snapshotDocs[colecao][docId]=JSON.stringify(limpo); })
+    .catch(e=>{ console.error('Erro ao salvar '+colecao, e); avisarSalvamento('⚠ Não consegui salvar na nuvem. Verifique a internet.', true); });
+}
+function epiExcluirDoc(colecao, id){
+  return comTimeout(db.collection(colecao).doc(String(id)).delete(), 20000, 'excluir '+colecao+' '+id)
+    .then(()=>{ if(_snapshotDocs[colecao]) delete _snapshotDocs[colecao][String(id)]; })
+    .catch(e=> console.error('Erro ao excluir '+colecao, e));
+}
+
+function epiSituacaoEstoque(e){
+  const saldo=epiNum(e.saldo), min=epiNum(e.estoqueMin);
+  if(saldo<=0) return {cls:'zerado', txt:'Sem estoque'};
+  if(saldo<=min) return {cls:'baixo', txt:'Abaixo do mín.'};
+  return {cls:'ok', txt:'OK'};
+}
+function epiSituacaoCA(e){
+  const d=epiParseData(e.caValidade); if(!d) return null;
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const dias=Math.round((d-hoje)/86400000);
+  if(dias<0) return {cls:'venc', txt:'CA vencido'};
+  if(dias<=30) return {cls:'vence', txt:'CA vence '+dias+'d'};
+  return null;
+}
+
+function initEPI(){
+  if(_epiReady){ epiPopulateSelects(); return; }
+  _epiReady=true;
+  // move o overlay da ficha para fora do .wrap, senão a regra de impressão que
+  // esconde o .wrap também esconderia a ficha
+  const ov=document.getElementById('epiFichaOverlay');
+  if(ov && ov.parentElement!==document.body) document.body.appendChild(ov);
+  document.querySelectorAll('.epi-subnav button').forEach(b=> b.addEventListener('click', ()=> epiSwitch(b.dataset.epi)));
+  document.getElementById('epiAddBtn').addEventListener('click', epiNovoEPI);
+  document.getElementById('epiFuncAddBtn').addEventListener('click', epiNovoFunc);
+  document.getElementById('epiMovAddBtn').addEventListener('click', epiRegistrarMovBtn);
+  document.getElementById('epiEntAddBtn').addEventListener('click', epiRegistrarEntregaBtn);
+  document.getElementById('epiFichaBtn').addEventListener('click', epiGerarFichaBtn);
+  document.getElementById('epiMovData').value = epiHoje();
+  document.getElementById('epiEntData').value = epiHoje();
+  epiSigInit();
+}
+
+/* ---- Assinatura digital (canvas) ---- */
+let _sigCtx=null, _sigDrawing=false, _sigHasInk=false, _sigCallback=null;
+function epiSigInit(){
+  const c=document.getElementById('epiSigCanvas'); if(!c || c._wired) return; c._wired=true;
+  const pos=e=>{ const r=c.getBoundingClientRect(); return { x:(e.clientX)-r.left, y:(e.clientY)-r.top }; };
+  c.addEventListener('pointerdown', e=>{ e.preventDefault(); if(!_sigCtx) return; _sigDrawing=true; _sigHasInk=true; const p=pos(e); _sigCtx.beginPath(); _sigCtx.moveTo(p.x,p.y); try{ c.setPointerCapture(e.pointerId); }catch(_){} });
+  c.addEventListener('pointermove', e=>{ if(!_sigDrawing||!_sigCtx) return; e.preventDefault(); const p=pos(e); _sigCtx.lineTo(p.x,p.y); _sigCtx.stroke(); });
+  const end=()=>{ _sigDrawing=false; };
+  c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end); c.addEventListener('pointerleave', end);
+  document.getElementById('epiSigLimpar').addEventListener('click', epiSigSetup);
+  document.getElementById('epiSigCancelar').addEventListener('click', epiSigClose);
+  document.getElementById('epiSigPular').addEventListener('click', ()=>{ const cb=_sigCallback; epiSigClose(); if(cb) cb(null); });
+  document.getElementById('epiSigConfirmar').addEventListener('click', ()=>{
+    if(!_sigHasInk){ alert('Assine no quadro ou use "Registrar sem assinar".'); return; }
+    const data=epiSigExport(); const cb=_sigCallback; epiSigClose(); if(cb) cb(data);
+  });
+}
+function epiSigSetup(){
+  const c=document.getElementById('epiSigCanvas'); if(!c) return;
+  const rect=c.getBoundingClientRect();
+  const ratio=window.devicePixelRatio||1;
+  c.width=Math.max(1,Math.round(rect.width*ratio));
+  c.height=Math.max(1,Math.round((rect.height||210)*ratio));
+  const ctx=c.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0); ctx.scale(ratio,ratio);
+  ctx.lineWidth=2.2; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#111';
+  ctx.clearRect(0,0,c.width,c.height);
+  _sigCtx=ctx; _sigHasInk=false;
+}
+function epiSigExport(){
+  const c=document.getElementById('epiSigCanvas'); const ctx=_sigCtx; if(!ctx) return null;
+  const w=c.width, h=c.height;
+  const img=ctx.getImageData(0,0,w,h).data;
+  let minX=w,minY=h,maxX=0,maxY=0,found=false;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){ if(img[(y*w+x)*4+3]>10){ found=true; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; } }
+  if(!found) return null;
+  const pad=8; minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad); maxX=Math.min(w-1,maxX+pad); maxY=Math.min(h-1,maxY+pad);
+  const tw=maxX-minX+1, th=maxY-minY+1;
+  const tmp=document.createElement('canvas'); tmp.width=tw; tmp.height=th;
+  tmp.getContext('2d').drawImage(c, minX,minY,tw,th, 0,0,tw,th);
+  return tmp.toDataURL('image/png');
+}
+function epiSigOpen(info, cb){
+  _sigCallback=cb;
+  document.getElementById('epiSigInfo').textContent=info||'';
+  document.getElementById('epiSigModal').style.display='flex';
+  setTimeout(epiSigSetup, 40);
+}
+function epiSigClose(){ document.getElementById('epiSigModal').style.display='none'; _sigCallback=null; _sigDrawing=false; }
+
+function epiSwitch(name){
+  _epiSub=name;
+  document.querySelectorAll('.epi-subnav button').forEach(b=> b.classList.toggle('active', b.dataset.epi===name));
+  document.getElementById('epiSubEstoque').style.display = name==='estoque'?'block':'none';
+  document.getElementById('epiSubMov').style.display = name==='mov'?'block':'none';
+  document.getElementById('epiSubEntregas').style.display = name==='entregas'?'block':'none';
+  document.getElementById('epiSubFunc').style.display = name==='func'?'block':'none';
+  renderEPI();
+}
+
+function renderEPI(){
+  if(!document.getElementById('epiEstoqueBody')) return;
+  epiPopulateSelects();
+  epiRenderAlertas();
+  epiRenderEstoque();
+  epiRenderMov();
+  epiRenderEntregas();
+  epiRenderFunc();
+}
+
+function epiOptionsEpis(){
+  return '<option value="">— selecione —</option>' + episCache.slice()
+    .sort((a,b)=>(a.nome||'').localeCompare(b.nome||''))
+    .map(e=>`<option value="${epiEsc(e.id)}">${epiEsc(e.nome||'(sem nome)')}${e.tamanho?(' - '+epiEsc(e.tamanho)):''} — saldo ${epiNum(e.saldo)}</option>`).join('');
+}
+function epiOptionsFuncs(){
+  return '<option value="">— selecione —</option>' + funcionariosCache.slice()
+    .sort((a,b)=>(a.nome||'').localeCompare(b.nome||''))
+    .map(f=>`<option value="${epiEsc(f.id)}">${epiEsc(f.nome||'(sem nome)')}</option>`).join('');
+}
+function epiPopulateSelects(){
+  ['epiMovEpi','epiEntEpi'].forEach(id=>{ const el=document.getElementById(id); if(el){ const v=el.value; el.innerHTML=epiOptionsEpis(); el.value=v; } });
+  ['epiEntFunc','epiFichaFunc'].forEach(id=>{ const el=document.getElementById(id); if(el){ const v=el.value; el.innerHTML=epiOptionsFuncs(); el.value=v; } });
+  const dl=document.getElementById('listaFuncionarios'); if(dl) dl.innerHTML=funcionariosCache.map(f=>`<option value="${epiEsc(f.nome)}"></option>`).join('');
+}
+
+function epiRenderAlertas(){
+  const bar=document.getElementById('epiAlertBar'); if(!bar) return;
+  let baixo=0,zerado=0,caVenc=0,caVence=0;
+  episCache.forEach(e=>{
+    const s=epiSituacaoEstoque(e); if(s.cls==='zerado')zerado++; else if(s.cls==='baixo')baixo++;
+    const c=epiSituacaoCA(e); if(c){ if(c.cls==='venc')caVenc++; else caVence++; }
+  });
+  bar.innerHTML =
+    `<div class="epi-alert-card"><div class="n">${episCache.length}</div><div class="l">EPIs cadastrados</div></div>`+
+    `<div class="epi-alert-card ${zerado?'bad':''}"><div class="n">${zerado}</div><div class="l">Sem estoque</div></div>`+
+    `<div class="epi-alert-card ${baixo?'warn':''}"><div class="n">${baixo}</div><div class="l">Abaixo do mínimo</div></div>`+
+    `<div class="epi-alert-card ${caVenc?'bad':''}"><div class="n">${caVenc}</div><div class="l">CA vencido</div></div>`+
+    `<div class="epi-alert-card ${caVence?'warn':''}"><div class="n">${caVence}</div><div class="l">CA a vencer (30d)</div></div>`;
+}
+
+function epiRenderEstoque(){
+  const body=document.getElementById('epiEstoqueBody'), empty=document.getElementById('epiEstoqueEmpty'), tbl=document.getElementById('epiEstoqueTable');
+  if(!body) return;
+  const list=episCache.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+  empty.style.display=list.length?'none':'block';
+  tbl.style.display=list.length?'table':'none';
+  body.innerHTML=list.map(e=>{
+    const s=epiSituacaoEstoque(e), c=epiSituacaoCA(e);
+    const sit=`<span class="epi-badge ${s.cls}">${s.txt}</span>`+(c?` <span class="epi-badge ${c.cls}">${c.txt}</span>`:'');
+    return `<tr data-epiid="${epiEsc(e.id)}">
+      <td><input data-f="nome" value="${epiEsc(e.nome)}" placeholder="ex.: Luva nitrílica"></td>
+      <td><input data-f="tamanho" value="${epiEsc(e.tamanho)}" style="max-width:80px;"></td>
+      <td><input data-f="ca" value="${epiEsc(e.ca)}" style="max-width:90px;"></td>
+      <td><input data-f="caValidade" value="${epiEsc(e.caValidade)}" placeholder="dd/mm/aaaa" style="max-width:110px;"></td>
+      <td><input data-f="unidade" value="${epiEsc(e.unidade||'un')}" style="max-width:70px;"></td>
+      <td class="col-num"><input data-f="estoqueMin" type="number" min="0" value="${epiNum(e.estoqueMin)}" style="max-width:80px; text-align:right;"></td>
+      <td style="text-align:right; font-weight:700;">${epiNum(e.saldo)}</td>
+      <td>${sit}</td>
+      <td><button class="epi-del" title="Excluir EPI">×</button></td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('tr').forEach(tr=>{
+    const id=tr.dataset.epiid, epi=epiById(id);
+    tr.querySelectorAll('input[data-f]').forEach(inp=> inp.addEventListener('change', ()=>{
+      if(!epi) return;
+      const f=inp.dataset.f;
+      epi[f] = (f==='estoqueMin') ? epiNum(inp.value) : inp.value;
+      epiSalvar('epis', epi);
+      epiRenderAlertas();
+      epiPopulateSelects();
+    }));
+    const del=tr.querySelector('.epi-del');
+    if(del) del.addEventListener('click', ()=>{
+      if(!confirm('Excluir este EPI? As movimentações antigas continuam no histórico.')) return;
+      episCache=episCache.filter(x=> String(x.id)!==String(id));
+      epiExcluirDoc('epis', id); renderEPI();
+    });
+  });
+}
+
+function epiRenderFunc(){
+  const body=document.getElementById('epiFuncBody'), empty=document.getElementById('epiFuncEmpty'), tbl=document.getElementById('epiFuncTable');
+  if(!body) return;
+  const list=funcionariosCache.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+  empty.style.display=list.length?'none':'block';
+  tbl.style.display=list.length?'table':'none';
+  body.innerHTML=list.map(f=>`<tr data-funcid="${epiEsc(f.id)}">
+    <td><input data-f="nome" value="${epiEsc(f.nome)}" placeholder="nome"></td>
+    <td><input data-f="funcao" value="${epiEsc(f.funcao)}" placeholder="função"></td>
+    <td><input data-f="setor" value="${epiEsc(f.setor)}" placeholder="setor"></td>
+    <td><button class="epi-del" title="Excluir">×</button></td>
+  </tr>`).join('');
+  body.querySelectorAll('tr').forEach(tr=>{
+    const id=tr.dataset.funcid, func=epiFuncById(id);
+    tr.querySelectorAll('input[data-f]').forEach(inp=> inp.addEventListener('change', ()=>{
+      if(!func) return; func[inp.dataset.f]=inp.value; epiSalvar('funcionarios', func); epiPopulateSelects();
+    }));
+    const del=tr.querySelector('.epi-del');
+    if(del) del.addEventListener('click', ()=>{
+      if(!confirm('Excluir este funcionário?')) return;
+      funcionariosCache=funcionariosCache.filter(x=> String(x.id)!==String(id));
+      epiExcluirDoc('funcionarios', id); renderEPI();
+    });
+  });
+}
+
+function epiNovoEPI(){
+  const e={ id: gerarIdUnico(), nome:'', tamanho:'', ca:'', caValidade:'', unidade:'un', estoqueMin:0, saldo:0, criadoEm: Date.now() };
+  episCache.unshift(e); epiSalvar('epis', e); epiSwitch('estoque'); renderEPI();
+  setTimeout(()=>{ const el=document.querySelector('#epiEstoqueBody tr[data-epiid="'+e.id+'"] input[data-f="nome"]'); if(el) el.focus(); }, 60);
+}
+function epiNovoFunc(){
+  const f={ id: gerarIdUnico(), nome:'', funcao:'', setor:'', criadoEm: Date.now() };
+  funcionariosCache.unshift(f); epiSalvar('funcionarios', f); renderEPI();
+  setTimeout(()=>{ const el=document.querySelector('#epiFuncBody tr[data-funcid="'+f.id+'"] input[data-f="nome"]'); if(el) el.focus(); }, 60);
+}
+
+function epiAplicarMov(epi, tipo, qtd, data, funcionarioId, funcionarioNome, obs, assinatura){
+  const delta = tipo==='entrada' ? qtd : -qtd;
+  epi.saldo = epiNum(epi.saldo) + delta;
+  const mov={ id: gerarIdUnico(), tipo, epiId: epi.id, epiNome: epi.nome||'', ca: epi.ca||'', qtd, data, funcionarioId: funcionarioId||'', funcionarioNome: funcionarioNome||'', obs: obs||'', assinatura: assinatura||'', ts: Date.now() };
+  epiMovCache.unshift(mov);
+  epiSalvar('epis', epi); epiSalvar('epiMov', mov);
+  renderEPI();
+  avisarSalvamento('Movimentação registrada ✔', false);
+  return mov;
+}
+function epiRegistrarMovBtn(){
+  const epi=epiById(document.getElementById('epiMovEpi').value);
+  const tipo=document.getElementById('epiMovTipo').value;
+  const qtd=epiNum(document.getElementById('epiMovQtd').value);
+  const data=document.getElementById('epiMovData').value.trim()||epiHoje();
+  const obs=document.getElementById('epiMovObs').value.trim();
+  if(!epi){ alert('Selecione um EPI.'); return; }
+  if(qtd<=0){ alert('Informe uma quantidade maior que zero.'); return; }
+  if(tipo==='saida' && qtd>epiNum(epi.saldo) && !confirm('A saída deixa o saldo negativo. Continuar?')) return;
+  epiAplicarMov(epi, tipo, qtd, data, '', '', obs);
+  document.getElementById('epiMovQtd').value=''; document.getElementById('epiMovObs').value='';
+}
+function epiRegistrarEntregaBtn(){
+  const func=epiFuncById(document.getElementById('epiEntFunc').value);
+  const epi=epiById(document.getElementById('epiEntEpi').value);
+  const qtd=epiNum(document.getElementById('epiEntQtd').value);
+  const data=document.getElementById('epiEntData').value.trim()||epiHoje();
+  const obs=document.getElementById('epiEntObs').value.trim();
+  if(!func){ alert('Selecione o funcionário.'); return; }
+  if(!epi){ alert('Selecione o EPI.'); return; }
+  if(qtd<=0){ alert('Informe a quantidade.'); return; }
+  if(qtd>epiNum(epi.saldo) && !confirm('Não há saldo suficiente ('+epiNum(epi.saldo)+' em estoque). Registrar mesmo assim?')) return;
+  epiSigOpen('Entrega de '+(epi.nome||'EPI')+(epi.tamanho?(' - '+epi.tamanho):'')+' (qtd '+qtd+') para '+(func.nome||''), (assinatura)=>{
+    epiAplicarMov(epi, 'entrega', qtd, data, func.id, func.nome, obs, assinatura);
+    document.getElementById('epiEntObs').value='';
+    document.getElementById('epiEntQtd').value='1';
+  });
+}
+
+function epiRenderMov(){
+  const body=document.getElementById('epiMovBody'), empty=document.getElementById('epiMovEmpty'), tbl=document.getElementById('epiMovTable');
+  if(!body) return;
+  const list=epiMovCache.slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
+  empty.style.display=list.length?'none':'block'; tbl.style.display=list.length?'table':'none';
+  body.innerHTML=list.map(m=>{
+    const tlabel=m.tipo==='entrada'?'Entrada':(m.tipo==='saida'?'Saída':'Entrega');
+    return `<tr data-movid="${epiEsc(m.id)}">
+      <td>${epiEsc(m.data)}</td>
+      <td><span class="epi-tipo ${epiEsc(m.tipo)}">${tlabel}</span></td>
+      <td>${epiEsc(m.epiNome)}</td>
+      <td style="text-align:right;">${epiNum(m.qtd)}</td>
+      <td>${epiEsc(m.funcionarioNome||'—')}</td>
+      <td>${epiEsc(m.obs||'')}</td>
+      <td><button class="epi-del" title="Excluir e reverter saldo">×</button></td>
+    </tr>`;
+  }).join('');
+  epiWireMovDelete(body);
+}
+function epiRenderEntregas(){
+  const body=document.getElementById('epiEntBody'), empty=document.getElementById('epiEntEmpty'), tbl=document.getElementById('epiEntTable');
+  if(!body) return;
+  const list=epiMovCache.filter(m=>m.tipo==='entrega').sort((a,b)=>(b.ts||0)-(a.ts||0));
+  empty.style.display=list.length?'none':'block'; tbl.style.display=list.length?'table':'none';
+  body.innerHTML=list.map(m=>`<tr data-movid="${epiEsc(m.id)}">
+    <td>${epiEsc(m.data)}</td>
+    <td>${epiEsc(m.funcionarioNome||'—')}</td>
+    <td>${epiEsc(m.epiNome)}</td>
+    <td>${epiEsc(m.ca||'')}</td>
+    <td style="text-align:right;">${epiNum(m.qtd)}</td>
+    <td>${epiEsc(m.obs||'')}</td>
+    <td>${m.assinatura?`<img src="${epiEsc(m.assinatura)}" alt="assinatura" style="height:32px; max-width:150px; background:#fff; border-radius:3px; padding:1px 3px;">`:`<button type="button" class="btn secondary small epi-assinar">Assinar</button>`}</td>
+    <td><button class="epi-del" title="Excluir e reverter saldo">×</button></td>
+  </tr>`).join('');
+  epiWireMovDelete(body);
+  body.querySelectorAll('.epi-assinar').forEach(btn=> btn.addEventListener('click', ()=>{
+    const id=btn.closest('tr').dataset.movid;
+    const m=epiMovCache.find(x=> String(x.id)===String(id)); if(!m) return;
+    epiSigOpen('Assinatura de '+(m.funcionarioNome||'')+' — '+(m.epiNome||'')+' ('+epiHoje()+')', (assinatura)=>{
+      if(assinatura){ m.assinatura=assinatura; epiSalvar('epiMov', m); renderEPI(); }
+    });
+  }));
+}
+function epiWireMovDelete(body){
+  body.querySelectorAll('.epi-del').forEach(btn=> btn.addEventListener('click', ()=> epiExcluirMov(btn.closest('tr').dataset.movid)));
+}
+function epiExcluirMov(id){
+  const m=epiMovCache.find(x=> String(x.id)===String(id)); if(!m) return;
+  if(!confirm('Excluir esta movimentação? O saldo do EPI será revertido.')) return;
+  const epi=epiById(m.epiId);
+  if(epi){ const delta = m.tipo==='entrada' ? -epiNum(m.qtd) : epiNum(m.qtd); epi.saldo=epiNum(epi.saldo)+delta; epiSalvar('epis', epi); }
+  epiMovCache=epiMovCache.filter(x=> String(x.id)!==String(id));
+  epiExcluirDoc('epiMov', id);
+  renderEPI();
+}
+
+function epiEmpresa(){
+  const nomeEl=document.getElementById('empresaNome'), contatoEl=document.getElementById('empresaContato');
+  const nome=(nomeEl&&nomeEl.value.trim())||(typeof DEFAULT_EMPRESA_NOME!=='undefined'?DEFAULT_EMPRESA_NOME:'LUMATRI INDUSTRIAL');
+  const contato=(contatoEl&&contatoEl.value.trim())||(typeof DEFAULT_EMPRESA_CONTATO!=='undefined'?DEFAULT_EMPRESA_CONTATO:'');
+  const wrap=document.getElementById('logoPreviewWrap'), prev=document.getElementById('logoPreview');
+  const logo=(wrap&&wrap.style.display!=='none'&&prev&&prev.src)?prev.src:(typeof DEFAULT_LOGO_DATA!=='undefined'?DEFAULT_LOGO_DATA:'');
+  return {nome, contato, logo};
+}
+function epiGerarFichaBtn(){
+  const funcId=document.getElementById('epiFichaFunc').value;
+  const func=epiFuncById(funcId);
+  if(!func){ alert('Selecione o funcionário para gerar a ficha.'); return; }
+  const entregas=epiMovCache.filter(m=> m.tipo==='entrega' && String(m.funcionarioId)===String(funcId)).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const emp=epiEmpresa();
+  const linhas = entregas.length
+    ? entregas.map(m=>`<tr><td>${epiEsc(m.data)}</td><td>${epiEsc(m.epiNome)}</td><td>${epiEsc(m.ca||'')}</td><td style="text-align:center;">${epiNum(m.qtd)}</td><td style="text-align:center;">${m.assinatura?`<img src="${epiEsc(m.assinatura)}" style="height:34px; max-width:170px;">`:''}</td></tr>`).join('')
+    : '<tr><td colspan="5" style="text-align:center; color:#777;">Nenhuma entrega registrada para este funcionário.</td></tr>';
+  let extra=''; const faltam=Math.max(0, 8-entregas.length); for(let i=0;i<faltam;i++) extra+='<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>';
+  const logo = emp.logo ? `<div class="ef-logo"><img src="${emp.logo}"></div>` : '';
+  document.getElementById('epiFichaOverlay').innerHTML = `
+    <div class="epi-ficha">
+      <div class="ef-head">
+        <div><div class="ef-empresa">${epiEsc(emp.nome)}</div><div class="ef-contato">${epiEsc(emp.contato)}</div></div>
+        ${logo}
+      </div>
+      <h2>FICHA DE CONTROLE DE ENTREGA DE EPI</h2>
+      <div class="ef-func"><span><b>Funcionário:</b> ${epiEsc(func.nome)}</span><span><b>Função:</b> ${epiEsc(func.funcao||'—')}</span><span><b>Setor:</b> ${epiEsc(func.setor||'—')}</span></div>
+      <div class="ef-decl">Declaro para os devidos fins que recebi da empresa, gratuitamente, os Equipamentos de Proteção Individual (EPI) relacionados abaixo, e que fui orientado(a) e treinado(a) quanto ao uso correto, guarda e conservação, comprometendo-me a utilizá-los durante toda a jornada de trabalho, conforme determina a Norma Regulamentadora NR-6.</div>
+      <table>
+        <thead><tr><th style="width:88px;">Data</th><th>EPI</th><th style="width:88px;">CA</th><th style="width:52px;">Qtd</th><th style="width:180px;">Assinatura</th></tr></thead>
+        <tbody>${linhas}${extra}</tbody>
+      </table>
+      <div class="ef-sign"><div>Assinatura do funcionário</div><div>Responsável / SESMT</div></div>
+    </div>`;
+  document.body.classList.add('imprimindo-ficha');
+  const limpar=()=>{ document.body.classList.remove('imprimindo-ficha'); window.removeEventListener('afterprint', limpar); };
+  window.addEventListener('afterprint', limpar);
+  window.print();
+  setTimeout(limpar, 2000);
 }
 
 /* ============================================================
@@ -4754,6 +5351,16 @@ function renderOP(p){
     p.opProcesso = p.maquina || '';
   }
 
+  // Migração: campos únicos antigos -> lista de materiais (vários códigos por pedido)
+  if (!Array.isArray(p.opMateriais)){
+    if (p.opCodigo || p.opQtdChapas || p.opEspessura || p.opMaterial){
+      p.opMateriais = [{ codigo: p.opCodigo||'', qtdChapas: p.opQtdChapas||'', espessura: p.opEspessura||'', material: p.opMaterial||'' }];
+    } else {
+      p.opMateriais = [{ codigo:'', qtdChapas:'', espessura: p.opEspessura||'', material: p.opMaterial||'' }];
+    }
+  }
+  if (p.opMateriais.length === 0) p.opMateriais.push({ codigo:'', qtdChapas:'', espessura:'', material:'' });
+
   const blankRowsProducao = Array.from({length:10}).map(()=>`
     <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('');
 
@@ -4775,7 +5382,7 @@ function renderOP(p){
   const logoSrc = (typeof logoPreview !== 'undefined' && logoPreview.src) ? logoPreview.src : DEFAULT_LOGO_DATA;
   document.getElementById('opFicha').innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
-      <img src="${logoSrc}" alt="logo" style="max-height:56px; max-width:220px;">
+      <img src="${logoSrc}" alt="logo" style="max-height:56px; max-width:220px; background:#fff; padding:4px 8px; border-radius:6px;">
       <div style="text-align:right;">
         <div style="font-weight:800; font-size:18px;">ORDEM DE PRODUÇÃO</div>
         <div style="font-size:12px; color:var(--text-dim);">Nº. OP</div>
@@ -4799,14 +5406,16 @@ function renderOP(p){
     <div class="field"><label>Observação</label><textarea id="opObservacao" rows="3" placeholder="alguma observação sobre esse pedido...">${p.observacaoOP||''}</textarea></div>
 
     <h2 style="margin-top:20px;"><span class="n">·</span>Material e quantidade</h2>
-    <div class="row">
-      <div class="field"><label>Código</label><input type="text" id="opCodigo" value="${p.opCodigo||''}" placeholder="código do material"></div>
-      <div class="field"><label>Qtd chapas</label><input type="text" id="opQtdChapas" value="${p.opQtdChapas||''}" placeholder="(preencher)"></div>
-      <div class="field"><label>Qtd peças</label><div style="padding:7px 0; font-weight:700;">${totalPecas}</div></div>
+    <div style="overflow-x:auto;">
+      <table class="items op-table" id="opMateriaisTable" style="font-size:12px; margin-top:8px;">
+        <thead><tr><th>Código</th><th style="text-align:right;">Qtd chapas</th><th>Espessura (mm)</th><th>Tipo material</th><th class="no-print"></th></tr></thead>
+        <tbody id="opMateriaisBody"></tbody>
+      </table>
     </div>
-    <div class="row">
-      <div class="field"><label>Espessura (mm)</label><input type="text" id="opEspessura" value="${p.opEspessura||''}"></div>
-      <div class="field"><label>Tipo material</label><input type="text" id="opMaterial" value="${p.opMaterial||''}"></div>
+    <button class="btn secondary small no-print" id="opMatAddBtn" style="margin-top:8px;">+ adicionar código/material</button>
+    <div class="row" style="margin-top:14px; align-items:center; gap:24px;">
+      <div class="field" style="flex:0 0 auto;"><label>Qtd peças</label><div style="padding:5px 0; font-weight:700; font-size:16px;">${totalPecas}</div></div>
+      <div class="field" style="flex:0 0 auto;"><label>Quantidade total (chapas)</label><div id="opQtdTotal" style="padding:3px 12px; font-weight:800; font-size:22px; color:var(--accent); background:var(--accent-dim); border-radius:6px; display:inline-block; min-width:60px; text-align:center;">0</div></div>
     </div>
     ${itensExtra}
 
@@ -4849,11 +5458,48 @@ function renderOP(p){
     salvarCampoPedido('cliente', e.target.value);
   });
   document.getElementById('opCodPed').addEventListener('input', (e)=> salvarCampoPedido('codPedCliente', e.target.value));
-  document.getElementById('opCodigo').addEventListener('input', (e)=> salvarCampoPedido('opCodigo', e.target.value));
-  document.getElementById('opQtdChapas').addEventListener('input', (e)=> salvarCampoPedido('opQtdChapas', e.target.value));
-  document.getElementById('opEspessura').addEventListener('input', (e)=> salvarCampoPedido('opEspessura', e.target.value));
-  document.getElementById('opMaterial').addEventListener('input', (e)=> salvarCampoPedido('opMaterial', e.target.value));
   document.getElementById('opProcesso').addEventListener('input', (e)=> salvarCampoPedido('opProcesso', e.target.value));
+
+  // ---- Materiais da OP (vários códigos por pedido) ----
+  function opEscAttr(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+  function atualizarQtdTotal(){
+    const el = document.getElementById('opQtdTotal'); if(!el) return;
+    const tot = (p.opMateriais||[]).reduce((s,m)=> s + (parseFloat((''+(m.qtdChapas||'')).replace(',','.'))||0), 0);
+    el.textContent = tot ? (Number.isInteger(tot) ? tot : tot.toFixed(2).replace('.',',')) : '0';
+  }
+  function renderOPMateriais(){
+    const body = document.getElementById('opMateriaisBody'); if(!body) return;
+    body.innerHTML = (p.opMateriais||[]).map((m,i)=>`
+      <tr data-mi="${i}">
+        <td><input data-mf="codigo" value="${opEscAttr(m.codigo)}" placeholder="código"></td>
+        <td><input data-mf="qtdChapas" inputmode="decimal" value="${opEscAttr(m.qtdChapas)}" placeholder="qtd" style="text-align:right;"></td>
+        <td><input data-mf="espessura" value="${opEscAttr(m.espessura)}" placeholder="mm"></td>
+        <td><input data-mf="material" value="${opEscAttr(m.material)}" placeholder="tipo material"></td>
+        <td class="no-print"><button type="button" class="btn small secondary op-mat-del" title="remover">×</button></td>
+      </tr>`).join('');
+    body.querySelectorAll('tr').forEach(tr=>{
+      const i = +tr.dataset.mi;
+      tr.querySelectorAll('input[data-mf]').forEach(inp=> inp.addEventListener('input', ()=>{
+        p.opMateriais[i][inp.dataset.mf] = inp.value;
+        salvarCampoPedido('opMateriais', p.opMateriais);
+        if (inp.dataset.mf === 'qtdChapas') atualizarQtdTotal();
+      }));
+      const del = tr.querySelector('.op-mat-del');
+      if (del) del.addEventListener('click', ()=>{
+        p.opMateriais.splice(i,1);
+        if (p.opMateriais.length === 0) p.opMateriais.push({ codigo:'', qtdChapas:'', espessura:'', material:'' });
+        salvarCampoPedido('opMateriais', p.opMateriais);
+        renderOPMateriais();
+      });
+    });
+    atualizarQtdTotal();
+  }
+  document.getElementById('opMatAddBtn').addEventListener('click', ()=>{
+    p.opMateriais.push({ codigo:'', qtdChapas:'', espessura:'', material:'' });
+    salvarCampoPedido('opMateriais', p.opMateriais);
+    renderOPMateriais();
+  });
+  renderOPMateriais();
   document.getElementById('opDataInicialProcesso').addEventListener('change', (e)=> salvarCampoPedido('opDataInicialProcesso', isoParaBr(e.target.value)));
   document.getElementById('opDataFinalProcesso').addEventListener('change', (e)=> salvarCampoPedido('opDataFinalProcesso', isoParaBr(e.target.value)));
   document.getElementById('opObservacao').addEventListener('input', (e)=> salvarCampoPedido('observacaoOP', e.target.value));
