@@ -4231,10 +4231,37 @@ async function confirmarAprovacao(tipos){
   }
   const arquivoNF = document.getElementById('modalAprovarAnexoNF').files[0];
   const arquivoPC = document.getElementById('modalAprovarAnexoPC').files[0];
-  const anexoNFbruto = arquivoNF ? await new Promise(res=> lerArquivoComoBase64(arquivoNF, res)) : null;
-  const anexoPCbruto = arquivoPC ? await new Promise(res=> lerArquivoComoBase64(arquivoPC, res)) : null;
-  const anexoNF = anexoNFbruto ? await salvarAnexoSeparado(anexoNFbruto.name, anexoNFbruto.dataUrl).catch(()=>null) : null;
-  const anexoPC = anexoPCbruto ? await salvarAnexoSeparado(anexoPCbruto.name, anexoPCbruto.dataUrl).catch(()=>null) : null;
+
+  // Mesma proteção da criação manual: valida tamanho e não engole erros de salvamento.
+  const LIMITE_ANEXO = 760*1024;
+  if (arquivoNF && arquivoNF.size > LIMITE_ANEXO){
+    alert('A nota fiscal tem ' + (arquivoNF.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor. O pedido NÃO foi gerado.');
+    return;
+  }
+  if (arquivoPC && arquivoPC.size > LIMITE_ANEXO){
+    alert('O pedido de compra tem ' + (arquivoPC.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor. O pedido NÃO foi gerado.');
+    return;
+  }
+
+  let anexoNF = null, anexoPC = null;
+  try{
+    if (arquivoNF){
+      avisarSalvamento('Salvando nota fiscal na nuvem…', false, true);
+      const bruto = await new Promise(res=> lerArquivoComoBase64(arquivoNF, res));
+      if (!bruto) throw new Error('não consegui ler a nota fiscal');
+      anexoNF = await salvarAnexoSeparado(bruto.name, bruto.dataUrl);
+    }
+    if (arquivoPC){
+      avisarSalvamento('Salvando pedido de compra na nuvem…', false, true);
+      const bruto = await new Promise(res=> lerArquivoComoBase64(arquivoPC, res));
+      if (!bruto) throw new Error('não consegui ler o pedido de compra');
+      anexoPC = await salvarAnexoSeparado(bruto.name, bruto.dataUrl);
+    }
+  }catch(err){
+    alert('Não consegui salvar os anexos na nuvem: ' + ((err&&err.message)?err.message:err) + '.\n\nO pedido NÃO foi gerado. Verifique a internet (ou reduza o tamanho do arquivo) e tente de novo.');
+    return;
+  }
+
   const dadosFiscais = {
     tipoFiscal: document.getElementById('modalAprovarTipoFiscal').value,
     notaIndustrializacao: document.getElementById('modalAprovarNotaInd').value,
@@ -4294,15 +4321,46 @@ document.getElementById('npCliente').addEventListener('change', (e)=>{
 async function executarCriacaoPedidoManual(){
   const tipo = document.getElementById('npTipo').value;
   const cliente = document.getElementById('npCliente').value;
-  const counter = loadPedidoCounter(tipo) + 1;
-  savePedidoCounter(tipo, counter);
 
   const arquivoNF = document.getElementById('npAnexoNF').files[0];
   const arquivoPC = document.getElementById('npAnexoPC').files[0];
-  const anexoNFbruto = arquivoNF ? await new Promise(res=> lerArquivoComoBase64(arquivoNF, res)) : null;
-  const anexoPCbruto = arquivoPC ? await new Promise(res=> lerArquivoComoBase64(arquivoPC, res)) : null;
-  const anexoNF = anexoNFbruto ? await salvarAnexoSeparado(anexoNFbruto.name, anexoNFbruto.dataUrl).catch(()=>null) : null;
-  const anexoPC = anexoPCbruto ? await salvarAnexoSeparado(anexoPCbruto.name, anexoPCbruto.dataUrl).catch(()=>null) : null;
+
+  // Firestore rejeita registros acima de ~1 MB e o base64 aumenta o tamanho em ~33%.
+  // Validamos o tamanho ANTES de criar o pedido — igual ao modal de documentos —
+  // para não deixar o usuário achar que anexou quando o arquivo é grande demais.
+  const LIMITE_ANEXO = 760*1024;
+  if (arquivoNF && arquivoNF.size > LIMITE_ANEXO){
+    alert('A nota fiscal tem ' + (arquivoNF.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor. O pedido NÃO foi criado.');
+    return;
+  }
+  if (arquivoPC && arquivoPC.size > LIMITE_ANEXO){
+    alert('O pedido de compra tem ' + (arquivoPC.size/1048576).toFixed(2) + ' MB e é grande demais (limite ~0,75 MB por arquivo).\n\nComprima o PDF (ex.: ilovepdf.com) e anexe a versão menor. O pedido NÃO foi criado.');
+    return;
+  }
+
+  // Lê e salva os anexos na nuvem ANTES de criar o pedido. Se algum falhar,
+  // avisamos o usuário e ABORTAMOS — nunca criamos o pedido "sem anexo" em silêncio.
+  let anexoNF = null, anexoPC = null;
+  try{
+    if (arquivoNF){
+      avisarSalvamento('Salvando nota fiscal na nuvem…', false, true);
+      const bruto = await new Promise(res=> lerArquivoComoBase64(arquivoNF, res));
+      if (!bruto) throw new Error('não consegui ler a nota fiscal');
+      anexoNF = await salvarAnexoSeparado(bruto.name, bruto.dataUrl);
+    }
+    if (arquivoPC){
+      avisarSalvamento('Salvando pedido de compra na nuvem…', false, true);
+      const bruto = await new Promise(res=> lerArquivoComoBase64(arquivoPC, res));
+      if (!bruto) throw new Error('não consegui ler o pedido de compra');
+      anexoPC = await salvarAnexoSeparado(bruto.name, bruto.dataUrl);
+    }
+  }catch(err){
+    alert('Não consegui salvar os anexos na nuvem: ' + ((err&&err.message)?err.message:err) + '.\n\nO pedido NÃO foi criado. Verifique a internet (ou reduza o tamanho do arquivo) e tente de novo.');
+    return;
+  }
+
+  const counter = loadPedidoCounter(tipo) + 1;
+  savePedidoCounter(tipo, counter);
 
   const pedido = {
     id: gerarIdUnico(), numero: counter, tipo,
@@ -4327,6 +4385,7 @@ async function executarCriacaoPedidoManual(){
   salvarAlteracoesPendentes();
   fecharModalNovoPedido();
   renderPedidos();
+  if (anexoNF || anexoPC) avisarSalvamento('Pedido criado com anexo(s) ✔', false);
 }
 document.getElementById('npCriarBtn').addEventListener('click', ()=>{
   const cliente = document.getElementById('npCliente').value.trim();
@@ -5474,7 +5533,7 @@ function renderOP(p){
         <td><input data-mf="codigo" value="${opEscAttr(m.codigo)}" placeholder="código"></td>
         <td><input data-mf="qtdChapas" inputmode="decimal" value="${opEscAttr(m.qtdChapas)}" placeholder="qtd" style="text-align:right;"></td>
         <td><input data-mf="espessura" value="${opEscAttr(m.espessura)}" placeholder="mm"></td>
-        <td><input data-mf="material" value="${opEscAttr(m.material)}" placeholder="tipo material"></td>
+        <td style="text-align:left;"><input data-mf="material" value="${opEscAttr(m.material)}" placeholder="tipo material" style="width:200px; max-width:100%; text-align:left;"></td>
         <td class="no-print"><button type="button" class="btn small secondary op-mat-del" title="remover">×</button></td>
       </tr>`).join('');
     body.querySelectorAll('tr').forEach(tr=>{
