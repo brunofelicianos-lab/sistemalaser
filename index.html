@@ -15,6 +15,7 @@
     --accent:#ff7a1a;
     --accent-dim:#5a3a1f;
     --good:#5fb88a;
+    --nota:#4a9eda;
     --brand-red:#d1080f;
     --brand-dark:#1b2229;
     --mono: 'SF Mono', 'Consolas', 'JetBrains Mono', monospace;
@@ -184,10 +185,18 @@
   .fr-badge.pend{background:var(--accent-dim); color:var(--accent);}
   .fr-badge.lib{background:rgba(95,184,138,0.2); color:var(--good);}
   .fr-badge.fat{background:rgba(120,120,130,0.2); color:var(--text-dim);}
+  .fr-badge.env{background:rgba(74,158,218,0.22); color:var(--nota);}
   .fiscal-resumo .fr-liberar{flex:0 0 auto;}
   .btn.liberar-btn{background:transparent; border:1px solid var(--good); color:var(--good);}
   .btn.liberar-btn:hover{background:var(--good); color:#0d1410;}
   .btn.liberar-btn.on{background:var(--good); color:#0d1410;}
+  .btn.enviada-btn{background:transparent; border:1px solid var(--nota); color:var(--nota);}
+  .btn.enviada-btn:hover{background:var(--nota); color:#0d1410;}
+  .btn.enviada-btn.on{background:var(--nota); color:#0d1410;}
+  /* Caixa com nota já enviada — cor azul (tem prioridade visual sobre "faturado") */
+  .fiscal-grupo.nota-enviada{border-color:var(--nota); background:rgba(74,158,218,0.10); opacity:1 !important;}
+  .fiscal-grupo.nota-enviada .fiscal-resumo:hover{background:rgba(74,158,218,0.06);}
+  .fiscal-grupo.nota-enviada .fr-valor{color:var(--nota);}
   .fiscal-corpo{border-top:1px solid var(--line); padding:6px 16px 14px;}
 
   /* Caixa de anotação para o fiscal */
@@ -992,6 +1001,8 @@
           <select id="fiscalFiltroStatus">
             <option value="pendente">Pendente de faturar</option>
             <option value="faturado">Já faturado</option>
+            <option value="faturadoSemNota">Faturado — nota não enviada</option>
+            <option value="notaEnviada">Nota já enviada</option>
             <option value="aguardandoEnvio">Aguardando envio físico</option>
             <option value="todos">Todos</option>
           </select>
@@ -1023,8 +1034,9 @@
           </select>
         </div>
         <button class="btn" id="fiscalBulkAplicarBtn">Aplicar aos selecionados: marcar como Faturado</button>
+        <button class="btn enviada-btn" id="fiscalBulkNotaEnviadaBtn">Aplicar aos selecionados: marcar Nota enviada</button>
       </div>
-      <div class="footnote">Marca todos os pedidos selecionados como faturados (com a data de hoje), e — se você escolher um tipo de documento acima — também aplica esse tipo a todos eles. Bom pra fechar de uma vez um lote de pedidos antigos que já foram entregues e faturados antes deste sistema existir.</div>
+      <div class="footnote">"Marcar como Faturado" dá baixa nos selecionados com a data de hoje (e aplica o tipo de documento acima, se você escolher um). "Marcar Nota enviada" registra que a nota já foi enviada ao cliente e deixa a caixa azul — funciona só em pedidos já faturados.</div>
     </div>
 
     <div class="panel">
@@ -1547,8 +1559,10 @@ const DEFAULT_EMPRESA_CONTATO = "(48) 99124-0852 · www.lumatriindustrial.com.br
 let materials = [
   {nome:'Aço Carbono', densidade:7850, thicknesses:[
     {esp:1,     preco:11.00, vel:1.58, pierce:1.9},
+    {esp:1.2,   preco:11.00, vel:3.47, pierce:1.94},
     {esp:1.5,   preco:11.00, vel:6.3,  pierce:2},
     {esp:2,     preco:11.00, vel:5.6,  pierce:2.2},
+    {esp:2.65,  preco:11.00, vel:2.87, pierce:2.46},
     {esp:3,     preco:11.00, vel:1.4,  pierce:2.6},
     {esp:4.76,  preco:11.00, vel:1.05, pierce:3.4},
     {esp:6.35,  preco:11.00, vel:0.88, pierce:16.9},
@@ -1561,6 +1575,7 @@ let materials = [
   ]},
   {nome:'Aço Inox', densidade:8000, thicknesses:[
     {esp:1,   preco:40.00, vel:10.5, pierce:1.9},
+    {esp:1.2, preco:40.00, vel:9.66, pierce:1.94},
     {esp:1.5, preco:40.00, vel:8.4,  pierce:2},
     {esp:2,   preco:40.00, vel:7.35, pierce:2.2},
     {esp:3,   preco:40.00, vel:3.15, pierce:2.6},
@@ -4702,12 +4717,16 @@ function renderFiscalStats(){
   const all = loadPedidos().filter(p=> p.concluido);
   const pendentes = all.filter(p=> !p.faturado);
   const faturados = all.filter(p=> p.faturado);
+  const notaEnviada = all.filter(p=> p.faturado && p.notaEnviada);
+  const faturadoSemNota = all.filter(p=> p.faturado && !p.notaEnviada);
   const aguardandoEnvio = all.filter(p=> p.faturado && p.envioFisico && !p.envioFisicoFeito);
   const valorPendente = pendentes.reduce((s,p)=> s + (p.valorFaturar||0), 0);
   document.getElementById('fiscalStatsBar').innerHTML = `
     <div class="stat-card"><div class="stat-num">${all.length}</div><div class="stat-label">Concluídos no total</div></div>
     <div class="stat-card warn"><div class="stat-num">${pendentes.length}</div><div class="stat-label">Pendentes de faturar</div></div>
     <div class="stat-card"><div class="stat-num">${faturados.length}</div><div class="stat-label">Já faturados</div></div>
+    <div class="stat-card warn"><div class="stat-num">${faturadoSemNota.length}</div><div class="stat-label">Faturado, nota não enviada</div></div>
+    <div class="stat-card"><div class="stat-num">${notaEnviada.length}</div><div class="stat-label">Notas enviadas</div></div>
     <div class="stat-card warn"><div class="stat-num">${aguardandoEnvio.length}</div><div class="stat-label">Aguardando envio físico</div></div>
     <div class="stat-card"><div class="stat-num">${fmt(valorPendente)}</div><div class="stat-label">Valor pendente de faturar</div></div>
   `;
@@ -4988,6 +5007,14 @@ function htmlPedidoFiscalInterno(p){
           Faturado${p.dataFaturamento?' em '+p.dataFaturamento:''}
         </label>
       </div>
+
+      ${p.faturado ? `
+      <div class="row" style="align-items:center; margin-top:8px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:${p.notaEnviada?'var(--nota)':'var(--text)'};">
+          <input type="checkbox" data-notaenviada="${p.id}" ${p.notaEnviada?'checked':''} style="width:auto;">
+          ${p.notaEnviada ? ('Nota enviada em ' + (p.dataNotaEnviada||'')) : 'Nota ainda não enviada — marcar quando enviar a nota ao cliente'}
+        </label>
+      </div>` : ''}
     </div>`;
 }
 
@@ -5004,6 +5031,8 @@ function renderFiscal(){
     if (tipoF && tipoF !== 'nenhum' && p.tipoFiscal !== tipoF) return false;
     if (statusF === 'pendente' && p.faturado) return false;
     if (statusF === 'faturado' && !p.faturado) return false;
+    if (statusF === 'faturadoSemNota' && !(p.faturado && !p.notaEnviada)) return false;
+    if (statusF === 'notaEnviada' && !(p.faturado && p.notaEnviada)) return false;
     if (statusF === 'aguardandoEnvio' && !(p.faturado && p.envioFisico && !p.envioFisicoFeito)) return false;
     return true;
   });
@@ -5039,7 +5068,7 @@ function renderFiscal(){
     return m[3]+m[2]+m[1];
   }
 
-  const modoFaturado = (statusF === 'faturado');
+  const modoFaturado = (statusF === 'faturado' || statusF === 'faturadoSemNota' || statusF === 'notaEnviada');
   if (modoFaturado){
     // ordena por data de faturamento, decrescente (mais recente primeiro);
     // grupos sem data ficam sempre no fim.
@@ -5060,12 +5089,14 @@ function renderFiscal(){
     const tipoTxt = tipos.join(' + ');
     const todosLiberados = ps.every(p=> p.liberadoFiscal);
     const todosFaturados = ps.every(p=> p.faturado);
+    const todosNotaEnviada = todosFaturados && ps.every(p=> p.notaEnviada);
     const idsAttr = ps.map(p=> p.id).join(',');
     const sub = ps.map(p=> `${p.tipo} Nº ${p.numero}`).join(' + ') +
       (ps[0].orcamentoNumero ? ` · orçamento nº ${ps[0].orcamentoNumero}` : ' · pedido manual');
 
     let badge;
-    if (todosFaturados) badge = '<span class="fr-badge fat">Faturado</span>';
+    if (todosNotaEnviada) badge = '<span class="fr-badge env">Nota enviada</span>';
+    else if (todosFaturados) badge = '<span class="fr-badge fat">Faturado</span>';
     else if (todosLiberados) badge = '<span class="fr-badge lib">Liberado</span>';
     else badge = '<span class="fr-badge pend">Conferir</span>';
 
@@ -5086,7 +5117,7 @@ function renderFiscal(){
           : '');
 
     return `
-    <div class="fiscal-grupo${todosLiberados?' liberado':''}${todosFaturados?' faturado':''}" data-grupo="${g.chave}" style="${todosFaturados?'opacity:0.6;':''}">
+    <div class="fiscal-grupo${todosLiberados?' liberado':''}${todosFaturados?' faturado':''}${todosNotaEnviada?' nota-enviada':''}" data-grupo="${g.chave}" style="${(todosFaturados && !todosNotaEnviada)?'opacity:0.6;':''}">
       <div class="fiscal-resumo" data-toggle-grupo="${g.chave}">
         <span class="fr-expand">+</span>
         <div class="fr-cliente">${cliente}<span class="fr-sub">${sub}</span></div>
@@ -5094,7 +5125,9 @@ function renderFiscal(){
         <div class="fr-valor">${fmt(valorTotal)}</div>
         ${badge}
         <div class="fr-liberar no-print">
-          <button class="btn small liberar-btn${todosLiberados?' on':''}" data-liberar-grupo="${idsAttr}">${todosLiberados?'✓ Liberado':'Liberar'}</button>
+          ${todosFaturados
+            ? `<button class="btn small enviada-btn${todosNotaEnviada?' on':''}" data-nota-enviada-grupo="${idsAttr}">${todosNotaEnviada?'✓ Nota enviada':'Marcar nota enviada'}</button>`
+            : `<button class="btn small liberar-btn${todosLiberados?' on':''}" data-liberar-grupo="${idsAttr}">${todosLiberados?'✓ Liberado':'Liberar'}</button>`}
         </div>
       </div>
       <div class="fiscal-corpo" data-corpo-grupo="${g.chave}" style="display:none;">
@@ -5182,6 +5215,24 @@ function renderFiscal(){
     });
   });
 
+  // Botão "Marcar nota enviada" — alterna notaEnviada em todos os pedidos da caixa
+  wrap.querySelectorAll('[data-nota-enviada-grupo]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const ids = btn.dataset.notaEnviadaGrupo.split(',').map(Number);
+      const all = loadPedidos();
+      const doGrupo = all.filter(p=> ids.includes(p.id));
+      const enviarAgora = !doGrupo.every(p=> p.notaEnviada);
+      const hoje = todayBR();
+      doGrupo.forEach(p=>{
+        p.notaEnviada = enviarAgora;
+        p.dataNotaEnviada = enviarAgora ? hoje : '';
+      });
+      savePedidos(all);
+      renderFiscal();
+    });
+  });
+
   document.getElementById('fiscalSelContador').textContent = fiscalSelecionados.size + ' selecionados';
   wrap.querySelectorAll('[data-fiscalsel]').forEach(chk=>{
     chk.addEventListener('change', ()=>{
@@ -5257,6 +5308,17 @@ function renderFiscal(){
       comPedido(+chk.dataset.fiscalfaturado, p=>{
         p.faturado = chk.checked;
         p.dataFaturamento = chk.checked ? todayBR() : '';
+        // se deixou de ser faturado, também deixa de ter nota enviada
+        if (!chk.checked){ p.notaEnviada = false; p.dataNotaEnviada = ''; }
+      });
+      renderFiscal();
+    });
+  });
+  wrap.querySelectorAll('[data-notaenviada]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      comPedido(+chk.dataset.notaenviada, p=>{
+        p.notaEnviada = chk.checked;
+        p.dataNotaEnviada = chk.checked ? todayBR() : '';
       });
       renderFiscal();
     });
@@ -5371,6 +5433,30 @@ document.getElementById('fiscalBulkAplicarBtn').addEventListener('click', ()=>{
   fiscalSelecionados.clear();
   renderFiscal();
   alert('Pedidos dados como faturados com sucesso.');
+});
+document.getElementById('fiscalBulkNotaEnviadaBtn').addEventListener('click', ()=>{
+  if (fiscalSelecionados.size === 0){ alert('Selecione ao menos um pedido.'); return; }
+  const all = loadPedidos();
+  // só faz sentido em pedidos já faturados
+  const selecionados = all.filter(p=> fiscalSelecionados.has(p.id));
+  const naoFaturados = selecionados.filter(p=> !p.faturado);
+  if (naoFaturados.length){
+    alert(`${naoFaturados.length} pedido(s) selecionado(s) ainda não estão faturados. Fature primeiro pra poder marcar a nota como enviada.`);
+    return;
+  }
+  if (!confirm(`Marcar ${selecionados.length} pedido(s) selecionado(s) como NOTA ENVIADA (com a data de hoje)?`)) return;
+  const hoje = todayBR();
+  all.forEach(p=>{
+    if (fiscalSelecionados.has(p.id) && p.faturado){
+      p.notaEnviada = true;
+      p.dataNotaEnviada = hoje;
+    }
+  });
+  savePedidos(all);
+  salvarAlteracoesPendentes();
+  fiscalSelecionados.clear();
+  renderFiscal();
+  alert('Notas marcadas como enviadas com sucesso.');
 });
 document.getElementById('pedidoFiltroStatus').addEventListener('change', renderPedidos);
 
@@ -5531,7 +5617,7 @@ function renderOP(p){
     body.innerHTML = (p.opMateriais||[]).map((m,i)=>`
       <tr data-mi="${i}">
         <td><input data-mf="codigo" value="${opEscAttr(m.codigo)}" placeholder="código"></td>
-        <td><input data-mf="qtdChapas" inputmode="decimal" value="${opEscAttr(m.qtdChapas)}" placeholder="qtd" style="text-align:right;"></td>
+        <td><input data-mf="qtdChapas" inputmode="decimal" value="${opEscAttr(m.qtdChapas)}" placeholder="qtd" style="text-align:right; background:#fff; color:#111;"></td>
         <td><input data-mf="espessura" value="${opEscAttr(m.espessura)}" placeholder="mm"></td>
         <td style="text-align:left;"><input data-mf="material" value="${opEscAttr(m.material)}" placeholder="tipo material" style="width:200px; max-width:100%; text-align:left;"></td>
         <td class="no-print"><button type="button" class="btn small secondary op-mat-del" title="remover">×</button></td>
