@@ -188,6 +188,14 @@
   .btn.liberar-btn{background:transparent; border:1px solid var(--good); color:var(--good);}
   .btn.liberar-btn:hover{background:var(--good); color:#0d1410;}
   .btn.liberar-btn.on{background:var(--good); color:#0d1410;}
+  /* Nota enviada — destaque azul das notas já despachadas ao cliente */
+  .fiscal-grupo.nota-enviada{border-color:#2f7de0; background:rgba(47,125,224,0.14);}
+  .fiscal-grupo.nota-enviada .fiscal-resumo:hover{background:rgba(47,125,224,0.10);}
+  .fiscal-grupo.nota-enviada .fr-valor{color:#5aa0f0;}
+  .fr-badge.env{background:rgba(47,125,224,0.28); color:#7db4f0;}
+  .btn.enviada-btn{background:transparent; border:1px solid #2f7de0; color:#7db4f0;}
+  .btn.enviada-btn:hover{background:#2f7de0; color:#0a1830;}
+  .btn.enviada-btn.on{background:#2f7de0; color:#0a1830; border-color:#2f7de0;}
   .fiscal-corpo{border-top:1px solid var(--line); padding:6px 16px 14px;}
 
   /* Caixa de anotação para o fiscal */
@@ -360,6 +368,8 @@
     /* impressão limpa: fundo branco, letras pretas */
     #opFicha{background:#fff !important; color:#000 !important; padding:12px 16px !important;}
     #opFicha *{color:#000 !important;}
+    /* Quantidade total (chapas): sem fundo colorido na impressão — só o número preto */
+    #opFicha #opQtdTotal{background:#fff !important; color:#000 !important; border:none !important;}
     #opFicha .op-registro-table td, #opFicha .op-registro-table th{background:#fff !important;}
     #opFicha input, #opFicha textarea{background:#fff !important; border:1px solid #bbb !important;}
     #opFicha, #viewOP{page-break-inside:avoid;}
@@ -440,6 +450,7 @@
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://unpkg.com/@mmote/niimbluelib@0.0.1-alpha.24/dist/umd/niimbluelib.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -610,6 +621,22 @@
         <div class="field"><label>Espaçamento entre peças (mm)</label><input type="number" id="espacoPecas" value="5" step="1" min="0"></div>
         <div class="field"><label>Sobra de borda / refile (%)</label><input type="number" id="sobraBorda" value="10" step="1" min="0"></div>
       </div>
+      <div style="border-top:1px dashed var(--line); margin:12px 0 8px; padding-top:8px;">
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--accent); font-weight:700; margin-bottom:8px;">Dobra por tempo (itens lidos de PDF)</div>
+        <div class="row">
+          <div class="field"><label>Valor da hora de dobra (R$/h)</label><input type="number" id="valorHoraDobra" value="200" step="5"></div>
+          <div class="field"><label>Setup por peça (seg)</label><input type="number" id="setupDobraSeg" value="180" step="5"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Estimativa: base por dobra (seg)</label><input type="number" id="hBaseDobra" value="45" step="1"></div>
+          <div class="field"><label>Estimativa: extra por virada (seg)</label><input type="number" id="hViradaDobra" value="20" step="1"></div>
+          <div class="field"><label>Estimativa: extra ângulo ≠90° (seg)</label><input type="number" id="hAnguloDobra" value="10" step="1"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Estimativa: espessura ref. (mm)</label><input type="number" id="hEspRefDobra" value="2" step="0.1"></div>
+          <div class="field"><label>Estimativa: extra por mm acima da ref. (seg/mm)</label><input type="number" id="hEspFatorDobra" value="10" step="1"></div>
+        </div>
+      </div>
       <div class="footnote">Os valores aqui (R$/kg dos materiais, R$/min da máquina, R$ por dobra) já devem ser os seus valores de venda, com seu ganho já incluído — o orçamento mostra direto o preço final, sem separar custo e margem. Os mínimos de corte e dobra são aplicados sobre a soma de todas as peças do orçamento, não peça por peça. A eficiência da máquina ajusta o tempo estimado de produção (Calendário): se o corte teórico de um pedido der 1h e a eficiência for 85%, o tempo real considerado já vai ser maior (1h ÷ 0,85 ≈ 1h10min), pra cobrir paradas, setup e troca de material — sem mexer no valor cobrado do cliente, só na previsão de tempo de máquina. O tempo de furo/perfuração agora é definido por espessura na tabela de materiais (coluna "Pierce") — cada contorno fechado da peça (furo, recorte interno, ou a própria peça) precisa de uma perfuração antes de cortar, e isso varia bastante por espessura: chapa fina perfura quase na hora, chapa grossa (principalmente aço carbono com oxigênio) pode levar vários segundos por furo.</div>
     </div>
   </div>
@@ -623,6 +650,15 @@
     </div>
     <input type="file" id="fileInput" accept=".dxf" multiple style="display:none">
     <button class="btn secondary small" id="addManualBtn" style="margin-top:10px;">+ adicionar item manual (sem DXF)</button>
+
+    <div style="margin-top:16px; border-top:1px dashed var(--line); padding-top:12px;">
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:var(--accent); font-weight:700; margin-bottom:8px;">Dobra a partir de PDF (planificação)</div>
+      <div class="dropzone" id="dropzoneDobra">
+        <div><b>Arraste os PDFs de dobra aqui</b> ou clique para selecionar</div>
+        <div class="sub">lê "PARA CIMA / BAIXO Nº°" e vira quantidade de dobras — o tempo por dobra é estimado automaticamente</div>
+      </div>
+      <input type="file" id="fileInputDobra" accept="application/pdf,.pdf" multiple style="display:none">
+    </div>
   </div>
 
   <!-- Itens / Resultado -->
@@ -1006,6 +1042,7 @@
           <select id="fiscalFiltroStatus">
             <option value="pendente">Pendente de faturar</option>
             <option value="faturado">Já faturado</option>
+            <option value="faturadoNaoEnviado">Faturado — nota não enviada</option>
             <option value="aguardandoEnvio">Aguardando envio físico</option>
             <option value="todos">Todos</option>
           </select>
@@ -1037,8 +1074,9 @@
           </select>
         </div>
         <button class="btn" id="fiscalBulkAplicarBtn">Aplicar aos selecionados: marcar como Faturado</button>
+        <button class="btn secondary" id="fiscalBulkEnviadaBtn" style="margin-left:8px;">Aplicar aos selecionados: marcar como Nota enviada</button>
       </div>
-      <div class="footnote">Marca todos os pedidos selecionados como faturados (com a data de hoje), e — se você escolher um tipo de documento acima — também aplica esse tipo a todos eles. Bom pra fechar de uma vez um lote de pedidos antigos que já foram entregues e faturados antes deste sistema existir.</div>
+      <div class="footnote">Marca todos os pedidos selecionados como faturados (com a data de hoje), e — se você escolher um tipo de documento acima — também aplica esse tipo a todos eles. Bom pra fechar de uma vez um lote de pedidos antigos que já foram entregues e faturados antes deste sistema existir. O botão "Nota enviada" marca os selecionados como enviados (ficam azuis) — útil pra dar baixa em várias notas de uma vez.</div>
     </div>
 
     <div class="panel">
@@ -2264,7 +2302,21 @@ function computeRow(it){
   const tempoFuracao = ((it.furos||0) * segPorFuro) / 60; // segundos -> minutos
   const tempoCorte = tempoCorteLinear + tempoFuracao;
   const custoCorte = tempoCorte * custoMin;
-  const custoDobra = (it.dobras||0) * custoDobraUnit;
+  let custoDobra;
+  if (it.dobraTempo){
+    // dobra cobrada por tempo: (setup do item + dobras × seg/dobra × qtd) × valor da hora.
+    // custoDobra é devolvido POR UNIDADE (o setup, que é 1× por item, é diluído nas peças)
+    // pra caber no modelo subtotalTotal = subtotalUnit × qtd.
+    const valorHoraDobra = parseFloat(document.getElementById('valorHoraDobra')?.value)||0;
+    const seg = it.segPorDobraItem||0;
+    const setup = it.setupSegItem||0;
+    const q = it.qtd||0;
+    const tempoTotalSeg = setup + (it.dobras||0) * seg * q;   // item inteiro
+    const custoItemTotal = (tempoTotalSeg/3600) * valorHoraDobra;
+    custoDobra = q>0 ? custoItemTotal/q : custoItemTotal;
+  } else {
+    custoDobra = (it.dobras||0) * custoDobraUnit;
+  }
   const subtotalUnit = custoMaterial + custoCorte + custoDobra + (it.custoAdicional||0);
   const subtotalTotal = subtotalUnit * (it.qtd||0);
   return {peso, pesoLiquido, areaEncaixe, custoMaterial, tempoCorte, custoCorte, custoDobra, subtotalUnit, subtotalTotal, precoKg: thick.preco||0};
@@ -2295,7 +2347,13 @@ function renderItems(){
         ${(it.bboxC||0)>0 ? `<div style="font-size:10px; color:var(--text-dim); margin-top:2px;">peça: ${Math.round(it.bboxC)}×${Math.round(it.bboxL)}mm</div>` : ''}
       </td>
       <td><input type="number" data-idx="${idx}" data-f="perimetro" value="${it.perimetro.toFixed(3)}" step="0.01"></td>
-      <td><input type="number" data-idx="${idx}" data-f="dobras" value="${it.dobras}" step="1"></td>
+      <td>
+        <input type="number" data-idx="${idx}" data-f="dobras" value="${it.dobras}" step="1">
+        ${it.dobraTempo ? `<div style="font-size:10px; color:var(--text-dim); margin-top:3px; display:flex; gap:3px; align-items:center; flex-wrap:wrap;">
+          <input type="number" data-idx="${idx}" data-f="segPorDobraItem" value="${it.segPorDobraItem||0}" step="1" title="segundos por dobra (estimado)" style="width:48px;">s/dob
+          <button type="button" class="reest" data-reest="${idx}" title="reestimar o tempo por dobra" style="cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--accent); border-radius:4px; padding:0 5px; line-height:1.5;">⟳</button>
+        </div>` : ''}
+      </td>
       <td class="calc" data-out="peso">-</td>
       <td class="calc" data-out="custoMaterial">-</td>
       <td class="calc" data-out="custoCorte">-</td>
@@ -2341,6 +2399,15 @@ function renderItems(){
   itemsBody.querySelectorAll('[data-rm]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       items.splice(+btn.dataset.rm, 1);
+      renderItems();
+    });
+  });
+  itemsBody.querySelectorAll('[data-reest]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = +btn.dataset.reest;
+      const it = items[idx];
+      it.segPorDobraItem = estimarSegPorDobra(it.bendsList||[], it.espessura);
+      it.setupSegItem = parseFloat(document.getElementById('setupDobraSeg')?.value)||0;
       renderItems();
     });
   });
@@ -2486,6 +2553,114 @@ document.getElementById('addManualBtn').addEventListener('click', ()=>{
   });
   renderItems();
 });
+
+/* ============================================================
+   DOBRA A PARTIR DE PDF (planificação / desenho técnico)
+   Lê o texto do PDF, conta as dobras ("PARA CIMA/BAIXO Nº°"),
+   detecta a espessura e estima o tempo por dobra.
+   ============================================================ */
+if (window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// "PARA CIMA 90°", "PARA BAIXO 135", "DOBRA PARA CIMA  90 °" etc.
+const BEND_RE = /PARA\s+(CIMA|BAIXO)[^0-9\-]{0,12}(\d{1,3}(?:[.,]\d+)?)?\s*°?/gi;
+// espessura: "ESP 2mm", "ESPESSURA: 3,0 mm", "CHAPA #1.5", "#2"
+const ESP_RE  = /(?:ESP(?:ESSURA)?|CHAPA|#)\s*[:=]?\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:mm)?/i;
+
+function estimarSegPorDobra(bends, espessura){
+  const base   = parseFloat(document.getElementById('hBaseDobra')?.value)||0;
+  const vira   = parseFloat(document.getElementById('hViradaDobra')?.value)||0;
+  const angExt = parseFloat(document.getElementById('hAnguloDobra')?.value)||0;
+  const espRef = parseFloat(document.getElementById('hEspRefDobra')?.value)||0;
+  const espFat = parseFloat(document.getElementById('hEspFatorDobra')?.value)||0;
+  const espExtra = Math.max(0, (espessura||0) - espRef) * espFat;
+  if (!bends || !bends.length) return Math.round(base + espExtra);
+  let total = 0, prevDir = null;
+  bends.forEach(b=>{
+    let s = base + espExtra;
+    if (prevDir && b.dir && b.dir !== prevDir) s += vira;            // virou a peça na prensa
+    if (Math.abs((b.angulo||90) - 90) > 1) s += angExt;             // ângulo diferente de 90°
+    total += s;
+    if (b.dir) prevDir = b.dir;
+  });
+  return Math.round(total / bends.length);
+}
+
+async function extrairDobrasPDF(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let texto = '';
+  for (let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    texto += ' ' + content.items.map(i=>i.str).join(' ');
+  }
+  const bends = [];
+  let m; BEND_RE.lastIndex = 0;
+  while ((m = BEND_RE.exec(texto)) !== null){
+    bends.push({
+      dir: m[1].toUpperCase()==='CIMA' ? 'CIMA' : 'BAIXO',
+      angulo: m[2] ? parseFloat(m[2].replace(',','.')) : 90
+    });
+  }
+  const espM = texto.match(ESP_RE);
+  const espessura = espM ? parseFloat(espM[1].replace(',','.')) : null;
+  return { bends, espessura };
+}
+
+function espessuraMaisProxima(nome, alvo){
+  const mat = materials.find(m=>m.nome===nome) || materials[0];
+  if (!mat || !mat.thicknesses.length) return alvo || 1;
+  if (!alvo) return mat.thicknesses[0].esp;
+  let best = mat.thicknesses[0];
+  mat.thicknesses.forEach(t=>{ if (Math.abs(t.esp-alvo) < Math.abs(best.esp-alvo)) best = t; });
+  return best.esp;
+}
+
+async function handleBendPDFs(fileList){
+  const arr = Array.from(fileList).filter(f=> f.type==='application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+  if (!arr.length) return;
+  if (!window.pdfjsLib){ alert('A biblioteca de leitura de PDF não carregou (precisa de internet na primeira vez). Tente novamente com conexão.'); return; }
+  const matNome = materials[0] ? materials[0].nome : '';
+  const setup = parseFloat(document.getElementById('setupDobraSeg')?.value)||0;
+  for (const file of arr){
+    let res;
+    try{ res = await extrairDobrasPDF(file); }
+    catch(err){ res = {bends:[], espessura:null}; }
+    const espessura = espessuraMaisProxima(matNome, res.espessura);
+    const seg = estimarSegPorDobra(res.bends, res.espessura || espessura);
+    items.push({
+      id: nextId++,
+      fileName: file.name.replace(/\.pdf$/i,''),
+      material: matNome,
+      espessura,
+      qtd: 1,
+      area: 0, perimetro: 0, bboxC: 0, bboxL: 0, furos: 0,
+      dobras: res.bends.length,
+      dobraTempo: true,
+      segPorDobraItem: seg,
+      setupSegItem: setup,
+      bendsList: res.bends,
+      custoAdicional: 0,
+      clienteFornece: false,
+      estimativa: false
+    });
+  }
+  renderItems();
+  const semDobra = arr.length && items.slice(-arr.length).some(it=> it.dobras===0);
+  if (semDobra) alert('Um ou mais PDFs não tiveram dobras reconhecidas automaticamente. Confira o campo "Dobras" e o tempo por dobra desses itens (dá pra editar na tabela).');
+}
+
+const dropzoneDobra = document.getElementById('dropzoneDobra');
+const fileInputDobra = document.getElementById('fileInputDobra');
+if (dropzoneDobra && fileInputDobra){
+  dropzoneDobra.addEventListener('click', ()=> fileInputDobra.click());
+  dropzoneDobra.addEventListener('dragover', e=>{ e.preventDefault(); dropzoneDobra.classList.add('drag'); });
+  dropzoneDobra.addEventListener('dragleave', ()=> dropzoneDobra.classList.remove('drag'));
+  dropzoneDobra.addEventListener('drop', e=>{ e.preventDefault(); dropzoneDobra.classList.remove('drag'); handleBendPDFs(e.dataTransfer.files); });
+  fileInputDobra.addEventListener('change', ()=>{ handleBendPDFs(fileInputDobra.files); fileInputDobra.value=''; });
+}
 
 /* ============================================================
    LOGO E DADOS DA EMPRESA (LETTERHEAD DE IMPRESSÃO)
@@ -3091,6 +3266,8 @@ function buildSnapshot(){
       fileName: it.fileName, material: it.material, espessura: it.espessura,
       qtd: it.qtd, area: it.area, perimetro: it.perimetro, furos: it.furos||0, dobras: it.dobras,
       bboxC: it.bboxC||0, bboxL: it.bboxL||0,
+      dobraTempo: !!it.dobraTempo, segPorDobraItem: it.segPorDobraItem||0, setupSegItem: it.setupSegItem||0,
+      bendsList: it.bendsList || null,
       clienteFornece: !!it.clienteFornece, estimativa: !!it.estimativa,
       geometry: it.geometry || null,
       peso: c.peso, custoMaterial: c.custoMaterial, custoCorte: c.custoCorte,
@@ -3197,6 +3374,8 @@ function openSaved(i){
     id: nextId++, fileName: r.fileName, material: r.material, espessura: r.espessura,
     qtd: r.qtd, area: r.area, perimetro: r.perimetro, dobras: r.dobras,
     bboxC: r.bboxC||0, bboxL: r.bboxL||0,
+    dobraTempo: !!r.dobraTempo, segPorDobraItem: r.segPorDobraItem||0, setupSegItem: r.setupSegItem||0,
+    bendsList: r.bendsList || null,
     clienteFornece: r.clienteFornece, custoAdicional: 0, estimativa: r.estimativa, geometry: r.geometry
   }));
   if (document.getElementById('espacoPecas') && o.espacoPecas !== undefined) document.getElementById('espacoPecas').value = o.espacoPecas;
@@ -4230,7 +4409,11 @@ function criarPedidoFromSaved(o, tipo, dadosFiscais){
   const eficiencia = (parseFloat(document.getElementById('eficienciaMaquina').value)||100) / 100;
   const tempoTeorico = tipo === 'LASER'
     ? (o.itens.reduce((s,it)=> s + (it.tempoCorte||0) * (it.qtd||0), 0) / 60)
-    : (o.itens.reduce((s,it)=> s + (it.dobras||0) * (it.qtd||0), 0) * segPorDobra / 3600);
+    : (o.itens.reduce((s,it)=>{
+        // itens lidos de PDF têm tempo por dobra próprio + setup; os demais usam o tempo global
+        if (it.dobraTempo) return s + (it.setupSegItem||0) + (it.dobras||0)*(it.segPorDobraItem||0)*(it.qtd||0);
+        return s + (it.dobras||0)*(it.qtd||0)*segPorDobra;
+      }, 0) / 3600);
   const tempoEstimadoH = eficiencia > 0 ? (tempoTeorico / eficiencia) : tempoTeorico;
   const valorFaturar = tipo === 'LASER'
     ? (o.materialTotal||0) + (o.corteTotal||0) + (o.fixo||0)
@@ -4747,11 +4930,13 @@ function renderFiscalStats(){
   const pendentes = all.filter(p=> !p.faturado);
   const faturados = all.filter(p=> p.faturado);
   const aguardandoEnvio = all.filter(p=> p.faturado && p.envioFisico && !p.envioFisicoFeito);
+  const notasNaoEnviadas = faturados.filter(p=> !p.notaEnviada);
   const valorPendente = pendentes.reduce((s,p)=> s + (p.valorFaturar||0), 0);
   document.getElementById('fiscalStatsBar').innerHTML = `
     <div class="stat-card"><div class="stat-num">${all.length}</div><div class="stat-label">Concluídos no total</div></div>
     <div class="stat-card warn"><div class="stat-num">${pendentes.length}</div><div class="stat-label">Pendentes de faturar</div></div>
     <div class="stat-card"><div class="stat-num">${faturados.length}</div><div class="stat-label">Já faturados</div></div>
+    <div class="stat-card warn"><div class="stat-num">${notasNaoEnviadas.length}</div><div class="stat-label">Notas não enviadas</div></div>
     <div class="stat-card warn"><div class="stat-num">${aguardandoEnvio.length}</div><div class="stat-label">Aguardando envio físico</div></div>
     <div class="stat-card"><div class="stat-num">${fmt(valorPendente)}</div><div class="stat-label">Valor pendente de faturar</div></div>
   `;
@@ -5048,6 +5233,7 @@ function renderFiscal(){
     if (tipoF && tipoF !== 'nenhum' && p.tipoFiscal !== tipoF) return false;
     if (statusF === 'pendente' && p.faturado) return false;
     if (statusF === 'faturado' && !p.faturado) return false;
+    if (statusF === 'faturadoNaoEnviado' && !(p.faturado && !p.notaEnviada)) return false;
     if (statusF === 'aguardandoEnvio' && !(p.faturado && p.envioFisico && !p.envioFisicoFeito)) return false;
     return true;
   });
@@ -5104,12 +5290,15 @@ function renderFiscal(){
     const tipoTxt = tipos.join(' + ');
     const todosLiberados = ps.every(p=> p.liberadoFiscal);
     const todosFaturados = ps.every(p=> p.faturado);
+    const todosEnviados = todosFaturados && ps.every(p=> p.notaEnviada);
+    const dataEnvio = (ps.find(p=> p.notaEnviada && p.dataNotaEnviada) || {}).dataNotaEnviada || '';
     const idsAttr = ps.map(p=> p.id).join(',');
     const sub = ps.map(p=> `${p.tipo} Nº ${p.numero}`).join(' + ') +
       (ps[0].orcamentoNumero ? ` · orçamento nº ${ps[0].orcamentoNumero}` : ' · pedido manual');
 
     let badge;
-    if (todosFaturados) badge = '<span class="fr-badge fat">Faturado</span>';
+    if (todosEnviados) badge = '<span class="fr-badge env">✓ Nota enviada</span>';
+    else if (todosFaturados) badge = '<span class="fr-badge fat">Faturado</span>';
     else if (todosLiberados) badge = '<span class="fr-badge lib">Liberado</span>';
     else badge = '<span class="fr-badge pend">Conferir</span>';
 
@@ -5130,13 +5319,16 @@ function renderFiscal(){
           : '');
 
     return `
-    <div class="fiscal-grupo${todosLiberados?' liberado':''}${todosFaturados?' faturado':''}" data-grupo="${g.chave}" style="${todosFaturados?'opacity:0.6;':''}">
+    <div class="fiscal-grupo${todosLiberados?' liberado':''}${todosFaturados?' faturado':''}${todosEnviados?' nota-enviada':''}" data-grupo="${g.chave}" style="${(todosFaturados && !todosEnviados)?'opacity:0.6;':''}">
       <div class="fiscal-resumo" data-toggle-grupo="${g.chave}">
         <span class="fr-expand">+</span>
         <div class="fr-cliente">${cliente}<span class="fr-sub">${sub}</span></div>
         <div class="fr-tipo">${tipoTxt}</div>
         <div class="fr-valor">${fmt(valorTotal)}</div>
         ${badge}
+        ${todosFaturados ? `<div class="fr-enviar no-print">
+          <button class="btn small enviada-btn${todosEnviados?' on':''}" data-nota-enviada="${idsAttr}" title="${todosEnviados?('Enviada em '+dataEnvio+' — clique para desmarcar'):'Marcar esta nota como enviada ao cliente'}">${todosEnviados?('✓ Enviada'+(dataEnvio?(' '+dataEnvio):'')):'Marcar nota enviada'}</button>
+        </div>` : ''}
         <div class="fr-liberar no-print">
           <button class="btn small liberar-btn${todosLiberados?' on':''}" data-liberar-grupo="${idsAttr}">${todosLiberados?'✓ Liberado':'Liberar'}</button>
         </div>
@@ -5199,6 +5391,7 @@ function renderFiscal(){
   wrap.querySelectorAll('[data-toggle-grupo]').forEach(res=>{
     res.addEventListener('click', (e)=>{
       if (e.target.closest('[data-liberar-grupo]')) return;
+      if (e.target.closest('[data-nota-enviada]')) return;
       const chave = res.dataset.toggleGrupo;
       const corpo = wrap.querySelector(`[data-corpo-grupo="${chave}"]`);
       const sinal = res.querySelector('.fr-expand');
@@ -5222,6 +5415,22 @@ function renderFiscal(){
       const liberarAgora = !doGrupo.every(p=> p.liberadoFiscal);
       doGrupo.forEach(p=> p.liberadoFiscal = liberarAgora);
       savePedidos(all);
+      renderFiscal();
+    });
+  });
+
+  // Botão "Nota enviada" — alterna notaEnviada em todos os pedidos do grupo (fica azul)
+  wrap.querySelectorAll('[data-nota-enviada]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const ids = btn.dataset.notaEnviada.split(',').map(Number);
+      const all = loadPedidos();
+      const doGrupo = all.filter(p=> ids.includes(p.id));
+      const marcarAgora = !doGrupo.every(p=> p.notaEnviada);
+      const hoje = todayBR();
+      doGrupo.forEach(p=>{ p.notaEnviada = marcarAgora; p.dataNotaEnviada = marcarAgora ? hoje : ''; });
+      savePedidos(all);
+      salvarAlteracoesPendentes();
       renderFiscal();
     });
   });
@@ -5415,6 +5624,20 @@ document.getElementById('fiscalBulkAplicarBtn').addEventListener('click', ()=>{
   fiscalSelecionados.clear();
   renderFiscal();
   alert('Pedidos dados como faturados com sucesso.');
+});
+document.getElementById('fiscalBulkEnviadaBtn').addEventListener('click', ()=>{
+  if (fiscalSelecionados.size === 0){ alert('Selecione ao menos um pedido.'); return; }
+  if (!confirm(`Marcar ${fiscalSelecionados.size} pedido(s) selecionado(s) como NOTA ENVIADA? Eles ficam azuis e saem da contagem de "não enviadas".`)) return;
+  const all = loadPedidos();
+  const hoje = todayBR();
+  all.forEach(p=>{
+    if (fiscalSelecionados.has(p.id)){ p.notaEnviada = true; p.dataNotaEnviada = hoje; }
+  });
+  savePedidos(all);
+  salvarAlteracoesPendentes();
+  fiscalSelecionados.clear();
+  renderFiscal();
+  alert('Notas marcadas como enviadas com sucesso.');
 });
 document.getElementById('pedidoFiltroStatus').addEventListener('change', renderPedidos);
 
