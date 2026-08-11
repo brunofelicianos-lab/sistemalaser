@@ -1015,6 +1015,7 @@
       <h2><span class="n">·</span>Máquinas</h2>
       <div id="maquinasList"></div>
       <button class="btn secondary small" id="addMaquinaBtn" style="margin-top:6px;">+ máquina</button>
+      <div class="footnote">O campo "R$/hora" de cada máquina é o valor cobrado pelo tempo dessa máquina específica na "Finalização da produção" (tela de OP). Deixe em branco pra usar o padrão da categoria dela (mostrado como sugestão no campo) — corte usa o valor da hora-máquina do Orçamento, dobra R$300/h, prensa R$100/h.</div>
       <div class="field" style="max-width:260px; margin-top:14px;">
         <label>Capacidade diária por máquina (horas)</label>
         <input type="number" id="capacidadeDiariaH" value="9" step="0.5" min="0.5">
@@ -2988,6 +2989,7 @@ let funcionariosCache = [];
 let epiMovCache = [];
 let _epiSub = 'estoque';
 let maquinasCacheArr = null; // null = ainda não chegou do Firestore (usa DEFAULT_MAQUINAS por enquanto)
+let valorHoraMaquinasCache = {}; // { "NOME DA MÁQUINA": valorPorHora (R$) } — configurável por máquina (aba Calendário)
 let firestoreOnlineOk = true;
 const _lastDocIds = {};
 
@@ -3350,6 +3352,7 @@ db.collection('config').doc('maquinas').onSnapshot(doc=>{
   } else if (maquinasCacheArr === null){
     maquinasCacheArr = DEFAULT_MAQUINAS.slice();
   }
+  valorHoraMaquinasCache = (doc.exists && doc.data().valorHora && typeof doc.data().valorHora === 'object') ? doc.data().valorHora : {};
   refreshCurrentView();
 }, e=> console.error('Erro no listener de máquinas:', e));
 
@@ -4479,7 +4482,36 @@ function loadMaquinas(){
 }
 function saveMaquinas(list){
   maquinasCacheArr = list;
-  db.collection('config').doc('maquinas').set({lista:list}).catch(e=> console.error('Erro ao salvar máquinas:', e));
+  // merge:true pra não apagar o valorHora (valor/hora por máquina) salvo no mesmo documento.
+  db.collection('config').doc('maquinas').set({lista:list}, {merge:true}).catch(e=> console.error('Erro ao salvar máquinas:', e));
+}
+// valor por hora (R$) CONFIGURADO especificamente pra essa máquina (aba Calendário, painel
+// "Máquinas") — devolve null se essa máquina não tem valor próprio configurado (campo em
+// branco), pra quem chamar decidir o padrão certo pra categoria (corte/dobra/prensa).
+function valorHoraDaMaquina(maquina){
+  if (!maquina) return null;
+  const v = valorHoraMaquinasCache[maquina];
+  if (v !== undefined && v !== null && v !== '' && !isNaN(parseFloat(v))) return parseFloat(v);
+  return null;
+}
+// valor "efetivo" que vai valer pra essa máquina — o configurado, ou o padrão da categoria
+// dela (corte usa o valor do Orçamento; dobra R$300/h; prensa R$100/h — os mesmos valores
+// fixos que já eram usados antes dessa configuração por máquina existir). Só pra EXIBIR na
+// tela (placeholder do campo); o cálculo de verdade usa a lógica em calcularLinhaProducao.
+function valorHoraEfetivaDaMaquina(maquina){
+  const configurado = valorHoraDaMaquina(maquina);
+  if (configurado != null) return configurado;
+  const tipo = tipoDeMaquina(maquina);
+  if (tipo === 'corte') return (parseFloat(document.getElementById('custoMin')?.value)||0) * 60;
+  if (tipo === 'dobra') return 300;
+  if (tipo === 'prensa') return 100;
+  return 0;
+}
+function salvarValorHoraMaquina(maquina, valor){
+  if (!maquina) return;
+  if (valor === '' || valor === null || valor === undefined){ delete valorHoraMaquinasCache[maquina]; }
+  else { valorHoraMaquinasCache[maquina] = parseFloat(valor)||0; }
+  db.collection('config').doc('maquinas').set({ valorHora: valorHoraMaquinasCache }, {merge:true}).catch(e=> console.error('Erro ao salvar valor/hora da máquina:', e));
 }
 
 /* ============================================================
@@ -4500,8 +4532,18 @@ let _opEtapasTimer = null;
 // grupoChapa (opcional): { material, espessura, qtdChapas } — quando preenchido, essa etapa
 // vira também um "grupo de chapa" com tempo/valor medido individualmente (ex.: "Carbono 3mm x2").
 function novaEtapaProducao(maquina, grupoChapa){
+  const id = gerarIdUnico();
   return {
-    id: gerarIdUnico(), maquina: maquina || '', status: 'pendente', operador: '', logs: [], tempoAtivoSeg: 0,
+    id, maquina: maquina || '', status: 'pendente', operador: '', logs: [], tempoAtivoSeg: 0,
+    // loteId: identifica a QUE LEVA de chapa essa etapa pertence, pra decidir se ela espera
+    // outra etapa terminar antes de liberar (mesmo loteId = sequencial, ex.: Laser depois
+    // Dobra da MESMA leva) ou se roda independente. Por padrão cada etapa nova é sua PRÓPRIA
+    // leva (loteId = seu próprio id) — só vira sequencial de propósito quando explicitamente
+    // marcada como "continuação da etapa anterior" na hora de adicionar (ver opEtapaAddBtn).
+    // Antes disso existir, o agrupamento era inferido batendo material+espessura+qtd, o que
+    // juntava por engano etapas iguais só por coincidência (mesmo material/espessura, tamanho
+    // de chapa diferente) — ver chaveGrupoChapa() pro fallback usado em etapas antigas.
+    loteId: (grupoChapa && grupoChapa.loteId) || id,
     material: (grupoChapa && grupoChapa.material) || '',
     espessura: (grupoChapa && grupoChapa.espessura) || '',
     qtdChapas: (grupoChapa && grupoChapa.qtdChapas) || '',
@@ -4599,15 +4641,23 @@ function sincronizarLinhasProducaoDeEtapas(p){
   return mudou;
 }
 
-// chave que identifica a "rota" de um grupo de chapa dentro do pedido: etapas com a mesma
-// chave são passos sequenciais da MESMA remessa de chapas (ex.: corte depois dobra da mesma
-// leva de Carbono 3mm). Etapas sem material/espessura/qtd informados caem todas no balde
-// "__semgrupo__" — é o caso simples de um pedido sem separação por chapa (ex.: Laser -> Dobra
-// -> Prensa em sequência, sem grupo definido), que continua 100% sequencial como sempre foi.
-// Grupos DIFERENTES (chave diferente) são independentes um do outro e podem rodar ao mesmo
-// tempo, inclusive em máquinas diferentes (ex.: Carbono na Laser 1 e Alumínio na Laser 2 juntos).
+// chave que identifica a "leva" (lote) de chapa dentro do pedido: etapas com a mesma chave
+// são passos sequenciais da MESMA remessa de chapas (ex.: corte depois dobra da mesma leva de
+// Carbono 3mm) — uma só libera depois que a anterior do mesmo lote termina. Etapas de lotes
+// DIFERENTES são independentes e podem rodar ao mesmo tempo, inclusive em máquinas diferentes.
+//
+// A partir de 11/08/2026 isso é decidido pelo campo `loteId` de cada etapa (ver
+// novaEtapaProducao): por padrão CADA etapa nova é seu próprio lote (sempre independente),
+// e só vira sequencial de propósito quando marcada como "continuação da etapa anterior" ao
+// ser adicionada — antes disso, o sistema inferia o agrupamento batendo material+espessura+
+// qtd, o que juntava por engano etapas de pedidos diferentes que só coincidiam nesses campos
+// (ex.: mesmo material/espessura, tamanho de chapa diferente). O fallback abaixo (por
+// material/espessura/qtd) só entra em ação pra etapas ANTIGAS, criadas antes do loteId
+// existir — pra não quebrar sequências que já estavam em andamento.
 function chaveGrupoChapa(et){
-  if (et && et.material) return et.material+'|'+(et.espessura||'')+'|'+(et.qtdChapas||'')+'|'+(et.clienteForneceMaterial?1:0);
+  if (!et) return '__semgrupo__';
+  if (et.loteId) return 'lote:'+et.loteId;
+  if (et.material) return et.material+'|'+(et.espessura||'')+'|'+(et.qtdChapas||'')+'|'+(et.clienteForneceMaterial?1:0);
   return '__semgrupo__';
 }
 // todas as etapas do pedido que pertencem à mesma rota (mesmo grupo de chapa) dessa etapa,
@@ -7132,14 +7182,24 @@ function calcularLinhaProducao(l){
   const mat = materials.find(m=>m.nome===l.material) || materials[0] || {densidade:0, thicknesses:[]};
   const thick = getThicknessEntry(l.material, l.espessura) || {preco:0};
   const peso = areaChapaM2(l) * ((l.espessura||0)/1000) * (mat.densidade||0);
-  const custoMin = parseFloat(document.getElementById('custoMin').value)||0;
   const custoDobraUnit = parseFloat(document.getElementById('custoDobra').value)||0;
+  const custoMinGlobal = parseFloat(document.getElementById('custoMin').value)||0;
+  // valor/hora do corte/dobra/prensa: usa o valor CONFIGURADO especificamente pra máquina que
+  // gerou essa linha (l.origemEtapaMaquina, quando veio de uma etapa da OP), só pra categoria
+  // que bate com o TIPO dessa máquina — senão cai no padrão de sempre (corte = valor do
+  // Orçamento, dobra = R$300/h, prensa = R$100/h). Linha sem máquina de origem (adicionada
+  // manualmente) sempre usa o padrão, igual sempre foi.
+  const tipoOrigem = l.origemEtapaMaquina ? tipoDeMaquina(l.origemEtapaMaquina) : '';
+  const overrideHora = l.origemEtapaMaquina ? valorHoraDaMaquina(l.origemEtapaMaquina) : null;
+  const valorHoraCorte = (tipoOrigem === 'corte' && overrideHora != null) ? overrideHora : custoMinGlobal*60;
+  const valorHoraDobraT = (tipoOrigem === 'dobra' && overrideHora != null) ? overrideHora : 300;
+  const valorHoraPrensaT = (tipoOrigem === 'prensa' && overrideHora != null) ? overrideHora : 100;
   // material do cliente: não cobra o material (peso fica só informativo), só a mão de obra/máquina
   const valorMaterial = l.clienteForneceMaterial ? 0 : peso * (thick.preco||0);
-  const valorCorte = (l.horasCorte||0) * custoMin * 60;
+  const valorCorte = (l.horasCorte||0) * valorHoraCorte;
   const valorDobra = (l.qtdDobras||0) * custoDobraUnit;
-  const valorDobraTempo = (l.horasDobra||0) * 300;
-  const valorPrensaTempo = (l.horasPrensa||0) * 100;
+  const valorDobraTempo = (l.horasDobra||0) * valorHoraDobraT;
+  const valorPrensaTempo = (l.horasPrensa||0) * valorHoraPrensaT;
   return { peso, valorMaterial, valorCorte, valorDobra, valorDobraTempo, valorPrensaTempo, valor: valorMaterial + valorCorte + valorDobra + valorDobraTempo + valorPrensaTempo };
 }
 
@@ -7209,7 +7269,7 @@ function renderOP(p){
 
     <div class="op-valores-bloco no-print">
     <h2><span class="n">·</span>Etapas de produção (sequência de máquinas)</h2>
-    <div class="footnote">Monte a sequência de máquinas que esse pedido vai passar. Dentro do MESMO grupo de chapa (mesmo material/espessura/qtd), cada etapa só aparece pro operador quando a anterior daquele grupo for encerrada — mas grupos de chapa diferentes do mesmo pedido rodam de forma independente, então dá pra mandar, por exemplo, a chapa de Carbono pra Laser 1 e a de Alumínio pra Laser 2 ao mesmo tempo. O tempo é gravado sozinho pelo Play/Pausa/Encerrar na aba <b>Operação</b> — aqui você só monta a sequência e acompanha o andamento. Quando uma etapa é encerrada, o tempo medido já vira uma linha com hora e valor lá embaixo em "Finalização da produção" (material/dimensão pra custo de chapa continuam manuais). Quando <b>todas</b> as etapas terminarem, o pedido fica roxo na lista de Pedidos.</div>
+    <div class="footnote">Monte a sequência de máquinas que esse pedido vai passar. <b>Cada etapa que você adiciona roda separada/independente por padrão</b> — mesmo que o material e a espessura sejam iguais aos de outra etapa (útil pra chapas do mesmo material mas de tamanhos diferentes). Se quiser mesmo uma sequência de propósito (ex.: Dobra só pode começar depois que a Laser da MESMA leva de chapa terminar), marque "continuação da etapa anterior (mesma leva)" na hora de adicionar essa etapa. O tempo é gravado sozinho pelo Play/Pausa/Encerrar na aba <b>Operação</b> — aqui você só monta a sequência e acompanha o andamento. Quando uma etapa é encerrada, o tempo medido já vira uma linha com hora e valor lá embaixo em "Finalização da produção" (material/dimensão pra custo de chapa continuam manuais). Quando <b>todas</b> as etapas terminarem, o pedido fica roxo na lista de Pedidos.</div>
     <datalist id="opEspessurasSugeridas">${espessurasSugeridasHtml()}</datalist>
     <div id="opEtapasWrap" style="margin-top:10px;"></div>
     <div class="row" style="margin-top:10px; align-items:flex-end; flex-wrap:wrap;">
@@ -7236,9 +7296,12 @@ function renderOP(p){
       <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; color:var(--text); margin:0 0 8px;">
         <input type="checkbox" id="opEtapaNovoClienteForneceu" style="width:auto;"> Material do cliente
       </label>
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; color:var(--text); margin:0 0 8px;" title="Marque só se essa etapa tem que esperar a etapa anterior (a de cima, a última da lista) terminar antes de liberar — ex.: Dobra da MESMA leva que acabou de ser cortada na Laser. Sem marcar, essa etapa roda separada, independente das outras.">
+        <input type="checkbox" id="opEtapaNovaContinuacao" style="width:auto;" ${p.etapas && p.etapas.length ? '' : 'disabled'}> Continuação da etapa anterior (mesma leva)
+      </label>
       <button class="btn secondary small" id="opEtapaAddBtn">+ adicionar etapa</button>
     </div>
-    <div class="footnote">Preencha material/espessura/qtd quando quiser medir tempo e valor daquele grupo de chapa separado (ex.: 2 chapas de 3mm numa etapa, 5 chapas de 4,76mm em outra, ambas na mesma máquina). Deixe em branco se não precisar dessa divisão.</div>
+    <div class="footnote">Preencha material/espessura/qtd quando quiser medir tempo e valor daquele grupo de chapa separado (ex.: 2 chapas de 3mm numa etapa, 5 chapas de 4,76mm em outra, ambas na mesma máquina). Deixe em branco se não precisar dessa divisão. Cada etapa nova roda independente das outras por padrão — marque "continuação da etapa anterior" só quando essa etapa tiver que esperar a etapa anterior (a última que você adicionou) terminar, por ser a mesma leva de chapa.</div>
     </div>
 
     ${itensExtra}
@@ -7402,14 +7465,22 @@ function renderOP(p){
     const codigoPeca = document.getElementById('opEtapaNovoCodigo').value;
     const qtdChapas = document.getElementById('opEtapaNovaQtd').value;
     const clienteForneceMaterial = document.getElementById('opEtapaNovoClienteForneceu').checked;
+    const continuacaoEl = document.getElementById('opEtapaNovaContinuacao');
+    const continuacao = !!(continuacaoEl && continuacaoEl.checked);
     if (!Array.isArray(p.etapas)) p.etapas = [];
-    p.etapas.push(novaEtapaProducao(maq, { material, espessura, codigoPeca, qtdChapas, clienteForneceMaterial }));
+    const etapaAnterior = p.etapas.length ? p.etapas[p.etapas.length-1] : null;
+    // "continuação da etapa anterior": herda o loteId da última etapa adicionada, pra ficar
+    // sequencial (só libera depois que ela terminar) — sem marcar, cada etapa é seu próprio
+    // lote (independente), mesmo que material/espessura batam com outra etapa por coincidência.
+    const loteId = (continuacao && etapaAnterior) ? (etapaAnterior.loteId || etapaAnterior.id) : undefined;
+    p.etapas.push(novaEtapaProducao(maq, { material, espessura, codigoPeca, qtdChapas, clienteForneceMaterial, loteId }));
     salvarPedidoImediato(p.id);
     document.getElementById('opEtapaNovoMaterial').value = '';
     document.getElementById('opEtapaNovaEspessura').value = '';
     document.getElementById('opEtapaNovoCodigo').value = '';
     document.getElementById('opEtapaNovaQtd').value = '';
     document.getElementById('opEtapaNovoClienteForneceu').checked = false;
+    if (continuacaoEl) continuacaoEl.checked = false;
     renderOPEtapas();
   });
   renderOPEtapas();
@@ -7559,7 +7630,7 @@ function renderOP(p){
           ${dimCellHtml}
           <td>
             <div style="display:flex; gap:2px; align-items:center;">
-              <input type="number" data-oplin="${idx}" data-oplf="corteH" value="${l.corteH!==undefined?l.corteH:''}" min="0" style="width:38px;" placeholder="h" title="horas">:
+              <input type="number" data-oplin="${idx}" data-oplf="corteH" value="${l.corteH!==undefined?l.corteH:''}" min="0" style="width:52px;" placeholder="h" title="horas">:
               <input type="number" data-oplin="${idx}" data-oplf="corteM" value="${l.corteM!==undefined?l.corteM:''}" min="0" max="59" style="width:38px;" placeholder="m" title="minutos">:
               <input type="number" data-oplin="${idx}" data-oplf="corteS" value="${l.corteS!==undefined?l.corteS:''}" min="0" max="59" style="width:38px;" placeholder="s" title="segundos">
             </div>
@@ -7567,14 +7638,14 @@ function renderOP(p){
           <td><input type="number" data-oplin="${idx}" data-oplf="qtdDobras" value="${l.qtdDobras||0}" style="width:60px;"></td>
           <td>
             <div style="display:flex; gap:2px; align-items:center;">
-              <input type="number" data-oplin="${idx}" data-oplf="dobraH" value="${l.dobraH!==undefined?l.dobraH:''}" min="0" style="width:38px;" placeholder="h" title="horas">:
+              <input type="number" data-oplin="${idx}" data-oplf="dobraH" value="${l.dobraH!==undefined?l.dobraH:''}" min="0" style="width:52px;" placeholder="h" title="horas">:
               <input type="number" data-oplin="${idx}" data-oplf="dobraM" value="${l.dobraM!==undefined?l.dobraM:''}" min="0" max="59" style="width:38px;" placeholder="m" title="minutos">:
               <input type="number" data-oplin="${idx}" data-oplf="dobraS" value="${l.dobraS!==undefined?l.dobraS:''}" min="0" max="59" style="width:38px;" placeholder="s" title="segundos">
             </div>
           </td>
           <td>
             <div style="display:flex; gap:2px; align-items:center;">
-              <input type="number" data-oplin="${idx}" data-oplf="prensaH" value="${l.prensaH!==undefined?l.prensaH:''}" min="0" style="width:38px;" placeholder="h" title="horas">:
+              <input type="number" data-oplin="${idx}" data-oplf="prensaH" value="${l.prensaH!==undefined?l.prensaH:''}" min="0" style="width:52px;" placeholder="h" title="horas">:
               <input type="number" data-oplin="${idx}" data-oplf="prensaM" value="${l.prensaM!==undefined?l.prensaM:''}" min="0" max="59" style="width:38px;" placeholder="m" title="minutos">:
               <input type="number" data-oplin="${idx}" data-oplf="prensaS" value="${l.prensaS!==undefined?l.prensaS:''}" min="0" max="59" style="width:38px;" placeholder="s" title="segundos">
             </div>
@@ -8073,18 +8144,38 @@ document.getElementById('etqBaixarPngBtn').addEventListener('click', baixarEtiqu
 function renderMaquinas(){
   const wrap = document.getElementById('maquinasList');
   const maquinas = loadMaquinas();
-  wrap.innerHTML = maquinas.map((m,i)=>`
+  wrap.innerHTML = `
+    <div class="row" style="margin-bottom:2px; font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.4px;">
+      <div style="flex:1;">Máquina</div><div style="width:110px;">R$/hora</div><div style="width:22px;"></div>
+    </div>` + maquinas.map((m,i)=>`
     <div class="row" style="margin-bottom:6px; align-items:center;">
       <div class="field" style="flex:1; margin-bottom:0;"><input type="text" data-mi="${i}" value="${m}"></div>
+      <div class="field" style="width:110px; margin-bottom:0;"><input type="number" min="0" step="5" data-mvi="${i}" value="${valorHoraMaquinasCache[m]!=null?valorHoraMaquinasCache[m]:''}" placeholder="${valorHoraEfetivaDaMaquina(m).toFixed(0)}" title="Valor da hora dessa máquina específica. Em branco = usa o padrão da categoria (corte/dobra/prensa), mostrado como sugestão."></div>
       <button class="iconbtn" data-rmmaq="${i}" title="remover" style="margin-top:0;">×</button>
     </div>`).join('');
-  wrap.querySelectorAll('input').forEach(inp=>{
+  wrap.querySelectorAll('[data-mi]').forEach(inp=>{
     inp.addEventListener('input', ()=>{
       const m = loadMaquinas();
-      m[+inp.dataset.mi] = inp.value;
+      const nomeAntigo = m[+inp.dataset.mi];
+      const nomeNovo = inp.value;
+      m[+inp.dataset.mi] = nomeNovo;
+      // migra o valor/hora configurado pro nome novo, senão ele "some" (ficaria órfão sob o nome antigo)
+      if (nomeAntigo !== nomeNovo && Object.prototype.hasOwnProperty.call(valorHoraMaquinasCache, nomeAntigo)){
+        const v = valorHoraMaquinasCache[nomeAntigo];
+        delete valorHoraMaquinasCache[nomeAntigo];
+        valorHoraMaquinasCache[nomeNovo] = v;
+      }
       saveMaquinas(m);
+      salvarValorHoraMaquina(nomeNovo, valorHoraMaquinasCache[nomeNovo]);
       populateFilaMaquinaSelect();
       renderGrade5Dias();
+    });
+  });
+  wrap.querySelectorAll('[data-mvi]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const m = loadMaquinas();
+      const nome = m[+inp.dataset.mvi];
+      salvarValorHoraMaquina(nome, inp.value);
     });
   });
   wrap.querySelectorAll('[data-rmmaq]').forEach(btn=>{
