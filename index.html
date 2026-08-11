@@ -3487,7 +3487,7 @@ async function criarUsuarioLogin(){
     authSec = getFirebaseAppSecundario().auth();
     const cred = await authSec.createUserWithEmailAndPassword(email, senha);
     const uid = cred.user.uid;
-    await db.collection('usuarios').doc(uid).set({ nome, email, role: perfil });
+    await db.collection('usuarios').doc(uid).set({ nome, email, role: perfil, empresa: 'lumatri' });
     msgEl.style.color = 'var(--good)';
     msgEl.textContent = 'Usuário "'+nome+'" criado com sucesso.';
     nomeEl.value = ''; emailEl.value = ''; senhaEl.value = '';
@@ -3511,6 +3511,16 @@ function carregarUsuarios(){
   const body = document.getElementById('usuariosBody');
   if (!body || !window.isAdmin) return;
   db.collection('usuarios').get().then(snap=>{
+    // Corrige silenciosamente usuários antigos criados sem o campo "empresa"
+    // (necessário pelas regras do Firestore pra liberar leitura/escrita de
+    // pedidos, clientes, funcionários etc.) — sem isso, o login fica travado
+    // com erro de permissão em quase tudo, mesmo aparecendo normal no login.
+    snap.docs.forEach(doc=>{
+      const d = doc.data() || {};
+      if (!d.empresa){
+        db.collection('usuarios').doc(doc.id).set({ empresa: 'lumatri' }, { merge:true }).catch(()=>{});
+      }
+    });
     body.innerHTML = snap.docs.map(doc=>{
       const d = doc.data() || {};
       const role = d.role || '';
@@ -3528,7 +3538,7 @@ function carregarUsuarios(){
     }).join('') || '<tr><td colspan="3" style="text-align:center; color:var(--text-dim);">Nenhum usuário cadastrado ainda.</td></tr>';
     body.querySelectorAll('[data-perfiluid]').forEach(sel=> sel.addEventListener('change', ()=>{
       const uid = sel.dataset.perfiluid;
-      db.collection('usuarios').doc(uid).set({ role: sel.value }, { merge:true })
+      db.collection('usuarios').doc(uid).set({ role: sel.value, empresa: 'lumatri' }, { merge:true })
         .catch(e=> alert('Não consegui salvar o perfil: '+(e.message||e)));
     }));
   }).catch(e=>{
