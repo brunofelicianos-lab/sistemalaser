@@ -30,7 +30,7 @@
   }
   .wrap{max-width:1180px; margin:0 auto; padding:28px 20px 80px;}
   header.top{
-    display:flex; align-items:baseline; justify-content:space-between;
+    display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;
     border-bottom:2px solid var(--accent); padding-bottom:14px; margin-bottom:22px;
   }
   header.top h1{
@@ -90,7 +90,10 @@
   .btn.secondary:hover{border-color:var(--accent); color:var(--accent);}
   .btn.docs-tem-anexo{background:var(--good); border-color:var(--good); color:#0b2a1d; font-weight:700;}
   .btn.docs-tem-anexo:hover{background:var(--good); border-color:var(--good); color:#0b2a1d; opacity:0.85;}
+  .btn.etq-tem-liberacao{background:#ff8a1e; border-color:#ff8a1e; color:#2a1400; font-weight:700;}
+  .btn.etq-tem-liberacao:hover{background:#ff8a1e; border-color:#ff8a1e; color:#2a1400; opacity:0.85;}
   .btn.small{padding:5px 10px; font-size:11px;}
+  .btn.maquina-tab{padding:18px 22px; font-size:18px; font-weight:800; border-radius:10px; min-height:60px; min-width:150px; text-transform:none; letter-spacing:normal;}
 
   .dropzone{
     border:2px dashed var(--line); border-radius:6px; padding:32px 20px; text-align:center;
@@ -111,10 +114,8 @@
   table.items thead tr:first-child th:last-child{border-top-right-radius:6px;}
   table.items thead th:first-child, table.items thead th:nth-child(2), table.items thead th:nth-child(3){text-align:left;}
   table.items td{padding:5px; border-bottom:1px solid var(--line-soft); text-align:right; white-space:nowrap;}
-  .op-registro-table td{border:1px solid var(--line); height:30px;}
-  .op-registro-table th{border:1px solid var(--line);}
   .op-table thead th{background:#e8e8e8 !important; color:#333 !important;}
-  table.items td:first-child{text-align:left; font-family:var(--sans); max-width:140px; overflow:hidden; text-overflow:ellipsis;}
+  table.items td:first-child{text-align:left; font-family:var(--sans); min-width:200px; max-width:320px; white-space:normal; word-break:break-word; overflow:visible; text-overflow:clip;}
   table.items td:nth-child(2){text-align:left;}
   table.items td:nth-child(3){text-align:left;}
   table.items input, table.items select{width:64px; padding:4px 5px; font-size:11.5px; text-align:right;}
@@ -146,6 +147,16 @@
   }
   .topnav .navbtn:hover{color:var(--text);}
   .topnav .navbtn.active{color:var(--accent); border-bottom-color:var(--accent);}
+  .navbtn .badge-aviso{
+    display:inline-block; min-width:16px; height:16px; padding:0 4px; margin-left:4px;
+    background:var(--brand-red); color:#fff; border-radius:9px; font-size:10px; font-weight:800;
+    line-height:16px; text-align:center; vertical-align:middle;
+  }
+  /* modo operador (kiosk): esconde o menu inteiro, só sobra a tela de Operação */
+  body.modo-operador-travado .topnav{display:none !important;}
+  /* perfil de login "operador" (usuário/senha próprio, criado em Sistema → Usuários): trava
+     SEMPRE nas outras abas, mas mantém o botão Sair pra ele conseguir encerrar o expediente. */
+  body.perfil-operador .topnav .navbtn{display:none !important;}
 
   .modal-overlay{
     position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6);
@@ -224,6 +235,16 @@
   table.items tr.row-concluido td{background:#2fae6e !important; color:#08210f !important; border-color:#1e8a54;}
   table.items tr.row-concluido td:first-child{border-left:4px solid #0f5c34;}
   table.items tr.row-concluido input, table.items tr.row-concluido select{color:#08210f; background:rgba(255,255,255,0.75); border-color:#1e8a54;}
+
+  /* Todas as etapas de produção encerradas, mas ainda não finalizado/enviado pro Fiscal — linha ROXA */
+  table.items tr.row-producao-pronta td{background:#8b5cf6 !important; color:#ffffff !important; border-color:#6d3fd1;}
+  table.items tr.row-producao-pronta td:first-child{border-left:4px solid #5527ad;}
+  table.items tr.row-producao-pronta input, table.items tr.row-producao-pronta select{color:#2a1250; background:rgba(255,255,255,0.85); border-color:#6d3fd1;}
+
+  /* Alguma etapa já foi iniciada (play deu pelo menos uma vez) mas nem todas concluíram — linha LARANJA */
+  table.items tr.row-em-producao td{background:#ff8a1e !important; color:#2a1300 !important; border-color:#cc6c12;}
+  table.items tr.row-em-producao td:first-child{border-left:4px solid #a85200;}
+  table.items tr.row-em-producao input, table.items tr.row-em-producao select{color:#2a1300; background:rgba(255,255,255,0.85); border-color:#cc6c12;}
 
   table.grade5{width:100%; border-collapse:separate; border-spacing:7px; table-layout:fixed;}
   table.grade5 th{
@@ -316,7 +337,8 @@
   .lh-top{display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap;}
   .lh-left{flex:1; min-width:200px;}
   .lh-empresa{font-family:var(--sans); font-size:21px; font-weight:800; letter-spacing:0.2px; color:var(--brand-dark);}
-  .lh-contato{font-size:12px; color:#666; margin-top:4px;}
+  .lh-contato{font-size:12px; color:#666; margin-top:6px; line-height:1.6;}
+  .lh-contato div{margin-top:1px;}
   .lh-right{flex:0 0 auto;}
   .lh-badge{border:1.5px solid var(--brand-dark); border-radius:7px; padding:11px 20px; min-width:175px;}
   .lh-badge-label{font-size:10px; letter-spacing:1.6px; text-transform:uppercase; color:var(--brand-red); font-weight:800;}
@@ -360,24 +382,18 @@
     table.items thead th{background:var(--brand-red); color:#fff; border-bottom:none; padding:8px 6px;}
     table.items tbody tr:nth-child(even){background:#f5f5f6;}
     table.items td{border-bottom:1px solid #e5e5e6; color:var(--brand-dark);}
-    .op-registro-table td{border:1px solid #999 !important; height:34px;}
-    .op-registro-table th{border:1px solid #999;}
 
     /* OP: esconder tudo que envolve valores na impressão do operador */
     .op-valores-bloco{display:none !important;}
     /* impressão limpa: fundo branco, letras pretas */
     #opFicha{background:#fff !important; color:#000 !important; padding:12px 16px !important;}
     #opFicha *{color:#000 !important;}
-    /* Quantidade total (chapas): sem fundo colorido na impressão — só o número preto */
-    #opFicha #opQtdTotal{background:#fff !important; color:#000 !important; border:none !important;}
-    #opFicha .op-registro-table td, #opFicha .op-registro-table th{background:#fff !important;}
     #opFicha input, #opFicha textarea{background:#fff !important; border:1px solid #bbb !important;}
     #opFicha, #viewOP{page-break-inside:avoid;}
     #opFicha h2{margin-top:12px !important; margin-bottom:6px !important; font-size:13px !important;}
     #opFicha .row{margin-bottom:4px !important;}
     #opFicha .field{margin-bottom:4px !important;}
     #opFicha textarea{min-height:34px !important;}
-    #opFicha .op-registro-table{font-size:11px !important;}
     #opFicha .footnote{display:none !important;}
     #opFicha table.items thead th, #opFicha .op-table thead th{background:#fff !important; color:#000 !important; border:1px solid #999 !important;}
     .thumb{background:#fff; border:1px solid #ccc;}
@@ -502,6 +518,9 @@
   <nav class="topnav no-print">
     <button class="navbtn active" data-view="viewOrcamento">Orçamento</button>
     <button class="navbtn" data-view="viewPedidos">Pedidos</button>
+    <button class="navbtn" data-view="viewAvisos">Avisos<span id="avisosBadge" class="badge-aviso" style="display:none;"></span></button>
+    <button class="navbtn" data-view="viewOperacao">Operação</button>
+    <button class="navbtn" data-view="viewProducao">Produção</button>
     <button class="navbtn" data-view="viewCalendario">Calendário</button>
     <button class="navbtn" data-view="viewSistema">Sistema</button>
     <button class="navbtn" data-view="viewFiscal">Fiscal</button>
@@ -827,6 +846,107 @@
   </div><!-- /viewPedidos -->
 
   <!-- ============================================================
+       VIEW: AVISOS — painel central pro admin, "o que precisa da minha
+       atenção agora" (liberações de prensa, atrasados, etapas paradas)
+       ============================================================ -->
+  <div id="viewAvisos" class="view" style="display:none;">
+    <header class="top no-print">
+      <h1>Avisos <span>·</span> o que precisa da sua atenção agora</h1>
+      <div class="tag">liberações de prensa, atrasados e etapas paradas, numa tela só</div>
+    </header>
+
+    <div class="panel no-print" id="avisosTudoOkMsg" style="display:none; text-align:center; padding:34px 10px; color:var(--good); font-weight:700; font-size:15px;">
+      ✓ Tudo certo por aqui — nenhum aviso pendente no momento.
+    </div>
+
+    <div class="panel" id="avisosLiberacoesPanel">
+      <h2><span class="n">·</span>📦 Liberações de prensa aguardando etiqueta</h2>
+      <div id="avisosLiberacoesEmptyMsg" class="empty-msg">Nenhuma liberação pendente.</div>
+      <div id="avisosLiberacoesList"></div>
+    </div>
+
+    <div class="panel" id="avisosAtrasadosPanel">
+      <h2><span class="n">·</span>⏰ Pedidos atrasados</h2>
+      <div id="avisosAtrasadosEmptyMsg" class="empty-msg">Nenhum pedido atrasado.</div>
+      <div id="avisosAtrasadosList"></div>
+    </div>
+
+    <div class="panel" id="avisosParadasPanel">
+      <h2><span class="n">·</span>⏸ Etapas paradas (pausadas há mais de 2h sem retomar)</h2>
+      <div id="avisosParadasEmptyMsg" class="empty-msg">Nenhuma etapa parada há muito tempo.</div>
+      <div id="avisosParadasList"></div>
+    </div>
+  </div><!-- /viewAvisos -->
+
+  <!-- ============================================================
+       VIEW: OPERAÇÃO — chão de fábrica (play/pausa/encerra por máquina)
+       ============================================================ -->
+  <div id="viewOperacao" class="view" style="display:none;">
+    <header class="top no-print">
+      <h1>Operação <span>·</span> chão de fábrica</h1>
+      <div class="tag">fila de serviço por máquina</div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn secondary small" id="operTravarBtn">🔒 Travar nesta tela</button>
+        <button class="btn small" id="operDestravarBtn" style="display:none;">🔓 Destravar (PIN)</button>
+      </div>
+    </header>
+
+    <div class="panel no-print">
+      <div class="field" style="max-width:320px;">
+        <label>Seu nome (quem está mexendo agora)</label>
+        <input type="text" id="operOperadorInput" list="listaFuncionarios" placeholder="digite seu nome">
+      </div>
+      <div class="footnote">A máquina não é fixa de ninguém — escolha a aba da máquina abaixo e digite seu nome na hora de dar play. Um serviço de dobra, por exemplo, só aparece na fila depois que a etapa de laser dele for encerrada. Use o botão "Travar nesta tela" acima pra deixar esse computador/tablet só nessa tela (esconde o menu — bom pra tablet fixo do lado da máquina).</div>
+    </div>
+
+    <div class="panel" id="operMeuServicoWrap" style="display:none;"></div>
+
+    <div class="panel no-print" style="padding-bottom:10px;">
+      <div id="operMaquinaTabs" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="n">·</span>Fila <span id="operFilaMaquinaTitulo" style="color:var(--text-dim); font-weight:400; font-size:13px;"></span></h2>
+      <div id="operFilaEmptyMsg" class="empty-msg">Escolha uma máquina acima pra ver a fila.</div>
+      <div id="operFilaList"></div>
+    </div>
+  </div><!-- /viewOperacao -->
+
+  <!-- ============================================================
+       VIEW: PRODUÇÃO — tempo ativo x ocioso, ao vivo + resumo diário
+       ============================================================ -->
+  <div id="viewProducao" class="view" style="display:none;">
+    <header class="top no-print">
+      <h1>Produção <span>·</span> tempo ativo e ociosidade</h1>
+      <div class="tag">acompanhamento ao vivo + resumo diário por máquina</div>
+    </header>
+
+    <div class="panel no-print">
+      <h2><span class="n">·</span>Rodando agora</h2>
+      <div id="producaoAoVivoEmptyMsg" class="empty-msg">Nenhuma etapa rodando no momento.</div>
+      <div id="producaoAoVivoList"></div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="n">·</span>Resumo por máquina</h2>
+      <div class="row no-print">
+        <div class="field" style="max-width:200px;">
+          <label>Dia</label>
+          <input type="date" id="producaoDataFiltro">
+        </div>
+      </div>
+      <div id="producaoResumoEmptyMsg" class="empty-msg" style="display:none;">Nenhuma máquina cadastrada.</div>
+      <div style="overflow-x:auto;">
+        <table class="items" id="producaoResumoTable" style="display:none;">
+          <thead><tr><th>Máquina</th><th>Operador(es)</th><th>Trabalhou</th><th>Carga do dia</th><th>Ociosidade</th><th>Aproveitamento</th></tr></thead>
+          <tbody id="producaoResumoBody"></tbody>
+        </table>
+      </div>
+      <div class="footnote">Carga do dia: 9h de segunda a quinta, 8h na sexta (sábado/domingo não conta expediente). "Trabalhou" soma o tempo realmente ativo (play até pausa/encerrar) de todas as etapas daquela máquina no dia, de qualquer pedido/operador. Ociosidade é a carga do dia menos o tempo trabalhado (mínimo zero).</div>
+    </div>
+  </div><!-- /viewProducao -->
+
+  <!-- ============================================================
        VIEW: OP (ORDEM DE PRODUÇÃO) — impressão por pedido
        ============================================================ -->
   <div id="viewOP" class="view" style="display:none;">
@@ -998,6 +1118,50 @@
       <div class="actions" style="margin-top:10px;">
         <button class="btn secondary" id="exportPedidosCsvBtn">Exportar pedidos (.csv)</button>
       </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="n">·</span>Modo operador (travar tela na Operação)</h2>
+      <div class="footnote">Na aba <b>Operação</b> tem um botão pra travar aquele computador/tablet só naquela tela (esconde o menu todo, ninguém navega pras outras abas). Pra destravar, pede o PIN configurado aqui — se deixar em branco, destravar só pede uma confirmação, sem PIN. Esse PIN vale pra todos os aparelhos. Isso é um travamento OPCIONAL por aparelho — pra um login que já nasce travado (sem precisar clicar em nada), veja o painel "Usuários" abaixo.</div>
+      <div class="field" style="max-width:220px; margin-top:10px;">
+        <label>PIN pra destravar</label>
+        <input type="text" id="kioskPinInput" inputmode="numeric" placeholder="ex: 1234">
+      </div>
+    </div>
+
+    <div class="panel" id="painelUsuarios" style="display:none;">
+      <h2><span class="n">·</span>Usuários (login individual de cada operador)</h2>
+      <div class="footnote">Cria um usuário e senha próprios pra cada operador. Perfil <b>Operador</b>: ao entrar, já cai direto na aba Operação e não vê nenhuma outra aba (só o botão Sair) — travado sempre, sem precisar clicar em nada. Perfil <b>Administrador</b>: acesso completo ao sistema, como o seu. Criar um usuário aqui não desconecta você — pode cadastrar vários seguidos.</div>
+      <div class="row" style="margin-top:10px; align-items:flex-end;">
+        <div class="field" style="max-width:200px;">
+          <label>Nome</label>
+          <input type="text" id="novoUsuarioNome" placeholder="ex: Rogério">
+        </div>
+        <div class="field" style="max-width:240px;">
+          <label>E-mail (login)</label>
+          <input type="email" id="novoUsuarioEmail" placeholder="ex: rogerio@lumatri.com.br">
+        </div>
+        <div class="field" style="max-width:160px;">
+          <label>Senha</label>
+          <input type="text" id="novoUsuarioSenha" placeholder="mín. 6 caracteres">
+        </div>
+        <div class="field" style="max-width:170px;">
+          <label>Perfil</label>
+          <select id="novoUsuarioPerfil">
+            <option value="operador">Operador (só Operação)</option>
+            <option value="admin">Administrador (acesso completo)</option>
+          </select>
+        </div>
+        <button class="btn" id="criarUsuarioBtn" style="margin-bottom:1px;">Criar usuário</button>
+      </div>
+      <div id="criarUsuarioMsg" class="footnote" style="margin-top:8px;"></div>
+      <div style="overflow-x:auto; margin-top:14px;">
+        <table class="items" id="usuariosTable">
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th></tr></thead>
+          <tbody id="usuariosBody"></tbody>
+        </table>
+      </div>
+      <div class="footnote" style="margin-top:8px;">Pra tirar o acesso de alguém, troque o perfil dele aqui pra baixo (ainda não dá pra apagar o login por completo por essa tela — isso precisa ser feito direto no painel do Firebase). O e-mail de login também precisa estar habilitado como método de acesso no projeto Firebase (já está, é o mesmo usado nesta tela de login).</div>
     </div>
 
     <div class="panel">
@@ -1595,12 +1759,26 @@
 const DEFAULT_LOGO_DATA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHUAAAB4CAYAAADMmr1iAAAMSklEQVR4nO2dW6weRR3Af6enlS235V4QTZDEyH0RFXQ0WIZEYEC5tSC0tIUCclNC4oOCchFeJXgFBModSrnftoXClpJ0fdGHTYzRB198w0TMJkoXDu3xYXa6+309Pf3229nb6f6Sk6Z79szM7m9ndmb2v7PQM6cQUn2r6TL09PT09PT09PT09PT09PT09PT09PT09PT09MwVhFSLmi5Dj13mAZ+3lZiQ6gBbae2JCKkWC6mOLpvOvDDw/2SjQCn3Cqk2W0xvj0FI9U3AB/Ypm9a88sUZ4CPgdCHV85bTndMIqQTwFrAQ2Fo2vZ2kCqnckultB5YIqV4ukc4eQyr0bWBvYBqYLJvmgFQh1ULgBAtpbgUu6MXOjpDqG2ih+6Arw4SNdAekhoG/NQz8LRbSXQBMocW+ZCG9OUcqdCOZUGu3Qtv31DxG7IW92EGEVF+nIqHYTmwG8mJfrDivTpAKfYeKhDJKgkKqM0rmYcReJKR6oWRanWZI6DYqqlS7TTQM/E0W8jFiL95ThztCqtMYFFq6l7srqm5+8xixS4RU62rMt3FSoe+SNbmVCYV6pUImdqmQam3NeTeCkOpUKr6HDlM4AyHVmSXzXAB8AlwqpPpNybRaTU7ovtQklHEyCQP/XUv5bgO+YCGtVpIK3QjsR41CqTOjGZgEkgbzrwwh1dfQM0X7U7NQ6s5stvyFVMc0WRBbCKm+ihbqUuGwZTZKZyikOkNIta+FsrwkpHrFQjqNkRN6ABUPW2ajtNQw8DeFgf9fC2X5ADhfSPW4hbRqR0j1FfTjswOpYdgyG003v3kWoE/GCiHVk00Xpgip0LeBg2ioyc3TJqmgy5MAy4VUTzRdmFEQUp2CrqFGaGM11NA2qZBNUFzRdrFCqi+ja+jBtEQotFMqDIpt5T1WSHUyLRQK7ZUKmdgVQqrHGi7LAEIqDz2xcAgtEwrtlgqZ2JVCqkebLgyAkOok9NRfK4VC+6VCJnaVkGpNkwURUp2IftrSWqHQDamQib2yKbFCquPpgFDojlQYFPtInRkLqY4DNgGH0nKh0C2pkIm9qi6xqdD36IhQ6J5UGBT7cJUZlRQ6jZ4hq50uSoVM7Goh1UNVZGBB6AQNnd82SZ0uuL8Re7VtsUKqYyknlLRst9LAM+M2Sd2L4s1VXuwfbBQiFbqZ8YUaqZcAvwMcG+UqQpukPkgW5lKk1hqx15QVW7KGbidrdpeFgf8KcGSZ8oxLm6Q+i34/8zPp/8cV+8A4maeRF+8BhzF+DTVCn023T41TlrK0RmoY+B+FgX8uWq65DxVpjo3YHwip7i+Sdyp0M+MLNQ/Fl+eENkZrpBrCwL8c3RRvSzeNU2OvE1L9fpQ/sFBDjdBlYeA/U+BvK6N1UgHCwL8FuBh9kqcYr8ZeL6T63Ww7Cqm+hJ4pWkT5GtoKodBSqQBh4L8GXEG5e+wNQqrfzrRDTujhjH8PnQSuCAP/6QJ/WzmtlZryKvBjdAdkgvHE3jj8JkAqNACOYPwaOg8t9KkCf1sLrZYaBn4SBv4vgQtzm8cRe5MRK6T6Ivp56Gcp1+SuaKNQaLlUQxj4r6LFmtpaVOw2tNhngA3A5ygvtLURj52QCpAO5i9Cl7noZPlkuv9lwNEUXwUlL3Rlm4VCh6QChIH/MplYKCZ2HvApxVdByQtdFQZ+qyMcoWNSYYfYixlP7HyKHXNe6JVh4LcysnGYzkkFCAP/JQbFFn3CMwp5oVeFgf9YBXlUQielCqmcIbFFO0+7Y1hoKyIZR6WTUsPAT9J/XwKWkC2fZ0PsNFnPeHVeaPrOTOvpnNTIcRdHjnsK6GX3wsB/EVhK1sMtI9YInY8WuiZy3IVpvj+8P9xyT7nS10PnpKJXKn0nctyTw8Dfmop9AbiUcmLzQq8OA38NgJfEZlXPW4H/lC59DXRR6l/Q6ygEkeOemBO7Dn2PHUdsXug1YeAPRCpGjns7eo74fzYOoGpsS62iFzrMPsDH6Jd7N0WO66ViT0rvsd+nmNhhoQMRipHj/gK4C0vLttaBbal7WU5vJszJ3Y5+42xT5LgnAv8SUi0KA/854HJGE5sXeu0uhP4c/dDeyrKtdWBb6kPU92q8mSE6EHjv/nDL/mHgfxA57sI0+mB3YoeFDkQkRo57F1roFB2poQbbUv9BFqtTB0baQcAfI8c90UvirTmxy5hZbF7odbsQejta6Hw6VEuhm83vMCYC8SB05+kEL4lN5+kZYDmDYvNCrw8D/8F8YpHj3kmHhUI3O0ozMYkWdQha7PG5XvHT6AgKI9YIvSEM/IHIw8hx1wN3pPt1Uih0c0izK4zYQ9lZ7FPAinSf+cCNYeAPRBxGjnsHcDb6Pj2PjgqFuSUVMrGHAe8asek99kngJuAnYeAPRBqm49A7yZrcTtP5A5gBI3YReubpTC+J/woQBv5O0YWR4/4MPQ79FB0l0XnmWk01GLGHo8UeN9NOkePeBtyNFjpnLvC5KhUysUegxR4LEDmuk/57G3APc0wozG2pMCh2Y+S4x3hJnOSEFr2HNvIScVG6eoUWGToZsUcC6yPH9YEb0m2j3kPN+Ha/IoVsii7W1GmySY5R5U6m+x6FFlpkKnOabIjjj1zKBumcVC+J/42e/oNiYSwTaJlmHFqESeBaL4n3yMCzWi4SL4nXomN4iz47nUfxe+h24EYviStZW6IKbEso/e3PUSkhdlSm0OfnIS+JR3otsi3YlupR/EWm8TPTYkd9dloUU6OXRo77I4vpVo5tqUdRo1QAL4lHeXY6Dmbu92DgV5HjnmUp3cqxLfU0sg5JbaRid/XstCzb0R9HeiVy3LIfM6wF21I/tZzeyHhJPNOzUxvMQ49nHfQ4d7GldCvDttRGH1d5STz87NRmU7wdPT5eHznuty2lWwlNj1OtXwReEuefnY4SeFZkOLQdXWP9NottWuonVSTqJfGTwEp2L7bosgNG7N7Am5HjLi1Z1EpoSqo52YvTD65bx0viJ4BV7DrwzPx8RLHOnXkhax9gXeS4qy0V2RpNSTU15DBgQ/pZZ+uk03pXMnPg2QRwDXA6Oq7X1MJRMLV7Cng4ctzZltupPW6ryebX1I79qVbsY8BVZE9rTODZzV4SP+Il8Z+Bs9BR/0XFLkD3+C+LHHemZXfGWVWmNLalFu1xmpPoosWeZrk8AHhJ/CiwGi1zPnCLl8S/zv3+feA7FBdLmt4nwOUzNMUfk7UKtY3dbUvdj+JX5rDYUy2XCQAvidcAtwC3e0l83wy/f5/xaizoBbxMU7xjGZ4w8P8JfJdsnYlaaqxtqWvJmreii2xsQ3+i8q0Kxd7nJfHds/x+M5nYorXLLO2zLHLcHau3hIG/Hi3WULlYq1LTA/geWcGLLotjxG5Iv0VaO6nYs9FNalGxk+gauzxy3CdAx0SFge+jxY5zXgpTyQyQkEoBr+c2Fbl4zBJxH6JPxN8o3hwWZRqYCAP/Q7MhnQ7cgG5aTfTDqEyha+4TXhKvNBuFVOcCr+X2y6dp3kE6Jgz8vxc9gDyVTevt5gB2R/473mYcWSXmm6d+GPg7JhTSCfz1WBAbOa7jJXEipDoPveaiIb/CTLulwg6xr+byKbqGURNzyS9UIPZxL4lXmY27EGtNaqXj1DDw3wQuyG0q0oQaodM1/kwBS4RUz5tCeEm8CTiH8e6xOz5AGDnujlVewsB/Azg/t5/VW0vlkw8zHEDR3t9EjT9GwhIh1TpTgFSsopzYVUZs2nl6g/Ev+FmpZUZpSKxZeKqtGAlLh8QGwHmUF7smDSh3wsB/nfGXvd0ltU0TpmIvpKZufUl2EiukcrwkfgfdIy8j9sohsa+RiZ0g+3bA2NQ695sewMV0T+xzYeAnaQ92I3osXlbsI0NizXkp/TZ+7RP66YLMS8jENvX2+SgYCZcIqdZ6SZwAeEn8Nvp2UkbsVUNiX0V/dap0SFBj4SdCqguB5xnsqLQVMzRZGwb+ZWbMGTnu2cArlBvuPOIl8dU2C9voiRRSXQSsI7va2y7WAZ4MA3+F2Rg57jlosWa+u8gxmDQf9JL4OlsFbfwkCqmWAM/RfGhNEV4Dlt8fbplKa6wCXib73Mo4rAVWe0n8UdnCNS4VQEi1FLiZbnxJeAr90OHBMPAfyDXF5wI/ZXCKs0iaBwL3pmE4PT09PT09PT09oJeNF1Kd3nQ5eiwjpFrYdBl6enp6ehBSjf1W3f8BnmvJK3YQ7fsAAAAASUVORK5CYII=";
 const DEFAULT_EMPRESA_NOME = "LUMATRI INDUSTRIAL";
 const DEFAULT_EMPRESA_CONTATO = "(48) 99124-0852 · www.lumatriindustrial.com.br";
+// Dados completos da empresa que aparecem no cabeçalho do orçamento (visível ao cliente).
+// Para alterar qualquer dado, edite aqui.
+const DEFAULT_EMPRESA_DADOS = {
+  nome:      "LUMATRI INDUSTRIAL",
+  cnpj:      "34.000.684/0001-43",
+  ie:        "261.930.443",
+  endereco:  "Rua Vilmar Manenti, 46 — Cidade Mineira Nova, Criciúma/SC",
+  cep:       "88806-279",
+  telefone:  "(48) 99124-0852",
+  email:     "contato@lumatriindustrial.com.br",
+  site:      "lumatriindustrial.com.br"
+};
 
 let materials = [
   {nome:'Aço Carbono', densidade:7850, thicknesses:[
     {esp:1,     preco:11.00, vel:1.58, pierce:1.9},
+    {esp:1.2,   preco:11.00, vel:3.47, pierce:1.94},
     {esp:1.5,   preco:11.00, vel:6.3,  pierce:2},
     {esp:2,     preco:11.00, vel:5.6,  pierce:2.2},
+    {esp:2.65,  preco:11.00, vel:2.87, pierce:2.46},
     {esp:3,     preco:11.00, vel:1.4,  pierce:2.6},
     {esp:4.76,  preco:11.00, vel:1.05, pierce:3.4},
     {esp:6.35,  preco:11.00, vel:0.88, pierce:16.9},
@@ -1613,6 +1791,7 @@ let materials = [
   ]},
   {nome:'Aço Inox', densidade:8000, thicknesses:[
     {esp:1,   preco:40.00, vel:10.5, pierce:1.9},
+    {esp:1.2, preco:40.00, vel:9.66, pierce:1.94},
     {esp:1.5, preco:40.00, vel:8.4,  pierce:2},
     {esp:2,   preco:40.00, vel:7.35, pierce:2.2},
     {esp:3,   preco:40.00, vel:3.15, pierce:2.6},
@@ -2196,6 +2375,7 @@ function renderMaterials(){
       const mi = +inp.dataset.mi, f = inp.dataset.f;
       materials[mi][f] = (f==='nome') ? inp.value : (parseFloat(inp.value)||0);
       if (f==='nome'){ renderItems(); } // nomes afetam os selects de material dos itens
+      salvarMateriais();
     });
   });
 
@@ -2205,6 +2385,7 @@ function renderMaterials(){
       const mi = +inp.dataset.mi, ti = +inp.dataset.ti, f = inp.dataset.f;
       materials[mi].thicknesses[ti][f] = parseFloat(inp.value)||0;
       if (f==='esp') renderItems(); else recalcAll();
+      salvarMateriais();
     });
   });
 
@@ -2215,6 +2396,7 @@ function renderMaterials(){
       materials[mi].thicknesses.splice(ti,1);
       renderMaterials();
       renderItems();
+      salvarMateriais();
     });
   });
 
@@ -2225,6 +2407,7 @@ function renderMaterials(){
       materials[mi].thicknesses.push({esp:1, preco:0, vel:1, pierce:1});
       renderMaterials();
       renderItems();
+      salvarMateriais();
     });
   });
 
@@ -2234,6 +2417,7 @@ function renderMaterials(){
       materials.splice(+btn.dataset.rmmat, 1);
       renderMaterials();
       renderItems();
+      salvarMateriais();
     });
   });
 }
@@ -2242,6 +2426,7 @@ document.getElementById('addMatBtn').addEventListener('click', ()=>{
   materials.push({nome:'Novo material', densidade:7850, thicknesses:[{esp:1, preco:0, vel:1, pierce:1}]});
   renderMaterials();
   renderItems();
+  salvarMateriais();
 });
 
 /* ============================================================
@@ -2337,7 +2522,7 @@ function renderItems(){
     tr.dataset.idx = idx;
     tr.innerHTML = `
       <td title="${it.fileName}">${it.fileName}${it.estimativa?'<span class="est">estim. (sem contorno fechado)</span>':''}</td>
-      <td><div class="thumb">${it.geometry ? buildPartSVG(it.geometry) : '<span class="empty">sem<br>desenho</span>'}</div></td>
+      <td><div class="thumb">${it.geometry ? buildPartSVG(it.geometry) : (it.pdfThumb ? '<img src="'+it.pdfThumb+'" alt="dobra" style="width:100%; height:100%; object-fit:contain;">' : '<span class="empty">sem<br>desenho</span>')}</div></td>
       <td><select data-idx="${idx}" data-f="material">${materialOptions(it.material)}</select></td>
       <td><select data-idx="${idx}" data-f="espessura">${thicknessOptions(it.material, it.espessura)}</select></td>
       <td class="chk-cell${it.clienteFornece?' chk-on':''}"><input type="checkbox" data-idx="${idx}" data-f="clienteFornece" ${it.clienteFornece?'checked':''}></td>
@@ -2449,7 +2634,7 @@ function renderPrintItems(){
     const c = computeRow(it);
     return `<tr>
       <td title="${it.fileName}">${it.fileName}</td>
-      <td><div class="thumb">${it.geometry ? buildPartSVG(it.geometry) : ''}</div></td>
+      <td><div class="thumb">${it.geometry ? buildPartSVG(it.geometry) : (it.pdfThumb ? '<img src="'+it.pdfThumb+'" alt="dobra" style="width:100%; height:100%; object-fit:contain;">' : '')}</div></td>
       <td>${it.material}</td>
       <td>${it.espessura} mm</td>
       <td>${it.clienteFornece ? 'Sim' : 'Não'}</td>
@@ -2493,6 +2678,54 @@ function updateTotals(){
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', recalcAll);
 });
+
+/* ============================================================
+   PERSISTÊNCIA DE PARÂMETROS E MATERIAIS (salva sozinho no banco)
+   - Os campos de parâmetro (valor da hora, mínimos, dobra, etc.) e a
+     tabela de materiais/espessuras/velocidades passam a ficar salvos
+     no Firebase, então não somem mais ao atualizar a página.
+   ============================================================ */
+const CONFIG_PARAM_IDS = ['unidadeDxf','custoMin','custoDobra','custoFixo','minCorte','minDobra',
+  'segPorDobra','eficienciaMaquina','espacoPecas','sobraBorda',
+  'valorHoraDobra','setupDobraSeg','hBaseDobra','hViradaDobra','hAnguloDobra','hEspRefDobra','hEspFatorDobra'];
+
+let _cfgSaveTimer = null;
+function salvarParametrosConfig(){
+  if (_cfgSaveTimer) clearTimeout(_cfgSaveTimer);
+  _cfgSaveTimer = setTimeout(()=>{
+    const parcial = {};
+    CONFIG_PARAM_IDS.forEach(id=>{ const el = document.getElementById(id); if (el) parcial['param_'+id] = el.value; });
+    if (typeof writeConfig === 'function') writeConfig(parcial);
+  }, 600);
+}
+function aplicarParametrosConfig(){
+  CONFIG_PARAM_IDS.forEach(id=>{
+    const el = document.getElementById(id); if (!el) return;
+    const v = configCache['param_'+id];
+    if (v !== undefined && v !== null && document.activeElement !== el && el.value != v){ el.value = v; }
+  });
+  if (typeof recalcAll === 'function') recalcAll();
+}
+// liga o auto-save em todos os campos de parâmetro
+CONFIG_PARAM_IDS.forEach(id=>{
+  const el = document.getElementById(id); if (!el) return;
+  const evt = (el.tagName === 'SELECT') ? 'change' : 'input';
+  el.addEventListener(evt, salvarParametrosConfig);
+});
+
+function salvarMateriais(){
+  configCache.materiais = materials;
+  if (typeof writeConfig === 'function') writeConfig({ materiais: materials });
+}
+function aplicarMateriaisSalvos(data){
+  if (!data || !Array.isArray(data.materiais) || !data.materiais.length) return;
+  if (JSON.stringify(data.materiais) === JSON.stringify(materials)) return;
+  // não re-renderiza se o usuário estiver editando um material (evita perder o foco no meio da digitação)
+  if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#matList')) return;
+  materials = data.materiais;
+  if (typeof renderMaterials === 'function') renderMaterials();
+  if (typeof renderItems === 'function') renderItems();
+}
 
 /* ============================================================
    UPLOAD DXF
@@ -2606,7 +2839,23 @@ async function extrairDobrasPDF(file){
   }
   const espM = texto.match(ESP_RE);
   const espessura = espM ? parseFloat(espM[1].replace(',','.')) : null;
-  return { bends, espessura };
+  // gera uma miniatura (imagem) da 1ª página do PDF pra mostrar na tabela de itens
+  let thumb = null;
+  try{
+    const page = await pdf.getPage(1);
+    const vp0 = page.getViewport({ scale: 1 });
+    const alvoLargura = 260; // px
+    const escala = alvoLargura / vp0.width;
+    const vp = page.getViewport({ scale: escala });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(vp.width));
+    canvas.height = Math.max(1, Math.round(vp.height));
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    thumb = canvas.toDataURL('image/jpeg', 0.72);
+  }catch(err){ thumb = null; }
+  return { bends, espessura, thumb };
 }
 
 function espessuraMaisProxima(nome, alvo){
@@ -2642,6 +2891,7 @@ async function handleBendPDFs(fileList){
       segPorDobraItem: seg,
       setupSegItem: setup,
       bendsList: res.bends,
+      pdfThumb: res.thumb || null,
       custoAdicional: 0,
       clienteFornece: false,
       estimativa: false
@@ -2681,8 +2931,18 @@ logoInput.addEventListener('change', ()=>{
 });
 
 function syncLetterhead(){
-  document.getElementById('lhEmpresa').textContent = document.getElementById('empresaNome').value;
-  document.getElementById('lhContato').textContent = document.getElementById('empresaContato').value;
+  document.getElementById('lhEmpresa').textContent = document.getElementById('empresaNome').value || DEFAULT_EMPRESA_DADOS.nome;
+  // Bloco com todos os dados da empresa para o cliente visualizar
+  const d = DEFAULT_EMPRESA_DADOS;
+  const esc = s => (''+(s||'')).replace(/</g,'&lt;');
+  const linhas = [];
+  const linhaDoc = [d.cnpj ? 'CNPJ: '+esc(d.cnpj) : '', d.ie ? 'Inscr. Estadual: '+esc(d.ie) : ''].filter(Boolean).join('  ·  ');
+  if (linhaDoc) linhas.push(linhaDoc);
+  const linhaEnd = [esc(d.endereco), d.cep ? 'CEP '+esc(d.cep) : ''].filter(Boolean).join('  ·  ');
+  if (linhaEnd) linhas.push(linhaEnd);
+  const linhaContato = [d.telefone ? 'Fone: '+esc(d.telefone) : '', esc(d.email), esc(d.site)].filter(Boolean).join('  ·  ');
+  if (linhaContato) linhas.push(linhaContato);
+  document.getElementById('lhContato').innerHTML = linhas.map(l=>`<div>${l}</div>`).join('');
   document.getElementById('lhNumero').textContent = document.getElementById('orcNumero').value;
   document.getElementById('lhData').textContent = document.getElementById('orcData').value;
   document.getElementById('lhValidade').textContent = document.getElementById('orcValidade').value;
@@ -3072,6 +3332,9 @@ document.addEventListener('change', function(e){
 db.collection('config').doc('geral').onSnapshot(doc=>{
   if (doc.exists) configCache = Object.assign(configCache, doc.data());
   atualizarNumeroNovoOrc();
+  if (typeof aplicarParametrosConfig === 'function') aplicarParametrosConfig();
+  if (doc.exists && typeof aplicarMateriaisSalvos === 'function') aplicarMateriaisSalvos(doc.data());
+  if (typeof aplicarKioskPin === 'function') aplicarKioskPin();
 }, e=> console.error('Erro no listener de config:', e));
 
 db.collection('config').doc('maquinas').onSnapshot(doc=>{
@@ -3098,6 +3361,7 @@ db.collection('pedidos').onSnapshot(snap=>{
   pedidosCache = snap.docs.map(d=> d.data());
   registrarSnapshotCarregado('pedidos', pedidosCache, p=> p.id);
   refreshCurrentView();
+  if (typeof atualizarBadgeAvisos === 'function') atualizarBadgeAvisos();
 }, e=> console.error('Erro no listener de pedidos:', e));
 
 db.collection('clientes').onSnapshot(snap=>{
@@ -3120,7 +3384,9 @@ db.collection('funcionarios').onSnapshot(snap=>{
   if (snap.metadata.hasPendingWrites) return;
   funcionariosCache = snap.docs.map(d=> d.data());
   registrarSnapshotCarregado('funcionarios', funcionariosCache, x=> x.id);
+  if (typeof epiPopulateSelects === 'function') epiPopulateSelects(); // mantém a lista de operadores (aba Operação) sempre atualizada
   if (currentViewId === 'viewEPI') renderEPI();
+  if (currentViewId === 'viewOperacao' && typeof renderOperacao === 'function') renderOperacao();
 }, e=> console.error('Erro no listener de funcionários:', e));
 
 db.collection('epiMov').onSnapshot(snap=>{
@@ -3129,6 +3395,13 @@ db.collection('epiMov').onSnapshot(snap=>{
   registrarSnapshotCarregado('epiMov', epiMovCache, x=> x.id);
   if (currentViewId === 'viewEPI') renderEPI();
 }, e=> console.error('Erro no listener de movimentações EPI:', e));
+
+// recalcula o badge de Avisos mesmo sem nenhum dado mudar — o "atrasado" e o "parada há
+// mais de 2h" dependem só da passagem do tempo, não de uma gravação nova no Firestore.
+if (typeof atualizarBadgeAvisos === 'function'){
+  atualizarBadgeAvisos();
+  setInterval(atualizarBadgeAvisos, 5*60*1000);
+}
 
 } // ===================== fim startApp =====================
 
@@ -3155,14 +3428,108 @@ function verificarBackupPendente(){
    ============================================================ */
 async function checkAdmin(user){
   window.isAdmin = false;
+  window.isOperador = false;
   if (!user) return;
   try {
     const doc = await db.collection('usuarios').doc(user.uid).get();
-    if (doc.exists && doc.data().role === 'admin') window.isAdmin = true;
+    if (doc.exists){
+      const role = doc.data().role;
+      if (role === 'admin') window.isAdmin = true;
+      else if (role === 'operador') window.isOperador = true; // login criado só pra Operação — trava o resto do sistema
+    }
   } catch(e){
     // sem permissão ou sem documento: segue como não-admin, sem travar o app
     console.warn('checkAdmin: não foi possível verificar admin —', e.message);
   }
+}
+
+/* ============================================================
+   USUÁRIOS — login individual por pessoa (perfil admin/operador),
+   gerenciado direto na aba Sistema pelo administrador.
+   Cria a conta num app Firebase SECUNDÁRIO (mesmo projeto), assim
+   criar um login novo não desconecta o administrador que está usando
+   o sistema. Documento em usuarios/{uid} = {nome, email, role}.
+   role 'admin' = acesso completo. role 'operador' = trava sempre na
+   aba Operação (ver checkAdmin/trocarViewAgora). Sem role = acesso
+   "normal" de hoje (vê tudo, mas não é admin).
+   ============================================================ */
+function getFirebaseAppSecundario(){
+  let app = firebase.apps.find(a=> a.name === 'secundario');
+  if (!app) app = firebase.initializeApp(firebase.app().options, 'secundario');
+  return app;
+}
+async function criarUsuarioLogin(){
+  const nomeEl = document.getElementById('novoUsuarioNome');
+  const emailEl = document.getElementById('novoUsuarioEmail');
+  const senhaEl = document.getElementById('novoUsuarioSenha');
+  const perfilEl = document.getElementById('novoUsuarioPerfil');
+  const msgEl = document.getElementById('criarUsuarioMsg');
+  const btn = document.getElementById('criarUsuarioBtn');
+  const nome = (nomeEl.value||'').trim();
+  const email = (emailEl.value||'').trim();
+  const senha = senhaEl.value||'';
+  const perfil = perfilEl.value;
+  msgEl.textContent = '';
+  if (!nome || !email || !senha){
+    msgEl.style.color = '#e05a5a'; msgEl.textContent = 'Preencha nome, e-mail e senha.'; return;
+  }
+  if (senha.length < 6){
+    msgEl.style.color = '#e05a5a'; msgEl.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return;
+  }
+  btn.disabled = true; btn.textContent = 'Criando...';
+  let authSec = null;
+  try{
+    authSec = getFirebaseAppSecundario().auth();
+    const cred = await authSec.createUserWithEmailAndPassword(email, senha);
+    const uid = cred.user.uid;
+    await db.collection('usuarios').doc(uid).set({ nome, email, role: perfil });
+    msgEl.style.color = 'var(--good)';
+    msgEl.textContent = 'Usuário "'+nome+'" criado com sucesso.';
+    nomeEl.value = ''; emailEl.value = ''; senhaEl.value = '';
+    carregarUsuarios();
+  }catch(e){
+    let msg = 'Não consegui criar o usuário: '+(e.message||e);
+    if (e.code === 'auth/email-already-in-use') msg = 'Já existe um usuário com esse e-mail.';
+    else if (e.code === 'auth/invalid-email') msg = 'E-mail inválido.';
+    else if (e.code === 'auth/weak-password') msg = 'Senha muito fraca (mínimo 6 caracteres).';
+    msgEl.style.color = '#e05a5a';
+    msgEl.textContent = msg;
+  } finally {
+    if (authSec) authSec.signOut().catch(()=>{}); // limpa a sessão secundária; não afeta o admin logado aqui
+    btn.disabled = false; btn.textContent = 'Criar usuário';
+  }
+}
+const _criarUsuarioBtn = document.getElementById('criarUsuarioBtn');
+if (_criarUsuarioBtn) _criarUsuarioBtn.addEventListener('click', criarUsuarioLogin);
+
+function carregarUsuarios(){
+  const body = document.getElementById('usuariosBody');
+  if (!body || !window.isAdmin) return;
+  db.collection('usuarios').get().then(snap=>{
+    body.innerHTML = snap.docs.map(doc=>{
+      const d = doc.data() || {};
+      const role = d.role || '';
+      return `<tr data-uid="${doc.id}">
+        <td>${epiEsc(d.nome||'—')}</td>
+        <td>${epiEsc(d.email||'—')}</td>
+        <td>
+          <select data-perfiluid="${doc.id}">
+            <option value="operador" ${role==='operador'?'selected':''}>Operador (só Operação)</option>
+            <option value="admin" ${role==='admin'?'selected':''}>Administrador</option>
+            <option value="" ${role===''?'selected':''}>(sem perfil / acesso normal)</option>
+          </select>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="3" style="text-align:center; color:var(--text-dim);">Nenhum usuário cadastrado ainda.</td></tr>';
+    body.querySelectorAll('[data-perfiluid]').forEach(sel=> sel.addEventListener('change', ()=>{
+      const uid = sel.dataset.perfiluid;
+      db.collection('usuarios').doc(uid).set({ role: sel.value }, { merge:true })
+        .catch(e=> alert('Não consegui salvar o perfil: '+(e.message||e)));
+    }));
+  }).catch(e=>{
+    console.warn('Não consegui carregar usuários:', e.message);
+    body.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-dim);">Não consegui carregar a lista (verifique as regras do Firestore pra coleção "usuarios").</td></tr>';
+  });
 }
 
 function mostrarLogin(){ const ov = document.getElementById('loginOverlay'); if (ov) ov.style.display = 'flex'; }
@@ -3207,7 +3574,15 @@ auth.onAuthStateChanged(async (user)=>{
     await checkAdmin(user);
     esconderLogin();
     startApp();            // registra os listeners do Firestore (só na 1ª vez)
-    refreshCurrentView();
+    document.body.classList.toggle('perfil-operador', !!window.isOperador);
+    const painelUsuariosEl = document.getElementById('painelUsuarios');
+    if (painelUsuariosEl) painelUsuariosEl.style.display = window.isAdmin ? '' : 'none';
+    if (typeof aplicarModoOperador === 'function') aplicarModoOperador();
+    if (window.isOperador || (typeof modoOperadorTravado !== 'undefined' && modoOperadorTravado)){
+      trocarViewAgora('viewOperacao'); // login de operador (ou aparelho travado em modo kiosk): abre direto na Operação
+    } else {
+      refreshCurrentView();
+    }
     verificarBackupPendente();
   } else {
     window.isAdmin = false;
@@ -3268,6 +3643,7 @@ function buildSnapshot(){
       bboxC: it.bboxC||0, bboxL: it.bboxL||0,
       dobraTempo: !!it.dobraTempo, segPorDobraItem: it.segPorDobraItem||0, setupSegItem: it.setupSegItem||0,
       bendsList: it.bendsList || null,
+      pdfThumb: it.pdfThumb || null,
       clienteFornece: !!it.clienteFornece, estimativa: !!it.estimativa,
       geometry: it.geometry || null,
       peso: c.peso, custoMaterial: c.custoMaterial, custoCorte: c.custoCorte,
@@ -3376,6 +3752,7 @@ function openSaved(i){
     bboxC: r.bboxC||0, bboxL: r.bboxL||0,
     dobraTempo: !!r.dobraTempo, segPorDobraItem: r.segPorDobraItem||0, setupSegItem: r.setupSegItem||0,
     bendsList: r.bendsList || null,
+    pdfThumb: r.pdfThumb || null,
     clienteFornece: r.clienteFornece, custoAdicional: 0, estimativa: r.estimativa, geometry: r.geometry
   }));
   if (document.getElementById('espacoPecas') && o.espacoPecas !== undefined) document.getElementById('espacoPecas').value = o.espacoPecas;
@@ -3426,6 +3803,9 @@ let currentViewId = 'viewOrcamento';
 function renderForView(viewId){
   if (viewId === 'viewOrcamento') renderSavedList();
   if (viewId === 'viewPedidos') renderPedidos();
+  if (viewId === 'viewAvisos') renderAvisos();
+  if (viewId === 'viewOperacao') renderOperacao();
+  if (viewId === 'viewProducao') renderProducao();
   if (viewId === 'viewCalendario') { renderMaquinas(); renderPendentes(); renderFila(); renderGrade5Dias(); }
   if (viewId === 'viewFiscal') renderFiscal();
   if (viewId === 'viewClientes') renderClientes();
@@ -3433,11 +3813,16 @@ function renderForView(viewId){
   if (viewId === 'viewGerador') initGerador();
   if (viewId === 'viewNotaSimples') initNotaSimples();
   if (viewId === 'viewEPI') { initEPI(); renderEPI(); }
+  if (viewId === 'viewSistema' && window.isAdmin && typeof carregarUsuarios === 'function') carregarUsuarios();
 }
 function refreshCurrentView(){
   renderForView(currentViewId);
 }
 function trocarViewAgora(viewId){
+  // modo operador (kiosk): trava a navegação inteira na tela de Operação até destravar com o PIN.
+  if (typeof modoOperadorTravado !== 'undefined' && modoOperadorTravado && viewId !== 'viewOperacao') return;
+  // login com perfil "operador" (usuário/senha próprio): trava SEMPRE, não é opcional/por PIN.
+  if (window.isOperador && viewId !== 'viewOperacao') return;
   document.querySelectorAll('.view').forEach(v=> v.style.display = 'none');
   document.getElementById(viewId).style.display = 'block';
   document.querySelectorAll('.topnav .navbtn').forEach(b=>{
@@ -3633,6 +4018,39 @@ function epiNum(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
 function epiById(id){ return episCache.find(e=> String(e.id)===String(id)) || null; }
 function epiFuncById(id){ return funcionariosCache.find(f=> String(f.id)===String(id)) || null; }
 function epiEsc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ---- Caminho da pasta com os arquivos do pedido: o navegador não consegue abrir a pasta
+   sozinho (bloqueio de segurança), então mostramos o caminho pra copiar e colar no Explorer. ---- */
+function copiarTextoFallback(texto){
+  const ta = document.createElement('textarea');
+  ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+}
+function copiarTextoParaAreaTransferencia(texto){
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto).catch(()=> copiarTextoFallback(texto));
+  } else {
+    copiarTextoFallback(texto);
+  }
+}
+function htmlCaminhoArquivos(caminho){
+  if (!caminho) return '';
+  return `<div class="no-print" style="margin-top:6px; font-size:12px; color:var(--text-dim); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+    <span>📁 <span style="font-family:var(--mono); user-select:all;">${epiEsc(caminho)}</span></span>
+    <button type="button" class="iconbtn" data-copiarcaminho="${epiEsc(caminho)}" title="copiar caminho pra colar no Explorer (Win+R ou barra de endereço)">📋 copiar caminho</button>
+  </div>`;
+}
+function ligarBotoesCopiarCaminho(root){
+  if (!root) return;
+  root.querySelectorAll('[data-copiarcaminho]').forEach(btn=> btn.addEventListener('click', ()=>{
+    copiarTextoParaAreaTransferencia(btn.dataset.copiarcaminho);
+    const original = btn.textContent;
+    btn.textContent = '✔ copiado';
+    setTimeout(()=>{ if (btn.isConnected) btn.textContent = original; }, 1500);
+  }));
+}
 
 function epiSalvar(colecao, item){
   const limpo = limparParaFirestore(item);
@@ -3997,7 +4415,7 @@ function epiGerarFichaBtn(){
 /* ============================================================
    PEDIDOS — PERSISTÊNCIA
    ============================================================ */
-const DEFAULT_MAQUINAS = ['LASER 1500W','LASER 2000W','LASER 3000W','DOBRADEIRA 2M','DOBRADEIRA 3M','PRENSA 1','PRENSA 2','EXCENTRICA'];
+const DEFAULT_MAQUINAS = ['LASER 3000W 1','LASER 3000W 2','LASER TUBO','LONGARINA','VIRADEIRA','PRENSA EXCÊNTRICA','PRENSA HIDRÁULICA 1','PRENSA HIDRÁULICA 2','SERVIÇOS DIVERSOS'];
 
 function loadPedidos(){ return pedidosCache; }
 function savePedidos(list){
@@ -4041,6 +4459,884 @@ function saveMaquinas(list){
   maquinasCacheArr = list;
   db.collection('config').doc('maquinas').set({lista:list}).catch(e=> console.error('Erro ao salvar máquinas:', e));
 }
+
+/* ============================================================
+   ETAPAS DE PRODUÇÃO — sequência de máquinas de cada pedido, com
+   play/pause/retomar/encerrar e cronômetro de tempo ativo x ocioso.
+   Cada pedido tem p.etapas = [{id, maquina, status, operador, logs[], tempoAtivoSeg}].
+   A sequência é respeitada DENTRO de cada grupo de chapa (mesma rota — ver
+   chaveGrupoChapa/etapasDoMesmoGrupo): uma etapa só fica liberada pro
+   operador quando todas as anteriores do MESMO grupo estiverem "concluido".
+   Grupos de chapa diferentes do mesmo pedido são independentes e podem
+   rodar ao mesmo tempo, inclusive em máquinas diferentes (ex.: chapa de
+   Carbono na Laser 1 e chapa de Alumínio na Laser 2, juntas).
+   status possíveis: pendente | rodando | pausado | concluido.
+   Gravação é IMEDIATA (mesmo padrão de salvarPedidoImediato), não
+   depende do botão "Salvar alterações" — é operação ao vivo.
+   ============================================================ */
+let _opEtapasTimer = null;
+// grupoChapa (opcional): { material, espessura, qtdChapas } — quando preenchido, essa etapa
+// vira também um "grupo de chapa" com tempo/valor medido individualmente (ex.: "Carbono 3mm x2").
+function novaEtapaProducao(maquina, grupoChapa){
+  return {
+    id: gerarIdUnico(), maquina: maquina || '', status: 'pendente', operador: '', logs: [], tempoAtivoSeg: 0,
+    material: (grupoChapa && grupoChapa.material) || '',
+    espessura: (grupoChapa && grupoChapa.espessura) || '',
+    qtdChapas: (grupoChapa && grupoChapa.qtdChapas) || '',
+    clienteForneceMaterial: !!(grupoChapa && grupoChapa.clienteForneceMaterial),
+    // tamanho da chapa (mm) — só é obrigatório quando o material é NOSSO (não do cliente);
+    // o próprio operador preenche na aba Operação, e vai direto pro cálculo da OP.
+    // dimC/dimL: formato antigo (uma peça só), mantido só por compatibilidade com dados
+    // já existentes. pedacos: formato novo, lista de {c,l} — permite registrar mais de um
+    // tamanho na mesma etapa (retalhos de tamanhos diferentes).
+    dimC: (grupoChapa && grupoChapa.dimC) || '',
+    dimL: (grupoChapa && grupoChapa.dimL) || '',
+    pedacos: (grupoChapa && Array.isArray(grupoChapa.pedacos)) ? grupoChapa.pedacos : [],
+    // nota do PCP: recado extra pro operador além do material/espessura/qtd (ex.: "cuidado,
+    // furo especial", "cliente pediu acabamento X"). Aparece pro operador na aba Operação.
+    notaPCP: (grupoChapa && grupoChapa.notaPCP) || '',
+    // liberações de prensa: quando fecha um palete/caixa, o operador registra a quantidade
+    // aqui SEM encerrar a etapa — o pedido continua aberto, só fica visível pro admin gerar
+    // etiqueta daquele lote já pronto.
+    liberacoes: []
+  };
+}
+// classifica o nome da máquina em corte (laser) / dobra (viradeira) / prensa / outro —
+// decide em qual campo (horasCorte/horasDobra/horasPrensa) o tempo medido da etapa vira valor.
+function tipoDeMaquina(maquina){
+  const m = (maquina||'').toUpperCase();
+  if (m.indexOf('LASER') > -1) return 'corte';
+  if (m.indexOf('VIRADEIRA') > -1 || m.indexOf('DOBRA') > -1) return 'dobra';
+  if (m.indexOf('PRENSA') > -1 || m.indexOf('EXC') > -1) return 'prensa';
+  return 'outro';
+}
+// rótulo curto do grupo de chapa da etapa, pra mostrar na fila/config (ex.: "Carbono · 3mm × 2 chapas")
+function rotuloGrupoChapa(et){
+  if (!et || !et.material) return '';
+  const partes = [et.material];
+  if (et.espessura) partes.push(et.espessura+'mm');
+  let txt = partes.join(' · ');
+  if (et.qtdChapas) txt += ' × '+et.qtdChapas+(et.qtdChapas==1?' chapa':' chapas');
+  if (et.clienteForneceMaterial) txt += ' (material do cliente)';
+  return txt;
+}
+function horasParaHMS(horasDecimais){
+  const totalSeg = Math.max(0, Math.round((horasDecimais||0)*3600));
+  return { h: Math.floor(totalSeg/3600), m: Math.floor((totalSeg%3600)/60), s: totalSeg%60 };
+}
+// cria/atualiza, pra cada etapa CONCLUÍDA, uma linha correspondente em p.linhasProducao
+// (a mesma tabela "Finalização da produção" da OP e que a aba Fiscal já lê) — assim o tempo
+// medido de cada grupo de chapa vira horas/valor sozinho, sem digitar nada.
+// Só mexe no campo de horas (corte/dobra/prensa, conforme o tipo da máquina); material,
+// espessura, dimensões e demais campos ficam livres pra edição manual depois de criados.
+function sincronizarLinhasProducaoDeEtapas(p){
+  if (!Array.isArray(p.etapas) || !p.etapas.length) return false;
+  if (!Array.isArray(p.linhasProducao)) p.linhasProducao = [];
+  let mudou = false;
+  p.etapas.forEach(et=>{
+    if (et.status !== 'concluido') return;
+    let linha = p.linhasProducao.find(l=> l.origemEtapaId === et.id);
+    const horas = etapaTempoAtivoAoVivo(et)/3600;
+    const tipo = tipoDeMaquina(et.maquina);
+    const campo = tipo==='dobra' ? 'horasDobra' : (tipo==='prensa' ? 'horasPrensa' : 'horasCorte');
+    if (!linha){
+      linha = {
+        origemEtapaId: et.id, origemEtapaMaquina: et.maquina,
+        material: et.material||'', espessura: et.espessura||'', qtdChapas: et.qtdChapas||'',
+        clienteForneceMaterial: !!et.clienteForneceMaterial,
+        // tamanho já vem do que o operador preencheu na etapa (quando o material é nosso) —
+        // vai direto pro cálculo, sem precisar digitar de novo aqui. pedacos: lista de
+        // retalhos de tamanhos diferentes (quando tiver mais de um); dimC/dimL continuam
+        // preenchidos como fallback pro formato antigo (uma peça só).
+        dimC: et.dimC||0, dimL: et.dimL||0,
+        pedacos: (Array.isArray(et.pedacos) && et.pedacos.length) ? et.pedacos.map(pc=>({c:pc.c||0, l:pc.l||0})) : [],
+        notaPCP: et.notaPCP||'',
+        horasCorte:0, qtdDobras:0, horasDobra:0, horasPrensa:0,
+        corteH:0, corteM:0, corteS:0, dobraH:0, dobraM:0, dobraS:0, prensaH:0, prensaM:0, prensaS:0
+      };
+      p.linhasProducao.push(linha);
+      mudou = true;
+    }
+    if (Math.abs((linha[campo]||0) - horas) > 0.0003){ // ~1s de tolerância
+      linha.horasCorte = 0; linha.horasDobra = 0; linha.horasPrensa = 0;
+      linha[campo] = horas;
+      const hms = horasParaHMS(horas);
+      const pref = campo==='horasDobra' ? 'dobra' : (campo==='horasPrensa' ? 'prensa' : 'corte');
+      linha[pref+'H'] = hms.h; linha[pref+'M'] = hms.m; linha[pref+'S'] = hms.s;
+      mudou = true;
+    }
+  });
+  return mudou;
+}
+
+// chave que identifica a "rota" de um grupo de chapa dentro do pedido: etapas com a mesma
+// chave são passos sequenciais da MESMA remessa de chapas (ex.: corte depois dobra da mesma
+// leva de Carbono 3mm). Etapas sem material/espessura/qtd informados caem todas no balde
+// "__semgrupo__" — é o caso simples de um pedido sem separação por chapa (ex.: Laser -> Dobra
+// -> Prensa em sequência, sem grupo definido), que continua 100% sequencial como sempre foi.
+// Grupos DIFERENTES (chave diferente) são independentes um do outro e podem rodar ao mesmo
+// tempo, inclusive em máquinas diferentes (ex.: Carbono na Laser 1 e Alumínio na Laser 2 juntos).
+function chaveGrupoChapa(et){
+  if (et && et.material) return et.material+'|'+(et.espessura||'')+'|'+(et.qtdChapas||'')+'|'+(et.clienteForneceMaterial?1:0);
+  return '__semgrupo__';
+}
+// todas as etapas do pedido que pertencem à mesma rota (mesmo grupo de chapa) dessa etapa,
+// na ordem em que aparecem no array — é dentro desse subconjunto que a sequência é respeitada.
+function etapasDoMesmoGrupo(p, etapa){
+  if (!Array.isArray(p.etapas)) return [];
+  const chave = chaveGrupoChapa(etapa);
+  return p.etapas.filter(et=> chaveGrupoChapa(et) === chave);
+}
+// primeira etapa não concluída do pedido (visão "geral", usada só como referência/relatório —
+// a liberação de verdade agora é por grupo de chapa, ver etapaEstaLiberada).
+function etapaAtualDoPedido(p){
+  if (!Array.isArray(p.etapas)) return null;
+  return p.etapas.find(et=> et.status !== 'concluido') || null;
+}
+// uma etapa fica liberada pro operador quando todas as etapas ANTERIORES do MESMO grupo de
+// chapa (mesma rota) já estiverem concluídas — etapas de outros grupos de chapa do mesmo
+// pedido não bloqueiam essa, mesmo que estejam antes dela no array.
+function etapaEstaLiberada(p, etapa){
+  const doGrupo = etapasDoMesmoGrupo(p, etapa);
+  const idx = doGrupo.indexOf(etapa);
+  if (idx <= 0) return true;
+  return doGrupo.slice(0, idx).every(et=> et.status === 'concluido');
+}
+function pedidoProducaoConcluida(p){
+  return Array.isArray(p.etapas) && p.etapas.length > 0 && p.etapas.every(et=> et.status === 'concluido');
+}
+// pelo menos uma etapa já foi tocada (saiu de "pendente") mas nem todas terminaram ainda —
+// usado pra linha ficar LARANJA na aba Pedidos ("em produção").
+function pedidoEmProducao(p){
+  if (!Array.isArray(p.etapas) || !p.etapas.length) return false;
+  if (pedidoProducaoConcluida(p)) return false;
+  return p.etapas.some(et=> et.status !== 'pendente');
+}
+
+// impede o mesmo operador de tocar dois serviços ao mesmo tempo
+// bloqueia iniciar/retomar um serviço quando o operador já está com OUTRO ativo em algum
+// lugar — rodando OU pausado. Antes só checava "rodando", e por isso dava pra pausar um
+// serviço e iniciar outro em outra máquina sem perceber: o primeiro ficava pausado (dono
+// ainda com o nome dela) e o segundo rodava direto, sem aparecer no painel "Seu serviço
+// atual" (que só mostra UM de cada vez) — ficava "preso" na fila sem botão de pausar/encerrar.
+function operadorComEtapaRodando(operador, excetoEtapaId){
+  for (const p of loadPedidos()){
+    for (const et of (p.etapas||[])){
+      if (String(et.id) === String(excetoEtapaId)) continue;
+      if ((et.status === 'rodando' || et.status === 'pausado') && et.operador === operador) return { pedido: p, etapa: et };
+    }
+  }
+  return null;
+}
+function _ultimoLogTs(etapa){
+  if (!etapa.logs || !etapa.logs.length) return null;
+  return etapa.logs[etapa.logs.length-1].ts;
+}
+
+function etapaIniciar(pedidoId, etapaId, operador){
+  const p = loadPedidos().find(x=> String(x.id) === String(pedidoId)); if (!p) return false;
+  const et = (p.etapas||[]).find(x=> String(x.id) === String(etapaId)); if (!et) return false;
+  if (et.status === 'rodando') return true;
+  const conflito = operadorComEtapaRodando(operador, etapaId);
+  if (conflito){
+    alert('Esse operador já está com o serviço "'+conflito.pedido.tipo+' Nº '+conflito.pedido.numero+'" '+(conflito.etapa.status==='pausado'?'pausado':'rodando')+' em outra máquina ('+conflito.etapa.maquina+'). Retome e encerre (ou pause de novo e encerre) aquele antes de iniciar esse.');
+    return false;
+  }
+  et.status = 'rodando';
+  et.operador = operador;
+  et.logs.push({ tipo:'play', ts: Date.now(), operador });
+  salvarPedidoImediato(p.id);
+  return true;
+}
+function etapaPausar(pedidoId, etapaId){
+  const p = loadPedidos().find(x=> String(x.id) === String(pedidoId)); if (!p) return;
+  const et = (p.etapas||[]).find(x=> String(x.id) === String(etapaId)); if (!et) return;
+  if (et.status !== 'rodando') return;
+  const inicio = _ultimoLogTs(et) || Date.now();
+  et.tempoAtivoSeg = (et.tempoAtivoSeg||0) + Math.max(0, (Date.now()-inicio)/1000);
+  et.status = 'pausado';
+  et.logs.push({ tipo:'pause', ts: Date.now(), operador: et.operador });
+  salvarPedidoImediato(p.id);
+}
+function etapaRetomar(pedidoId, etapaId, operador){
+  const p = loadPedidos().find(x=> String(x.id) === String(pedidoId)); if (!p) return false;
+  const et = (p.etapas||[]).find(x=> String(x.id) === String(etapaId)); if (!et) return false;
+  if (et.status !== 'pausado') return true;
+  const conflito = operadorComEtapaRodando(operador, etapaId);
+  if (conflito){
+    alert('Esse operador já está com o serviço "'+conflito.pedido.tipo+' Nº '+conflito.pedido.numero+'" '+(conflito.etapa.status==='pausado'?'pausado':'rodando')+' em outra máquina ('+conflito.etapa.maquina+'). Encerre (ou pause) aquele antes de retomar esse.');
+    return false;
+  }
+  et.status = 'rodando';
+  et.operador = operador;
+  et.logs.push({ tipo:'retomar', ts: Date.now(), operador });
+  salvarPedidoImediato(p.id);
+  return true;
+}
+// lista de pedaços de chapa registrados numa etapa, já considerando o formato antigo
+// (dimC/dimL de uma peça só) como fallback quando ainda não tem nada no formato novo.
+function pecasDaEtapa(et){
+  if (Array.isArray(et.pedacos) && et.pedacos.length) return et.pedacos;
+  if (et.dimC && et.dimL) return [{ c: et.dimC, l: et.dimL }];
+  return [];
+}
+// retorna true se encerrou. Retorna false (sem encerrar) quando o material é NOSSO e o
+// operador ainda não preencheu o tamanho de pelo menos um pedaço de chapa (obrigatório pro
+// cálculo automático).
+function etapaEncerrar(pedidoId, etapaId){
+  const p = loadPedidos().find(x=> String(x.id) === String(pedidoId)); if (!p) return false;
+  const et = (p.etapas||[]).find(x=> String(x.id) === String(etapaId)); if (!et) return false;
+  if (et.status === 'concluido') return true;
+  if (!et.clienteForneceMaterial && et.material && pecasDaEtapa(et).length === 0) return false;
+  if (et.status === 'rodando'){
+    const inicio = _ultimoLogTs(et) || Date.now();
+    et.tempoAtivoSeg = (et.tempoAtivoSeg||0) + Math.max(0, (Date.now()-inicio)/1000);
+  }
+  et.status = 'concluido';
+  et.logs.push({ tipo:'encerrar', ts: Date.now(), operador: et.operador });
+  sincronizarLinhasProducaoDeEtapas(p); // gera/atualiza a linha de horas+valor dessa etapa na Finalização da produção
+  salvarPedidoImediato(p.id);
+  return true;
+}
+
+// prensa: registra um palete/caixa fechado (quantidade + tipo) SEM encerrar a etapa nem o
+// pedido — fica só como um aviso pro admin gerar etiqueta daquele lote. O pedido continua
+// aberto normalmente até o operador encerrar a etapa de verdade.
+function etapaLiberarQuantidade(pedidoId, etapaId, qtd, tipoEmbalagem){
+  const p = loadPedidos().find(x=> String(x.id) === String(pedidoId)); if (!p) return false;
+  const et = (p.etapas||[]).find(x=> String(x.id) === String(etapaId)); if (!et) return false;
+  if (!qtd || qtd <= 0) return false;
+  if (!Array.isArray(et.liberacoes)) et.liberacoes = [];
+  et.liberacoes.push({ id: gerarIdUnico(), qtd, tipo: tipoEmbalagem || 'palete', ts: Date.now(), operador: et.operador || operadorAtualSelecionado(), etiquetaGerada:false });
+  salvarPedidoImediato(p.id);
+  return true;
+}
+// marca uma liberação como já usada pra gerar etiqueta (só visual pro admin saber o que já foi tratado)
+function marcarLiberacaoEtiquetaGerada(pedidoId, etapaId, liberacaoId){
+  const p = loadPedidos().find(x=> String(x.id) === String(pedidoId)); if (!p) return;
+  const et = (p.etapas||[]).find(x=> String(x.id) === String(etapaId)); if (!et) return;
+  const lib = (et.liberacoes||[]).find(x=> String(x.id) === String(liberacaoId)); if (!lib) return;
+  lib.etiquetaGerada = true;
+  salvarPedidoImediato(p.id);
+}
+function pedidoTemLiberacoesPendentes(p){
+  return (p.etapas||[]).some(et=> (et.liberacoes||[]).some(l=> !l.etiquetaGerada));
+}
+
+// tempo ativo "ao vivo": soma já registrada + o intervalo rodando agora (se for o caso)
+function etapaTempoAtivoAoVivo(etapa){
+  let seg = etapa.tempoAtivoSeg || 0;
+  if (etapa.status === 'rodando'){
+    const inicio = _ultimoLogTs(etapa) || Date.now();
+    seg += Math.max(0, (Date.now()-inicio)/1000);
+  }
+  return seg;
+}
+// tempo total decorrido (1º play até agora/até encerrar) e tempo ocioso (parado) dessa etapa
+function etapaTempoTotalEOcioso(etapa){
+  if (!etapa.logs || !etapa.logs.length) return { total:0, ocioso:0 };
+  const inicio = etapa.logs[0].ts;
+  const fim = (etapa.status === 'concluido') ? _ultimoLogTs(etapa) : Date.now();
+  const total = Math.max(0, (fim-inicio)/1000);
+  const ativo = etapaTempoAtivoAoVivo(etapa);
+  return { total, ocioso: Math.max(0, total-ativo) };
+}
+function fmtDuracao(segundos){
+  segundos = Math.max(0, Math.round(segundos||0));
+  const h = Math.floor(segundos/3600), m = Math.floor((segundos%3600)/60), s = segundos%60;
+  return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+// reconstrói os intervalos "rodando" (início/fim/operador) de uma etapa a partir do log
+function etapaSegmentosAtivos(etapa){
+  const segs = [];
+  let abertura = null;
+  (etapa.logs||[]).forEach(l=>{
+    if (l.tipo==='play' || l.tipo==='retomar'){ abertura = l; }
+    else if ((l.tipo==='pause' || l.tipo==='encerrar') && abertura){
+      segs.push({ inicio: abertura.ts, fim: l.ts, operador: abertura.operador||l.operador||'' });
+      abertura = null;
+    }
+  });
+  if (abertura){ segs.push({ inicio: abertura.ts, fim: Date.now(), operador: abertura.operador||'' }); }
+  return segs;
+}
+// data local (fuso do navegador) em AAAA-MM-DD — não usar toISOString() aqui, que é em UTC
+// e desloca o dia em lugares como o Brasil (UTC-3), classificando serviço da noite no dia errado.
+function dataLocalISO(ts){
+  const d = new Date(ts);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// resumo diário de tempo ativo/ocioso por operador (todas as etapas de todos os pedidos)
+// — mantida por referência, não é mais usada na tela (trocada pelo resumo por máquina abaixo).
+function calcularResumoProducaoDoDia(dataISO){
+  const diaAlvo = dataISO || dataLocalISO(Date.now());
+  const porOperador = {};
+  loadPedidos().forEach(p=>{
+    (p.etapas||[]).forEach(et=>{
+      etapaSegmentosAtivos(et).forEach(seg=>{
+        const diaSeg = dataLocalISO(seg.inicio);
+        if (diaSeg !== diaAlvo) return;
+        const nome = seg.operador || '(sem operador)';
+        if (!porOperador[nome]) porOperador[nome] = { primeiro: seg.inicio, ultimo: seg.fim, ativoSeg: 0, maquinas: new Set() };
+        const o = porOperador[nome];
+        o.primeiro = Math.min(o.primeiro, seg.inicio);
+        o.ultimo = Math.max(o.ultimo, seg.fim);
+        o.ativoSeg += Math.max(0, (seg.fim-seg.inicio)/1000);
+        o.maquinas.add(et.maquina||'—');
+      });
+    });
+  });
+  return Object.keys(porOperador).sort().map(nome=>{
+    const o = porOperador[nome];
+    const totalSeg = Math.max(0, (o.ultimo-o.primeiro)/1000);
+    return { operador: nome, maquinas: Array.from(o.maquinas).join(', '), primeiro: o.primeiro, ultimo: o.ultimo, totalSeg, ativoSeg: o.ativoSeg, ociosoSeg: Math.max(0, totalSeg-o.ativoSeg) };
+  });
+}
+// carga horária esperada de expediente naquele dia (dia da semana): segunda a quinta 9h,
+// sexta 8h, sábado/domingo sem expediente (0h) — usado só como referência de comparação,
+// não bloqueia nada.
+function horasExpedienteDoDia(dataISO){
+  const partes = (dataISO||'').split('-').map(Number);
+  const y = partes[0], m = partes[1], d = partes[2];
+  if (!y || !m || !d) return 0;
+  const diaSemana = new Date(y, m-1, d).getDay(); // 0=domingo ... 6=sábado
+  if (diaSemana >= 1 && diaSemana <= 4) return 9; // segunda a quinta
+  if (diaSemana === 5) return 8; // sexta
+  return 0; // sábado/domingo
+}
+// resumo diário de tempo ativo por MÁQUINA — lista TODAS as máquinas cadastradas (mesmo as
+// que não rodaram nada nesse dia) e soma o tempo ativo de qualquer etapa/pedido/operador que
+// passou por ela, comparando com a carga horária esperada do dia da semana.
+function calcularResumoProducaoDoDiaPorMaquina(dataISO){
+  const diaAlvo = dataISO || dataLocalISO(Date.now());
+  const porMaquina = {};
+  loadMaquinas().forEach(m=>{ porMaquina[m] = { maquina: m, ativoSeg: 0, operadores: new Set(), primeiro: null, ultimo: null }; });
+  loadPedidos().forEach(p=>{
+    (p.etapas||[]).forEach(et=>{
+      const maq = et.maquina || '(sem máquina)';
+      if (!porMaquina[maq]) porMaquina[maq] = { maquina: maq, ativoSeg: 0, operadores: new Set(), primeiro: null, ultimo: null };
+      etapaSegmentosAtivos(et).forEach(seg=>{
+        if (dataLocalISO(seg.inicio) !== diaAlvo) return;
+        const o = porMaquina[maq];
+        o.ativoSeg += Math.max(0, (seg.fim-seg.inicio)/1000);
+        if (seg.operador) o.operadores.add(seg.operador);
+        if (o.primeiro === null || seg.inicio < o.primeiro) o.primeiro = seg.inicio;
+        if (o.ultimo === null || seg.fim > o.ultimo) o.ultimo = seg.fim;
+      });
+    });
+  });
+  const capacidadeSeg = horasExpedienteDoDia(diaAlvo) * 3600;
+  return Object.keys(porMaquina).sort().map(m=>{
+    const o = porMaquina[m];
+    const ociosoSeg = Math.max(0, capacidadeSeg - o.ativoSeg);
+    const aproveitamento = capacidadeSeg > 0 ? Math.round(Math.min(1, o.ativoSeg/capacidadeSeg) * 100) : null;
+    return {
+      maquina: o.maquina, ativoSeg: o.ativoSeg, capacidadeSeg, ociosoSeg, aproveitamento,
+      operadores: Array.from(o.operadores).join(', '), primeiro: o.primeiro, ultimo: o.ultimo
+    };
+  });
+}
+
+/* ============================================================
+   VIEW OPERAÇÃO — kiosk do operador (chão de fábrica)
+   ============================================================ */
+let _operTimer = null;
+const OPER_MAQUINA_STORAGE_KEY = 'lumatri_oper_maquina_atual';
+// guarda só a MÁQUINA escolhida nesse aparelho (faz sentido: um tablet fica fixo do lado da prensa,
+// por exemplo). O nome do operador NUNCA fica salvo — cada um digita o próprio ao usar a tela.
+let _operMaquinaAtual = (function(){
+  try{ return localStorage.getItem(OPER_MAQUINA_STORAGE_KEY) || ''; }catch(e){ return ''; }
+})();
+
+function operadorAtualSelecionado(){
+  const el = document.getElementById('operOperadorInput');
+  return el ? el.value.trim() : '';
+}
+function maquinaAtualSelecionada(){
+  return _operMaquinaAtual;
+}
+function selecionarMaquinaOperacao(m){
+  _operMaquinaAtual = m;
+  try{ localStorage.setItem(OPER_MAQUINA_STORAGE_KEY, m); }catch(e){}
+  renderOperacao();
+}
+
+/* ---- Modo operador (kiosk): trava esse aparelho só na tela de Operação,
+   escondendo o menu inteiro, até digitar o PIN configurado em Sistema.
+   Fica salvo por APARELHO (localStorage) — sobrevive a recarregar a página. ---- */
+const KIOSK_MODO_KEY = 'lumatri_modo_operador_travado';
+let modoOperadorTravado = (function(){
+  try{ return localStorage.getItem(KIOSK_MODO_KEY) === '1'; }catch(e){ return false; }
+})();
+function aplicarKioskPin(){
+  const el = document.getElementById('kioskPinInput');
+  if (el && document.activeElement !== el){
+    const v = configCache.kioskPin || '';
+    if (el.value !== v) el.value = v;
+  }
+}
+const _kioskPinEl = document.getElementById('kioskPinInput');
+if (_kioskPinEl) _kioskPinEl.addEventListener('input', ()=>{
+  if (typeof writeConfig === 'function') writeConfig({ kioskPin: _kioskPinEl.value.trim() });
+});
+function aplicarModoOperador(){
+  document.body.classList.toggle('modo-operador-travado', modoOperadorTravado);
+  const btnTravar = document.getElementById('operTravarBtn');
+  const btnDestravar = document.getElementById('operDestravarBtn');
+  if (btnTravar) btnTravar.style.display = modoOperadorTravado ? 'none' : '';
+  if (btnDestravar) btnDestravar.style.display = modoOperadorTravado ? '' : 'none';
+}
+function travarModoOperador(){
+  if (!confirm('Travar esse computador/tablet só na tela de Operação? O menu todo fica escondido — só dá pra sair digitando o PIN (configurado em Sistema).')) return;
+  modoOperadorTravado = true;
+  try{ localStorage.setItem(KIOSK_MODO_KEY, '1'); }catch(e){}
+  trocarViewAgora('viewOperacao');
+  aplicarModoOperador();
+}
+function destravarModoOperador(){
+  const pin = (configCache.kioskPin || '').trim();
+  const digitado = prompt(pin ? 'Digite o PIN pra destravar essa tela:' : 'Nenhum PIN configurado. Confirma destravar essa tela? Digite qualquer coisa e clique OK.');
+  if (digitado === null) return; // cancelou
+  if (pin && digitado !== pin){ alert('PIN incorreto.'); return; }
+  modoOperadorTravado = false;
+  try{ localStorage.removeItem(KIOSK_MODO_KEY); }catch(e){}
+  aplicarModoOperador();
+}
+const _operTravarBtn = document.getElementById('operTravarBtn');
+if (_operTravarBtn) _operTravarBtn.addEventListener('click', travarModoOperador);
+const _operDestravarBtn = document.getElementById('operDestravarBtn');
+if (_operDestravarBtn) _operDestravarBtn.addEventListener('click', destravarModoOperador);
+
+function renderOperMaquinaTabs(){
+  const wrap = document.getElementById('operMaquinaTabs'); if (!wrap) return;
+  const lista = loadMaquinas();
+  if (_operMaquinaAtual && !lista.includes(_operMaquinaAtual)) _operMaquinaAtual = '';
+  wrap.innerHTML = lista.map(m=>{
+    const ativa = m === _operMaquinaAtual;
+    return `<button type="button" class="btn maquina-tab ${ativa?'':'secondary'}" data-maqtab="${epiEsc(m)}"${ativa?' style="pointer-events:none;"':''}>${m}</button>`;
+  }).join('');
+  wrap.querySelectorAll('[data-maqtab]').forEach(btn=>{
+    btn.addEventListener('click', ()=> selecionarMaquinaOperacao(btn.dataset.maqtab));
+  });
+}
+// pra cada pedido, sua etapa "da vez" — é isso que decide o que aparece em cada máquina
+// fila de uma máquina: TODAS as etapas (de todos os pedidos, de todos os grupos de chapa)
+// que já estão liberadas pra essa máquina e ainda não foram concluídas — inclusive várias
+// etapas do MESMO pedido ao mesmo tempo, se forem grupos de chapa diferentes (ou a mesma
+// etapa em máquinas diferentes conforme o cadastro). Ordena por quem começou a esperar primeiro.
+// posição dessa etapa na fila: por padrão é a ordem de criação (et.id), mas o administrador
+// pode reorganizar manualmente a fila de uma máquina — nesse caso usa et.prioridadeFila.
+function ordemFilaDaEtapa(et){
+  return (et && et.prioridadeFila != null) ? et.prioridadeFila : (et && et.id) || 0;
+}
+function etapasLiberadasParaMaquina(maquina){
+  const out = [];
+  loadPedidos().forEach(p=>{
+    (p.etapas||[]).forEach(et=>{
+      if (et.status === 'concluido') return;
+      if (et.maquina !== maquina) return;
+      if (!etapaEstaLiberada(p, et)) return;
+      out.push({ pedido:p, etapa:et });
+    });
+  });
+  out.sort((a,b)=> ordemFilaDaEtapa(a.etapa) - ordemFilaDaEtapa(b.etapa));
+  return out;
+}
+// ADMINISTRADOR reorganiza manualmente a fila de uma máquina — troca a prioridade entre a
+// etapa escolhida e a vizinha (podem ser de pedidos diferentes; cada um é salvo separado).
+function moverPrioridadeFila(maquina, etapaId, direcao){
+  const fila = etapasLiberadasParaMaquina(maquina);
+  const idx = fila.findIndex(it=> String(it.etapa.id) === String(etapaId));
+  if (idx < 0) return;
+  const alvo = idx + direcao;
+  if (alvo < 0 || alvo >= fila.length) return;
+  const a = fila[idx].etapa, b = fila[alvo].etapa;
+  const pa = ordemFilaDaEtapa(a), pb = ordemFilaDaEtapa(b);
+  a.prioridadeFila = pb;
+  b.prioridadeFila = pa;
+  salvarPedidoImediato(fila[idx].pedido.id);
+  salvarPedidoImediato(fila[alvo].pedido.id);
+  renderOperFila();
+}
+// acha uma etapa rodando OU pausada por esse operador, em qualquer máquina/pedido
+function etapaDoOperador(operador){
+  if (!operador) return null;
+  for (const p of loadPedidos()){
+    for (const et of (p.etapas||[])){
+      if (et.operador === operador && (et.status==='rodando' || et.status==='pausado')) return { pedido:p, etapa:et };
+    }
+  }
+  return null;
+}
+
+// controla quando o "Seu serviço atual" precisa refazer o HTML inteiro (troca de etapa, ou
+// ação explícita) — o timer de 1s só atualiza o texto do cronômetro, senão o operador perde
+// o foco/cursor no meio de digitar o tamanho da chapa a cada segundo.
+let _meuServicoEtapaIdAtual = null;
+function renderOperMeuServico(opts){
+  const wrap = document.getElementById('operMeuServicoWrap'); if (!wrap) return;
+  const operador = operadorAtualSelecionado();
+  const achado = etapaDoOperador(operador);
+  if (!achado){ wrap.style.display = 'none'; wrap.innerHTML=''; _meuServicoEtapaIdAtual = null; return; }
+  const { pedido:p, etapa:et } = achado;
+  wrap.style.display = '';
+  if (_meuServicoEtapaIdAtual === et.id && !(opts && opts.forcar)){
+    const cron = wrap.querySelector('#operMeuCronometro');
+    if (cron) cron.textContent = fmtDuracao(etapaTempoAtivoAoVivo(et));
+    return;
+  }
+  _meuServicoEtapaIdAtual = et.id;
+  // material NOSSO (não do cliente): o tamanho da chapa é obrigatório e é o operador quem
+  // preenche aqui — vai direto pro cálculo da OP quando encerrar essa etapa.
+  const precisaTamanho = !et.clienteForneceMaterial && !!et.material;
+  const obsHtml = p.observacaoOP ? `
+    <div style="margin-top:10px; padding:10px 12px; background:rgba(240,180,41,0.12); border:1px solid #e0b84a; border-radius:6px; font-size:13px; white-space:pre-wrap;">
+      <b>Observação do pedido:</b> ${epiEsc(p.observacaoOP)}
+    </div>` : '';
+  const notaHtml = et.notaPCP ? `
+    <div style="margin-top:10px; padding:10px 12px; background:rgba(90,150,224,0.12); border:1px solid #5a96e0; border-radius:6px; font-size:13px; white-space:pre-wrap;">
+      <b>Nota do PCP:</b> ${epiEsc(et.notaPCP)}
+    </div>` : '';
+  const pecas = pecasDaEtapa(et);
+  const areaTotal = pecas.reduce((s,pc)=> s + ((pc.c||0)/1000)*((pc.l||0)/1000), 0);
+  const listaPecasHtml = pecas.length ? `
+    <div style="display:flex; flex-direction:column; gap:4px; margin:8px 0;">
+      ${pecas.map((pc,i)=>`
+        <div style="display:flex; align-items:center; gap:8px; font-size:13px; background:rgba(255,255,255,0.04); padding:5px 9px; border-radius:5px;">
+          <span style="flex:1;">Pedaço ${i+1}: <b>${pc.c}</b> × <b>${pc.l}</b> mm</span>
+          <button type="button" class="iconbtn" data-operpecarm="${i}" title="remover">×</button>
+        </div>`).join('')}
+      <div class="footnote" style="margin:0;">Área total: ${areaTotal.toFixed(3)} m² · ${pecas.length} ${pecas.length===1?'pedaço':'pedaços'}</div>
+    </div>` : '<div class="footnote" style="margin:6px 0;">Nenhum tamanho registrado ainda.</div>';
+  const tamanhoHtml = precisaTamanho ? `
+    <div style="margin-top:10px;">
+      <label style="font-weight:700; font-size:13px;">Tamanho da chapa${pecas.length?'':' *'}</label>
+      <div class="footnote" style="margin:2px 0 4px;">Material é NOSSO — preencha o(s) tamanho(s) real(is). Se sobrou retalho de tamanhos diferentes, adicione um pedaço de cada vez: digite e aperte Enter, sem precisar clicar de novo.</div>
+      ${listaPecasHtml}
+      <div class="row" style="align-items:flex-end; margin:0;">
+        <div class="field" style="max-width:110px;">
+          <label>Comprimento (mm)</label>
+          <input type="number" min="0" id="operPecaC" placeholder="ex: 1200">
+        </div>
+        <div class="field" style="max-width:110px;">
+          <label>Largura (mm)</label>
+          <input type="number" min="0" id="operPecaL" placeholder="ex: 800">
+        </div>
+        <button type="button" class="btn secondary small" id="operPecaAddBtn" style="margin-bottom:8px;">+ adicionar pedaço</button>
+      </div>
+    </div>` : '';
+  const ehPrensa = tipoDeMaquina(et.maquina) === 'prensa';
+  const libItens = et.liberacoes||[];
+  // saldo: quanto já foi liberado x quanto falta, com base na quantidade total da etapa
+  // (et.qtdChapas) — assim o operador não precisa fazer conta de cabeça a cada palete fechado.
+  const totalQtdEtapa = parseFloat(et.qtdChapas)||0;
+  const totalLiberadoQtd = libItens.reduce((s,l)=> s + (parseFloat(l.qtd)||0), 0);
+  const restanteQtd = totalQtdEtapa > 0 ? Math.max(0, totalQtdEtapa - totalLiberadoQtd) : null;
+  const saldoHtml = totalQtdEtapa > 0
+    ? `<div style="font-size:13px; font-weight:700; margin-bottom:6px;">Já liberado: ${totalLiberadoQtd} de ${totalQtdEtapa} — falta liberar ${restanteQtd}</div>`
+    : (totalLiberadoQtd > 0 ? `<div style="font-size:13px; font-weight:700; margin-bottom:6px;">Já liberado: ${totalLiberadoQtd} (quantidade total da etapa não foi informada na OP)</div>` : '');
+  const liberarHtml = ehPrensa ? `
+    <div style="margin-top:14px; padding:10px 12px; background:rgba(255,138,30,0.08); border:1px solid #ff8a1e; border-radius:6px;">
+      <div style="font-weight:700; font-size:13px; margin-bottom:4px;">📦 Liberar quantidade pronta (palete/caixa)</div>
+      <div class="footnote" style="margin:0 0 6px;">Isso NÃO encerra o serviço — só avisa o administrador que já tem quantidade pronta pra gerar etiqueta. O pedido continua aberto normalmente.</div>
+      ${saldoHtml}
+      ${libItens.length ? `<div style="margin-bottom:8px; display:flex; flex-direction:column; gap:2px;">${libItens.map(l=>`<div style="font-size:12px; color:var(--text-dim);">✓ ${l.qtd} ${l.tipo==='caixa'?'caixa(s)':'palete(s)'} liberado(s) às ${new Date(l.ts).toLocaleTimeString('pt-BR')}${l.etiquetaGerada?' · etiqueta já gerada':''}</div>`).join('')}</div>` : ''}
+      <div class="row" style="align-items:flex-end; margin:0;">
+        <div class="field" style="max-width:100px;">
+          <label>Quantidade</label>
+          <input type="number" min="0" id="operLibQtd" placeholder="${restanteQtd!=null?('até '+restanteQtd):'qtd'}">
+        </div>
+        <div class="field" style="max-width:130px;">
+          <label>Tipo</label>
+          <select id="operLibTipo">
+            <option value="palete">Palete</option>
+            <option value="caixa">Caixa</option>
+          </select>
+        </div>
+        <button type="button" class="btn secondary small" id="operLibBtn" style="margin-bottom:8px;">Liberar</button>
+      </div>
+    </div>` : '';
+  wrap.innerHTML = `
+    <h2><span class="n">·</span>Seu serviço atual</h2>
+    <div class="saved-row" style="align-items:center; flex-wrap:wrap;">
+      <div class="saved-info">
+        <b>${p.tipo} Nº ${p.numero}</b> — ${p.cliente||'(sem cliente)'}${p.produto?(' · '+p.produto):''}
+        <span class="saved-date">${epiEsc(et.maquina)} · ${et.status==='rodando'?'rodando':'pausado'}</span>
+      </div>
+      <div style="font-family:var(--mono); font-size:20px; font-weight:800; color:var(--good); min-width:100px; text-align:right;" id="operMeuCronometro">${fmtDuracao(etapaTempoAtivoAoVivo(et))}</div>
+      ${et.status==='rodando'
+        ? `<button class="btn secondary small" data-operpause="${p.id}:${et.id}">⏸ Pausar</button>`
+        : `<button class="btn small" data-operretomar="${p.id}:${et.id}">▶ Retomar</button>`}
+      <button class="btn secondary small" data-operencerrar="${p.id}:${et.id}">⏹ Encerrar</button>
+    </div>
+    ${obsHtml}
+    ${notaHtml}
+    ${htmlCaminhoArquivos(p.caminhoArquivos)}
+    ${tamanhoHtml}
+    ${liberarHtml}`;
+  ligarBotoesCopiarCaminho(wrap);
+  const inpPecaC = wrap.querySelector('#operPecaC');
+  const inpPecaL = wrap.querySelector('#operPecaL');
+  function adicionarPecaAtual(){
+    const c = parseFloat(inpPecaC.value)||0;
+    const l = parseFloat(inpPecaL.value)||0;
+    if (!c || !l){ alert('Preencha comprimento e largura do pedaço antes de adicionar.'); return; }
+    if (!Array.isArray(et.pedacos) || !et.pedacos.length){
+      // migra o formato antigo (uma peça só) pra lista, se já tinha algo preenchido
+      et.pedacos = (et.dimC && et.dimL) ? [{ c: et.dimC, l: et.dimL }] : [];
+    }
+    et.pedacos.push({ c, l });
+    et.dimC = 0; et.dimL = 0;
+    salvarPedidoImediato(p.id);
+    renderOperMeuServico({forcar:true});
+  }
+  if (inpPecaC && inpPecaL){
+    const enterAdiciona = (e)=>{ if (e.key==='Enter'){ e.preventDefault(); adicionarPecaAtual(); } };
+    inpPecaC.addEventListener('keydown', enterAdiciona);
+    inpPecaL.addEventListener('keydown', enterAdiciona);
+    inpPecaC.focus();
+  }
+  const btnPecaAdd = wrap.querySelector('#operPecaAddBtn');
+  if (btnPecaAdd) btnPecaAdd.addEventListener('click', adicionarPecaAtual);
+  wrap.querySelectorAll('[data-operpecarm]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const i = +btn.dataset.operpecarm;
+    const atuais = pecasDaEtapa(et);
+    atuais.splice(i,1);
+    et.pedacos = atuais; et.dimC = 0; et.dimL = 0;
+    salvarPedidoImediato(p.id);
+    renderOperMeuServico({forcar:true});
+  }));
+  const btnLib = wrap.querySelector('#operLibBtn');
+  if (btnLib) btnLib.addEventListener('click', ()=>{
+    const inpQtd = wrap.querySelector('#operLibQtd');
+    const selTipo = wrap.querySelector('#operLibTipo');
+    const qtd = parseFloat(inpQtd.value)||0;
+    if (!qtd){ alert('Preencha a quantidade antes de liberar.'); return; }
+    if (restanteQtd != null && qtd > restanteQtd){
+      if (!confirm('Isso passa da quantidade que falta liberar ('+restanteQtd+'). Confirma mesmo assim?')) return;
+    }
+    if (!etapaLiberarQuantidade(p.id, et.id, qtd, selTipo.value)) return;
+    renderOperMeuServico({forcar:true});
+  });
+  const bp = wrap.querySelector('[data-operpause]');
+  if (bp) bp.addEventListener('click', ()=>{ const [pid,eid]=bp.dataset.operpause.split(':'); etapaPausar(pid, eid); renderOperacao(); });
+  const br = wrap.querySelector('[data-operretomar]');
+  if (br) br.addEventListener('click', ()=>{ const [pid,eid]=br.dataset.operretomar.split(':'); etapaRetomar(pid, eid, operador); renderOperacao(); });
+  const be = wrap.querySelector('[data-operencerrar]');
+  if (be) be.addEventListener('click', ()=>{
+    const [pid,eid]=be.dataset.operencerrar.split(':');
+    if (precisaTamanho && pecasDaEtapa(et).length === 0){
+      alert('Preencha o tamanho de pelo menos um pedaço de chapa antes de encerrar — é obrigatório porque esse material é nosso.');
+      return;
+    }
+    if (!confirm('Encerrar essa etapa? Se houver próxima etapa na sequência, ela libera pro operador dela agora.')) return;
+    if (!etapaEncerrar(pid, eid)){
+      alert('Preencha o tamanho de pelo menos um pedaço de chapa antes de encerrar — é obrigatório porque esse material é nosso.');
+      return;
+    }
+    renderOperacao();
+  });
+}
+
+function renderOperFila(){
+  const emptyMsg = document.getElementById('operFilaEmptyMsg');
+  const list = document.getElementById('operFilaList');
+  const tituloEl = document.getElementById('operFilaMaquinaTitulo');
+  if (!list) return;
+  const operador = operadorAtualSelecionado();
+  const maquina = maquinaAtualSelecionada();
+  if (tituloEl) tituloEl.textContent = maquina ? ('— '+maquina) : '';
+  if (!maquina){
+    emptyMsg.style.display = 'block'; emptyMsg.textContent = 'Escolha uma máquina acima pra ver a fila.';
+    list.innerHTML = ''; return;
+  }
+  const itens = etapasLiberadasParaMaquina(maquina);
+  if (itens.length === 0){
+    emptyMsg.style.display = 'block'; emptyMsg.textContent = 'Nenhum serviço liberado pra essa máquina no momento.';
+    list.innerHTML = ''; return;
+  }
+  emptyMsg.style.display = 'none';
+  list.innerHTML = itens.map(({pedido:p, etapa:et}, i)=>{
+    const doGrupo = etapasDoMesmoGrupo(p, et);
+    const idxGrupo = doGrupo.indexOf(et);
+    const seqTxt = (doGrupo.length>1) ? `etapa ${idxGrupo+1} de ${doGrupo.length} dessa chapa` : '';
+    const grupoTxt = rotuloGrupoChapa(et);
+    const rodandoOutro = et.status==='rodando' && et.operador && et.operador!==operador;
+    const pausadoInfo = et.status==='pausado' ? ` · pausado (${epiEsc(et.operador||'—')})` : '';
+    let acoesHtml = '';
+    if (et.status === 'pendente'){
+      acoesHtml = `<button class="btn small" data-fila-iniciar="${p.id}:${et.id}">▶ Iniciar</button>`;
+    } else if (et.status === 'pausado'){
+      acoesHtml = `<button class="btn small" data-fila-retomar="${p.id}:${et.id}">▶ Retomar</button>`;
+    } else if (rodandoOutro){
+      acoesHtml = `<span style="font-size:12px; color:var(--text-dim);">rodando com ${epiEsc(et.operador)}</span>`;
+    } else if (et.status === 'rodando'){
+      // botões de Pausar/Encerrar aqui na fila também (não só no painel "Seu serviço atual"
+      // lá em cima) — importante porque esse painel só mostra UM serviço ativo por vez; se o
+      // operador (por bug antigo ou qualquer inconsistência) ficar com mais de um rodando ao
+      // mesmo tempo, o(s) outro(s) precisa(m) de um jeito de serem controlados por aqui.
+      acoesHtml = `
+        <span style="font-family:var(--mono); font-weight:800; color:var(--good); margin-right:6px;">${fmtDuracao(etapaTempoAtivoAoVivo(et))} (é seu)</span>
+        <button class="btn secondary small" data-fila-pausar="${p.id}:${et.id}">⏸ Pausar</button>
+        <button class="btn secondary small" data-fila-encerrar="${p.id}:${et.id}">⏹ Encerrar</button>`;
+    }
+    // administrador pode reorganizar manualmente a ordem da fila dessa máquina (arrasta pra
+    // cima/baixo trocando prioridade com o vizinho, mesmo que sejam de pedidos diferentes)
+    const reordenarHtml = window.isAdmin ? `
+      <div class="no-print" style="display:flex; flex-direction:column; gap:2px; margin-right:6px;">
+        <button type="button" class="iconbtn" data-filaup="${p.id}:${et.id}" title="mover pra cima na fila" ${i===0?'disabled':''}>▲</button>
+        <button type="button" class="iconbtn" data-filadown="${p.id}:${et.id}" title="mover pra baixo na fila" ${i===itens.length-1?'disabled':''}>▼</button>
+      </div>` : '';
+    const obsTxt = p.observacaoOP ? `<br><span style="color:#e0b84a; font-weight:700;">⚠ ${epiEsc(p.observacaoOP)}</span>` : '';
+    const notaTxt = et.notaPCP ? `<br><span style="color:#5a96e0; font-weight:700;">📌 ${epiEsc(et.notaPCP)}</span>` : '';
+    return `
+    <div class="saved-row" style="align-items:center; flex-wrap:wrap;">
+      ${reordenarHtml}
+      <div class="saved-info">
+        <b>${p.tipo} Nº ${p.numero}</b> — ${p.cliente||'(sem cliente)'}${p.produto?(' · '+p.produto):''}
+        ${grupoTxt?`<br><span style="font-weight:700;">${epiEsc(grupoTxt)}</span>`:''}
+        <span class="saved-date">${seqTxt}${pausadoInfo}</span>
+        ${obsTxt}
+        ${notaTxt}
+        ${htmlCaminhoArquivos(p.caminhoArquivos)}
+      </div>
+      ${acoesHtml}
+    </div>`;
+  }).join('');
+  ligarBotoesCopiarCaminho(list);
+  list.querySelectorAll('[data-fila-iniciar]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const nomeAgora = operadorAtualSelecionado();
+    if (!nomeAgora){ alert('Digite seu nome no campo acima antes de iniciar um serviço.'); document.getElementById('operOperadorInput').focus(); return; }
+    const [pid,eid] = btn.dataset.filaIniciar.split(':');
+    if (etapaIniciar(pid, eid, nomeAgora)) renderOperacao();
+  }));
+  list.querySelectorAll('[data-fila-retomar]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const nomeAgora = operadorAtualSelecionado();
+    if (!nomeAgora){ alert('Digite seu nome no campo acima antes de retomar um serviço.'); document.getElementById('operOperadorInput').focus(); return; }
+    const [pid,eid] = btn.dataset.filaRetomar.split(':');
+    if (etapaRetomar(pid, eid, nomeAgora)) renderOperacao();
+  }));
+  list.querySelectorAll('[data-fila-pausar]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const [pid,eid] = btn.dataset.filaPausar.split(':');
+    etapaPausar(pid, eid);
+    renderOperacao();
+  }));
+  list.querySelectorAll('[data-fila-encerrar]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const [pid,eid] = btn.dataset.filaEncerrar.split(':');
+    const p2 = loadPedidos().find(x=> String(x.id)===String(pid));
+    const et2 = p2 && (p2.etapas||[]).find(x=> String(x.id)===String(eid));
+    const precisaTamanho2 = et2 && !et2.clienteForneceMaterial && !!et2.material;
+    if (precisaTamanho2 && pecasDaEtapa(et2).length === 0){
+      alert('Esse material é NOSSO e ainda não tem o tamanho da chapa preenchido — abra "Seu serviço atual" nessa etapa pra preencher antes de encerrar.');
+      return;
+    }
+    if (!confirm('Encerrar esse serviço? Se houver próxima etapa na sequência, ela libera pro operador dela agora.')) return;
+    if (!etapaEncerrar(pid, eid)){
+      alert('Esse material é NOSSO e ainda não tem o tamanho da chapa preenchido — abra "Seu serviço atual" nessa etapa pra preencher antes de encerrar.');
+      return;
+    }
+    renderOperacao();
+  }));
+  list.querySelectorAll('[data-filaup]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const [,eid] = btn.dataset.filaup.split(':');
+    moverPrioridadeFila(maquina, eid, -1);
+  }));
+  list.querySelectorAll('[data-filadown]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const [,eid] = btn.dataset.filadown.split(':');
+    moverPrioridadeFila(maquina, eid, 1);
+  }));
+}
+
+function renderOperacao(){
+  if (!document.getElementById('operMaquinaTabs')) return;
+  renderOperMaquinaTabs();
+  // {forcar:true} porque essa função só é chamada depois de uma ação explícita (iniciar,
+  // pausar, retomar, trocar de aba) — precisa refazer o HTML mesmo se for a mesma etapa. O
+  // timer de 1s logo abaixo chama sem forçar, só pra atualizar o cronômetro sem roubar foco.
+  renderOperMeuServico({forcar:true});
+  renderOperFila();
+  if (_operTimer) clearInterval(_operTimer);
+  _operTimer = setInterval(()=>{
+    const v = document.getElementById('viewOperacao');
+    if (!v || v.style.display === 'none'){ clearInterval(_operTimer); return; }
+    renderOperMeuServico();
+    renderOperFila();
+  }, 1000);
+}
+document.getElementById('operOperadorInput').addEventListener('input', ()=>{ renderOperMeuServico({forcar:true}); renderOperFila(); });
+
+/* ============================================================
+   VIEW PRODUÇÃO — status ao vivo + resumo diário de tempo ativo/ocioso
+   ============================================================ */
+let _producaoTimer = null;
+
+function renderProducaoAoVivo(){
+  const list = document.getElementById('producaoAoVivoList');
+  const emptyMsg = document.getElementById('producaoAoVivoEmptyMsg');
+  if (!list) return;
+  const rodando = [];
+  loadPedidos().forEach(p=> (p.etapas||[]).forEach(et=>{
+    if (et.status === 'rodando') rodando.push({ pedido:p, etapa:et });
+  }));
+  if (rodando.length === 0){
+    emptyMsg.style.display = 'block'; list.innerHTML = ''; return;
+  }
+  emptyMsg.style.display = 'none';
+  list.innerHTML = rodando.map(({pedido:p, etapa:et})=>`
+    <div class="saved-row" style="align-items:center;">
+      <div class="saved-info">
+        <b>${epiEsc(et.maquina)}</b> — ${epiEsc(et.operador||'—')}
+        <span class="saved-date">${p.tipo} Nº ${p.numero} · ${p.cliente||'(sem cliente)'}</span>
+      </div>
+      <div style="font-family:var(--mono); font-weight:800; color:var(--good);">${fmtDuracao(etapaTempoAtivoAoVivo(et))}</div>
+    </div>`).join('');
+}
+
+function fmtHoraCurta(ts){
+  if (!ts) return '—';
+  return new Date(ts).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+
+function renderProducaoResumo(){
+  const emptyMsg = document.getElementById('producaoResumoEmptyMsg');
+  const table = document.getElementById('producaoResumoTable');
+  const body = document.getElementById('producaoResumoBody');
+  const dataEl = document.getElementById('producaoDataFiltro');
+  if (!body) return;
+  if (dataEl && !dataEl.value) dataEl.value = dataLocalISO(Date.now());
+  const dia = dataEl ? dataEl.value : '';
+  const linhas = calcularResumoProducaoDoDiaPorMaquina(dia);
+  if (linhas.length === 0){
+    emptyMsg.style.display = 'block'; table.style.display = 'none'; body.innerHTML = ''; return;
+  }
+  emptyMsg.style.display = 'none'; table.style.display = '';
+  body.innerHTML = linhas.map(l=>{
+    const semExpediente = l.capacidadeSeg === 0;
+    const aproveitTxt = l.aproveitamento===null ? '—' : (l.aproveitamento+'%');
+    return `
+    <tr>
+      <td>${epiEsc(l.maquina)}</td>
+      <td>${epiEsc(l.operadores) || '—'}</td>
+      <td>${fmtDuracao(l.ativoSeg)}</td>
+      <td>${semExpediente ? 'sem expediente' : fmtDuracao(l.capacidadeSeg)}</td>
+      <td style="color:${l.ociosoSeg>3600?'var(--warn,#c98a1f)':'inherit'}; font-weight:${l.ociosoSeg>3600?'800':'400'};">${semExpediente ? '—' : fmtDuracao(l.ociosoSeg)}</td>
+      <td>${aproveitTxt}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderProducao(){
+  if (!document.getElementById('producaoAoVivoList')) return;
+  renderProducaoAoVivo();
+  renderProducaoResumo();
+  if (_producaoTimer) clearInterval(_producaoTimer);
+  _producaoTimer = setInterval(()=>{
+    const v = document.getElementById('viewProducao');
+    if (!v || v.style.display === 'none'){ clearInterval(_producaoTimer); return; }
+    renderProducaoAoVivo();
+  }, 1000);
+}
+document.getElementById('producaoDataFiltro').addEventListener('change', renderProducaoResumo);
 
 /* ============================================================
    CLIENTES — CADASTRO (nome, CNPJ/CPF, endereço)
@@ -4429,6 +5725,7 @@ function criarPedidoFromSaved(o, tipo, dadosFiscais){
     dataEntrada: todayBR(), dataEntrega: '', dataMP: '',
     mpComprada: false, programado: false, dataProgramada: '', concluido: false,
     maquina: '', dataAgendada: '', seq: null,
+    etapas: [],
     tempoEstimadoH: Math.round(tempoEstimadoH*100)/100,
     codPedCliente: '',
     itens: o.itens,
@@ -4597,6 +5894,7 @@ async function executarCriacaoPedidoManual(){
     dataEntrada: todayBR(), dataEntrega: isoParaBr(document.getElementById('npEntrega').value), dataMP: '',
     mpComprada: false, programado: false, dataProgramada: '', concluido: false,
     maquina: '', dataAgendada: '', seq: null, tempoEstimadoH: 0,
+    etapas: [],
     codPedCliente: document.getElementById('npCodPed').value,
     itens: [],
     tipoFiscal: document.getElementById('npTipoFiscal').value,
@@ -4736,6 +6034,138 @@ function isAtrasado(p){
   return d < hoje;
 }
 
+/* ============================================================
+   VIEW: AVISOS — painel central pro admin: "o que precisa da minha
+   atenção agora", juntando liberação de prensa sem etiqueta, pedidos
+   atrasados e etapas paradas há muito tempo, sem precisar entrar
+   pedido por pedido nem reparar em cor de botão.
+   ============================================================ */
+// etapa pausada há mais tempo que isso, sem ninguém retomar, entra na lista de "paradas"
+const LIMIAR_ETAPA_PARADA_MS = 2 * 60 * 60 * 1000; // 2 horas
+
+function calcularAvisos(){
+  const all = loadPedidos();
+  const liberacoes = [];
+  const paradas = [];
+  all.forEach(p=>{
+    (p.etapas||[]).forEach(et=>{
+      (et.liberacoes||[]).forEach(l=>{
+        if (!l.etiquetaGerada) liberacoes.push({ pedido:p, etapa:et, liberacao:l });
+      });
+      if (et.status === 'pausado'){
+        const desde = _ultimoLogTs(et) || Date.now();
+        const paradoHaMs = Date.now() - desde;
+        if (paradoHaMs > LIMIAR_ETAPA_PARADA_MS) paradas.push({ pedido:p, etapa:et, paradoHaMs });
+      }
+    });
+  });
+  const atrasados = all.filter(p=> isAtrasado(p));
+  liberacoes.sort((a,b)=> b.liberacao.ts - a.liberacao.ts);
+  paradas.sort((a,b)=> b.paradoHaMs - a.paradoHaMs);
+  atrasados.sort((a,b)=>{
+    const da = parseBRDateToDate(a.dataEntrega), db_ = parseBRDateToDate(b.dataEntrega);
+    return (da?da.getTime():0) - (db_?db_.getTime():0);
+  });
+  return { liberacoes, atrasados, paradas, total: liberacoes.length + atrasados.length + paradas.length };
+}
+
+function fmtDuracaoLonga(ms){
+  const horas = ms/3600000;
+  if (horas < 24) return horas.toFixed(1)+'h';
+  const dias = Math.floor(horas/24);
+  const horasResto = Math.round(horas%24);
+  return dias+'d'+(horasResto?(' '+horasResto+'h'):'');
+}
+
+// atualiza só o numerozinho vermelho na aba "Avisos" — chamado sempre que os pedidos mudam
+// (listener do Firestore) e periodicamente (o "atrasado"/"parada" dependem só do tempo
+// passar, não de um dado novo chegar), pra funcionar mesmo com o admin em outra aba.
+function atualizarBadgeAvisos(){
+  const badge = document.getElementById('avisosBadge');
+  if (!badge) return;
+  const { total } = calcularAvisos();
+  if (total > 0){ badge.textContent = total > 99 ? '99+' : String(total); badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+}
+
+function renderAvisos(){
+  const { liberacoes, atrasados, paradas, total } = calcularAvisos();
+
+  const tudoOk = document.getElementById('avisosTudoOkMsg');
+  if (tudoOk) tudoOk.style.display = total===0 ? 'block' : 'none';
+  ['avisosLiberacoesPanel','avisosAtrasadosPanel','avisosParadasPanel'].forEach(id=>{
+    const el = document.getElementById(id); if (el) el.style.display = total===0 ? 'none' : '';
+  });
+
+  function irParaOP(id){
+    const p = loadPedidos().find(x=> String(x.id)===String(id));
+    if (p){ renderOP(p); showView('viewOP'); }
+  }
+
+  const libEmpty = document.getElementById('avisosLiberacoesEmptyMsg');
+  const libList = document.getElementById('avisosLiberacoesList');
+  if (libList){
+    if (!liberacoes.length){ if (libEmpty) libEmpty.style.display='block'; libList.innerHTML=''; }
+    else {
+      if (libEmpty) libEmpty.style.display='none';
+      libList.innerHTML = liberacoes.map(({pedido:p, etapa:et, liberacao:l})=>`
+        <div class="saved-row" style="align-items:center; flex-wrap:wrap;">
+          <div class="saved-info">
+            <b>${p.tipo} Nº ${p.numero}</b> — ${p.cliente||'(sem cliente)'} · ${epiEsc(et.maquina)}
+            <span class="saved-date">${l.qtd} ${l.tipo==='caixa'?'caixa(s)':'palete(s)'} · ${epiEsc(l.operador||'—')} · ${new Date(l.ts).toLocaleString('pt-BR')}</span>
+          </div>
+          <button class="btn secondary small" data-avisoetq="${p.id}:${et.id}:${l.id}">Gerar etiqueta</button>
+          <button class="btn secondary small" data-avisoverop="${p.id}">Ver OP</button>
+        </div>`).join('');
+      libList.querySelectorAll('[data-avisoetq]').forEach(btn=> btn.addEventListener('click', ()=>{
+        const [pid,eid,lid] = btn.dataset.avisoetq.split(':');
+        marcarLiberacaoEtiquetaGerada(pid, eid, lid);
+        const p = loadPedidos().find(x=> String(x.id)===String(pid));
+        if (p){ renderEtiqueta(p); showView('viewEtiqueta'); }
+      }));
+      libList.querySelectorAll('[data-avisoverop]').forEach(btn=> btn.addEventListener('click', ()=> irParaOP(btn.dataset.avisoverop)));
+    }
+  }
+
+  const atrEmpty = document.getElementById('avisosAtrasadosEmptyMsg');
+  const atrList = document.getElementById('avisosAtrasadosList');
+  if (atrList){
+    if (!atrasados.length){ if (atrEmpty) atrEmpty.style.display='block'; atrList.innerHTML=''; }
+    else {
+      if (atrEmpty) atrEmpty.style.display='none';
+      atrList.innerHTML = atrasados.map(p=>`
+        <div class="saved-row" style="align-items:center; flex-wrap:wrap;">
+          <div class="saved-info">
+            <b>${p.tipo} Nº ${p.numero}</b> — ${p.cliente||'(sem cliente)'}${p.produto?(' · '+p.produto):''}
+            <span class="saved-date" style="color:var(--brand-red); font-weight:700;">entrega era ${p.dataEntrega}</span>
+          </div>
+          <button class="btn secondary small" data-avisoverop="${p.id}">Ver OP</button>
+        </div>`).join('');
+      atrList.querySelectorAll('[data-avisoverop]').forEach(btn=> btn.addEventListener('click', ()=> irParaOP(btn.dataset.avisoverop)));
+    }
+  }
+
+  const parEmpty = document.getElementById('avisosParadasEmptyMsg');
+  const parList = document.getElementById('avisosParadasList');
+  if (parList){
+    if (!paradas.length){ if (parEmpty) parEmpty.style.display='block'; parList.innerHTML=''; }
+    else {
+      if (parEmpty) parEmpty.style.display='none';
+      parList.innerHTML = paradas.map(({pedido:p, etapa:et, paradoHaMs})=>`
+        <div class="saved-row" style="align-items:center; flex-wrap:wrap;">
+          <div class="saved-info">
+            <b>${p.tipo} Nº ${p.numero}</b> — ${p.cliente||'(sem cliente)'} · ${epiEsc(et.maquina)}
+            <span class="saved-date">pausada há ${fmtDuracaoLonga(paradoHaMs)} · ${epiEsc(et.operador||'—')}</span>
+          </div>
+          <button class="btn secondary small" data-avisoverop="${p.id}">Ver OP</button>
+        </div>`).join('');
+      parList.querySelectorAll('[data-avisoverop]').forEach(btn=> btn.addEventListener('click', ()=> irParaOP(btn.dataset.avisoverop)));
+    }
+  }
+
+  atualizarBadgeAvisos();
+}
+
 function renderPedidosStats(){
   const all = loadPedidos();
   const abertos = all.filter(p=> !p.concluido).length;
@@ -4759,8 +6189,13 @@ function pedidoTemAnexos(p){
 }
 
 function classeLinhaPedido(p){
-  // prioridade visual: concluído (verde) > programado (azul) > MP chegou (amarelo) > atrasado (vermelho)
+  // prioridade visual, do estágio mais avançado pro menos avançado:
+  // liberado fiscal (verde) > finalizado produção/todas etapas encerradas (roxo) >
+  // em produção/alguma etapa já rodou (laranja) > programado (azul) >
+  // material recebido (amarelo) > atrasado (vermelho)
   if (p.concluido) return 'row-concluido';
+  if (pedidoProducaoConcluida(p)) return 'row-producao-pronta';
+  if (pedidoEmProducao(p)) return 'row-em-producao';
   if (p.programado) return 'row-programado';
   if (p.mpComprada) return 'row-mp';
   if (isAtrasado(p)) return 'row-atrasado';
@@ -4787,7 +6222,7 @@ function linhaPedidoHtml(p){
       <td class="chk-cell${p.concluido?' chk-on':''}"><input type="checkbox" data-id="${p.id}" data-f="concluido" ${p.concluido?'checked':''}></td>
       <td class="no-print">
         <button class="btn secondary small" data-verop="${p.id}">OP</button>
-        <button class="btn secondary small" data-veretq="${p.id}">Etiqueta</button>
+        <button class="btn secondary small${pedidoTemLiberacoesPendentes(p)?' etq-tem-liberacao':''}" data-veretq="${p.id}" title="${pedidoTemLiberacoesPendentes(p)?'tem liberação de quantidade da prensa esperando etiqueta':''}">Etiqueta</button>
         <button class="btn secondary small${pedidoTemAnexos(p)?' docs-tem-anexo':''}" data-verdocs="${p.id}" title="${pedidoTemAnexos(p)?'tem anexos':'sem anexos'}">Docs</button>
         <button class="rmrow" data-rmpedido="${p.id}" title="excluir">×</button>
       </td>
@@ -5649,13 +7084,22 @@ function calcularValorCorteItem(it){
   return ((it.tempoRealSeg||0)/3600) * (custoMin*60);
 }
 
+// área (m²) da chapa dessa linha — soma todos os pedaços/retalhos quando tiver mais de um,
+// senão cai no formato antigo de uma peça só (dimC × dimL).
+function areaChapaM2(l){
+  if (Array.isArray(l.pedacos) && l.pedacos.length){
+    return l.pedacos.reduce((s,pc)=> s + ((pc.c||0)/1000) * ((pc.l||0)/1000), 0);
+  }
+  return ((l.dimC||0)/1000) * ((l.dimL||0)/1000);
+}
 function calcularLinhaProducao(l){
   const mat = materials.find(m=>m.nome===l.material) || materials[0] || {densidade:0, thicknesses:[]};
   const thick = getThicknessEntry(l.material, l.espessura) || {preco:0};
-  const peso = ((l.dimC||0)/1000) * ((l.dimL||0)/1000) * ((l.espessura||0)/1000) * (mat.densidade||0);
+  const peso = areaChapaM2(l) * ((l.espessura||0)/1000) * (mat.densidade||0);
   const custoMin = parseFloat(document.getElementById('custoMin').value)||0;
   const custoDobraUnit = parseFloat(document.getElementById('custoDobra').value)||0;
-  const valorMaterial = peso * (thick.preco||0);
+  // material do cliente: não cobra o material (peso fica só informativo), só a mão de obra/máquina
+  const valorMaterial = l.clienteForneceMaterial ? 0 : peso * (thick.preco||0);
   const valorCorte = (l.horasCorte||0) * custoMin * 60;
   const valorDobra = (l.qtdDobras||0) * custoDobraUnit;
   const valorDobraTempo = (l.horasDobra||0) * 300;
@@ -5665,30 +7109,9 @@ function calcularLinhaProducao(l){
 
 function renderOP(p){
   document.getElementById('opNumeroTitulo').textContent = p.tipo + ' Nº ' + p.numero;
-  const totalPecas = p.itens.reduce((s,it)=> s + (it.qtd||0), 0) || p.quantidade || 0;
-
-  if (p.opEspessura === undefined || p.opEspessura === null || p.opEspessura === ''){
-    p.opEspessura = p.itens[0] ? String(p.itens[0].espessura||'') : '';
-  }
-  if (p.opMaterial === undefined || p.opMaterial === null || p.opMaterial === ''){
-    p.opMaterial = p.itens[0] ? (p.itens[0].material||'') : '';
-  }
-  if (p.opProcesso === undefined || p.opProcesso === null || p.opProcesso === ''){
-    p.opProcesso = p.maquina || '';
-  }
-
-  // Migração: campos únicos antigos -> lista de materiais (vários códigos por pedido)
-  if (!Array.isArray(p.opMateriais)){
-    if (p.opCodigo || p.opQtdChapas || p.opEspessura || p.opMaterial){
-      p.opMateriais = [{ codigo: p.opCodigo||'', qtdChapas: p.opQtdChapas||'', espessura: p.opEspessura||'', material: p.opMaterial||'' }];
-    } else {
-      p.opMateriais = [{ codigo:'', qtdChapas:'', espessura: p.opEspessura||'', material: p.opMaterial||'' }];
-    }
-  }
-  if (p.opMateriais.length === 0) p.opMateriais.push({ codigo:'', qtdChapas:'', espessura:'', material:'' });
-
-  const blankRowsProducao = Array.from({length:10}).map(()=>`
-    <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('');
+  // garante que qualquer etapa já concluída (inclusive antes de abrir essa tela) já virou
+  // linha na Finalização da produção, com hora/valor calculados sozinhos.
+  if (sincronizarLinhasProducaoDeEtapas(p)) salvarPedidoImediato(p.id);
 
   const itensExtra = `
     <div class="op-valores-bloco">
@@ -5729,35 +7152,47 @@ function renderOP(p){
       <div class="field"><label>Data inicial do processo</label><input type="date" id="opDataInicialProcesso" value="${brParaIso(p.opDataInicialProcesso)}"></div>
       <div class="field"><label>Data final do processo</label><input type="date" id="opDataFinalProcesso" value="${brParaIso(p.opDataFinalProcesso)}"></div>
     </div>
-    <div class="field"><label>Observação</label><textarea id="opObservacao" rows="3" placeholder="alguma observação sobre esse pedido...">${p.observacaoOP||''}</textarea></div>
+    <div class="field"><label>Observação (aparece pro operador na aba Operação)</label><textarea id="opObservacao" rows="3" placeholder="alguma observação sobre esse pedido...">${p.observacaoOP||''}</textarea></div>
+    <div class="field"><label>Caminho da pasta com os arquivos (aparece pro operador na aba Operação)</label><input type="text" id="opCaminhoArquivos" value="${opEscAttr(p.caminhoArquivos||'')}" placeholder="ex: \\\\SERVIDOR\\Pedidos\\2026\\0142 ou C:\\Pedidos\\..."></div>
+    <div class="footnote">O navegador não consegue abrir a pasta sozinho por segurança — o operador vai poder copiar esse caminho com um botão e colar no Explorer (Win+R ou barra de endereço).</div>
 
-    <h2 style="margin-top:20px;"><span class="n">·</span>Material e quantidade</h2>
-    <div style="overflow-x:auto;">
-      <table class="items op-table" id="opMateriaisTable" style="font-size:12px; margin-top:8px;">
-        <thead><tr><th>Código</th><th style="text-align:right;">Qtd chapas</th><th>Espessura (mm)</th><th>Tipo material</th><th class="no-print"></th></tr></thead>
-        <tbody id="opMateriaisBody"></tbody>
-      </table>
+    <div class="op-valores-bloco no-print">
+    <h2><span class="n">·</span>Etapas de produção (sequência de máquinas)</h2>
+    <div class="footnote">Monte a sequência de máquinas que esse pedido vai passar. Dentro do MESMO grupo de chapa (mesmo material/espessura/qtd), cada etapa só aparece pro operador quando a anterior daquele grupo for encerrada — mas grupos de chapa diferentes do mesmo pedido rodam de forma independente, então dá pra mandar, por exemplo, a chapa de Carbono pra Laser 1 e a de Alumínio pra Laser 2 ao mesmo tempo. O tempo é gravado sozinho pelo Play/Pausa/Encerrar na aba <b>Operação</b> — aqui você só monta a sequência e acompanha o andamento. Quando uma etapa é encerrada, o tempo medido já vira uma linha com hora e valor lá embaixo em "Finalização da produção" (material/dimensão pra custo de chapa continuam manuais). Quando <b>todas</b> as etapas terminarem, o pedido fica roxo na lista de Pedidos.</div>
+    <div id="opEtapasWrap" style="margin-top:10px;"></div>
+    <div class="row" style="margin-top:10px; align-items:flex-end; flex-wrap:wrap;">
+      <div class="field" style="max-width:210px;">
+        <label>Máquina</label>
+        <select id="opEtapaNovaMaquina">${loadMaquinas().map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="max-width:170px;">
+        <label>Material (opcional)</label>
+        <select id="opEtapaNovoMaterial"><option value="">— não informar —</option>${materials.map(m=>`<option value="${m.nome}">${m.nome}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="max-width:100px;">
+        <label>Espessura</label>
+        <select id="opEtapaNovaEspessura"><option value="">—</option></select>
+      </div>
+      <div class="field" style="max-width:100px;">
+        <label>Qtd chapas</label>
+        <input type="number" id="opEtapaNovaQtd" min="0" placeholder="qtd">
+      </div>
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; color:var(--text); margin:0 0 8px;">
+        <input type="checkbox" id="opEtapaNovoClienteForneceu" style="width:auto;"> Material do cliente
+      </label>
+      <button class="btn secondary small" id="opEtapaAddBtn">+ adicionar etapa</button>
     </div>
-    <button class="btn secondary small no-print" id="opMatAddBtn" style="margin-top:8px;">+ adicionar código/material</button>
-    <div class="row" style="margin-top:14px; align-items:center; gap:24px;">
-      <div class="field" style="flex:0 0 auto;"><label>Qtd peças</label><div style="padding:5px 0; font-weight:700; font-size:16px;">${totalPecas}</div></div>
-      <div class="field" style="flex:0 0 auto;"><label>Quantidade total (chapas)</label><div id="opQtdTotal" style="padding:3px 12px; font-weight:800; font-size:22px; color:var(--accent); background:var(--accent-dim); border-radius:6px; display:inline-block; min-width:60px; text-align:center;">0</div></div>
+    <div class="footnote">Preencha material/espessura/qtd quando quiser medir tempo e valor daquele grupo de chapa separado (ex.: 2 chapas de 3mm numa etapa, 5 chapas de 4,76mm em outra, ambas na mesma máquina). Deixe em branco se não precisar dessa divisão.</div>
     </div>
+
     ${itensExtra}
-
-    <h2 style="margin-top:20px;"><span class="n">·</span>Registro de produção</h2>
-    <div class="field" style="max-width:320px;"><label>Processo</label><input type="text" id="opProcesso" value="${p.opProcesso||''}" placeholder="ex: DOBRA PRENSA-1"></div>
-    <table class="items op-registro-table op-table" style="font-size:11px; margin-top:8px;">
-      <thead><tr><th>Data</th><th>Início</th><th>Fim</th><th>Qtd</th><th>Material</th><th>Esp.</th><th>Dim. (CxL)</th><th>Setup</th></tr></thead>
-      <tbody>${blankRowsProducao}</tbody>
-    </table>
 
     <div class="op-valores-bloco">
     <h2 style="margin-top:20px;"><span class="n">·</span>Finalização da produção (calcula o valor a faturar)</h2>
     <div class="footnote">Informe cada chapa/processo usado de verdade na produção (pode ter vários, se o pedido usou tipos diferentes de material). O valor é calculado automaticamente com base nas tabelas do Orçamento (R$/kg de cada material, R$/min da máquina, R$ por dobra).</div>
     <div style="overflow-x:auto;">
       <table class="items op-table" style="font-size:12px; margin-top:8px;" id="opFinalTable">
-        <thead><tr><th>Material</th><th>Esp.(mm)</th><th>C (mm)</th><th>L (mm)</th><th>Tempo corte (h : m : s)</th><th>Qtd dobras</th><th>Tempo dobra (h : m : s)</th><th>Tempo prensa (h : m : s)</th><th>Peso(kg)</th><th>Valor material (R$)</th><th>Valor corte (R$)</th><th>Valor total (R$)</th><th class="no-print"></th></tr></thead>
+        <thead><tr><th>Material</th><th>Esp.(mm)</th><th>Material do cliente?</th><th>C (mm)</th><th>L (mm)</th><th>Tempo corte (h : m : s)</th><th>Qtd dobras</th><th>Tempo dobra (h : m : s)</th><th>Tempo prensa (h : m : s)</th><th>Peso(kg)</th><th>Valor material (R$)</th><th>Valor corte (R$)</th><th>Valor total (R$)</th><th class="no-print"></th></tr></thead>
         <tbody id="opFinalBody"></tbody>
       </table>
     </div>
@@ -5784,51 +7219,162 @@ function renderOP(p){
     salvarCampoPedido('cliente', e.target.value);
   });
   document.getElementById('opCodPed').addEventListener('input', (e)=> salvarCampoPedido('codPedCliente', e.target.value));
-  document.getElementById('opProcesso').addEventListener('input', (e)=> salvarCampoPedido('opProcesso', e.target.value));
 
-  // ---- Materiais da OP (vários códigos por pedido) ----
   function opEscAttr(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
-  function atualizarQtdTotal(){
-    const el = document.getElementById('opQtdTotal'); if(!el) return;
-    const tot = (p.opMateriais||[]).reduce((s,m)=> s + (parseFloat((''+(m.qtdChapas||'')).replace(',','.'))||0), 0);
-    el.textContent = tot ? (Number.isInteger(tot) ? tot : tot.toFixed(2).replace('.',',')) : '0';
-  }
-  function renderOPMateriais(){
-    const body = document.getElementById('opMateriaisBody'); if(!body) return;
-    body.innerHTML = (p.opMateriais||[]).map((m,i)=>`
-      <tr data-mi="${i}">
-        <td><input data-mf="codigo" value="${opEscAttr(m.codigo)}" placeholder="código"></td>
-        <td><input data-mf="qtdChapas" inputmode="decimal" value="${opEscAttr(m.qtdChapas)}" placeholder="qtd" style="text-align:right;"></td>
-        <td><input data-mf="espessura" value="${opEscAttr(m.espessura)}" placeholder="mm"></td>
-        <td style="text-align:left;"><input data-mf="material" value="${opEscAttr(m.material)}" placeholder="tipo material" style="width:200px; max-width:100%; text-align:left;"></td>
-        <td class="no-print"><button type="button" class="btn small secondary op-mat-del" title="remover">×</button></td>
-      </tr>`).join('');
-    body.querySelectorAll('tr').forEach(tr=>{
-      const i = +tr.dataset.mi;
-      tr.querySelectorAll('input[data-mf]').forEach(inp=> inp.addEventListener('input', ()=>{
-        p.opMateriais[i][inp.dataset.mf] = inp.value;
-        salvarCampoPedido('opMateriais', p.opMateriais);
-        if (inp.dataset.mf === 'qtdChapas') atualizarQtdTotal();
-      }));
-      const del = tr.querySelector('.op-mat-del');
-      if (del) del.addEventListener('click', ()=>{
-        p.opMateriais.splice(i,1);
-        if (p.opMateriais.length === 0) p.opMateriais.push({ codigo:'', qtdChapas:'', espessura:'', material:'' });
-        salvarCampoPedido('opMateriais', p.opMateriais);
-        renderOPMateriais();
+
+  // ---- Etapas de produção (sequência de máquinas, play/pause vem da aba Operação) ----
+  function renderOPEtapas(){
+    const wrap = document.getElementById('opEtapasWrap'); if (!wrap) return;
+    if (!Array.isArray(p.etapas)) p.etapas = [];
+    if (p.etapas.length === 0){
+      wrap.innerHTML = '<div class="footnote">Nenhuma etapa configurada ainda — esse pedido não vai aparecer pra nenhum operador na aba Operação até você adicionar pelo menos uma etapa abaixo.</div>';
+      return;
+    }
+    const corStatus = { pendente:'var(--text-dim)', rodando:'var(--good)', pausado:'#c98a1f', concluido:'var(--accent)' };
+    const rotuloStatus = { pendente:'aguardando vez', rodando:'rodando', pausado:'pausado', concluido:'concluído' };
+    wrap.innerHTML = p.etapas.map((et,i)=>{
+      const liberada = etapaEstaLiberada(p, et);
+      const tt = etapaTempoTotalEOcioso(et);
+      const podeEditarGrupo = et.status === 'pendente';
+      const matAtual = materials.find(m=> m.nome===et.material);
+      const grupoHtml = podeEditarGrupo ? `
+        <select data-etapamaterial style="max-width:130px;"><option value="">— sem material —</option>${materials.map(m=>`<option value="${opEscAttr(m.nome)}" ${m.nome===et.material?'selected':''}>${m.nome}</option>`).join('')}</select>
+        <select data-etapaespessura style="max-width:80px;"><option value="">—</option>${(matAtual?matAtual.thicknesses:[]).map(t=>`<option value="${t.esp}" ${String(t.esp)===String(et.espessura)?'selected':''}>${t.esp}mm</option>`).join('')}</select>
+        <input type="number" data-etapaqtd value="${et.qtdChapas||''}" placeholder="qtd" min="0" style="width:60px;">
+        <label style="display:flex; align-items:center; gap:3px; font-size:11px; color:var(--text-dim); white-space:nowrap;"><input type="checkbox" data-etapaclientefornece style="width:auto;" ${et.clienteForneceMaterial?'checked':''}> material do cliente</label>
+      ` : `<span style="font-size:12px; color:var(--text-dim);">${rotuloGrupoChapa(et) || '(sem grupo de chapa definido)'}</span>`;
+      const libItens = et.liberacoes||[];
+      const totalQtdEtapaAdm = parseFloat(et.qtdChapas)||0;
+      const totalLiberadoAdm = libItens.reduce((s,l)=> s + (parseFloat(l.qtd)||0), 0);
+      const saldoAdmTxt = totalQtdEtapaAdm > 0 ? ` · já liberado ${totalLiberadoAdm} de ${totalQtdEtapaAdm} (falta ${Math.max(0,totalQtdEtapaAdm-totalLiberadoAdm)})` : (totalLiberadoAdm>0 ? ` · já liberado ${totalLiberadoAdm}` : '');
+      const libHtml = (tipoDeMaquina(et.maquina)==='prensa' && libItens.length) ? `
+        <div style="width:100%; margin-top:4px; padding:6px 10px; background:rgba(255,138,30,0.10); border:1px solid #ff8a1e; border-radius:6px;">
+          <div style="font-size:12px; font-weight:700; color:#ff8a1e; margin-bottom:4px;">📦 Liberações de quantidade (prensa) — pedido continua aberto até encerrar a etapa${saldoAdmTxt}</div>
+          ${libItens.map(l=>`
+            <div style="display:flex; align-items:center; gap:8px; font-size:12px; padding:2px 0; ${l.etiquetaGerada?'opacity:0.55;':''}">
+              <span style="flex:1;">${l.qtd} ${l.tipo==='caixa'?'caixa(s)':'palete(s)'} · ${opEscAttr(l.operador||'—')} · ${new Date(l.ts).toLocaleString('pt-BR')}${l.etiquetaGerada?' · etiqueta já gerada':''}</span>
+              <button type="button" class="btn secondary small" data-libgeraretq="${et.id}:${l.id}" style="padding:2px 8px;">${l.etiquetaGerada?'Ver etiqueta':'Gerar etiqueta'}</button>
+            </div>`).join('')}
+        </div>` : '';
+      return `
+      <div class="saved-row" data-etapaidx="${i}" style="align-items:center; flex-wrap:wrap;">
+        <div style="width:22px; text-align:center; font-weight:800; color:var(--text-dim);">${i+1}</div>
+        <div class="field" style="max-width:220px; margin:0;">
+          <select data-etapamaquina>${loadMaquinas().map(m=>`<option value="${opEscAttr(m)}" ${m===et.maquina?'selected':''}>${m}</option>`).join('')}</select>
+        </div>
+        <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;" data-etapagrupo>${grupoHtml}</div>
+        <div style="min-width:150px; font-size:12px; font-weight:800; color:${corStatus[et.status]||'var(--text-dim)'};">
+          ${rotuloStatus[et.status]||et.status}${(et.status==='rodando'||et.status==='pausado') && et.operador ? ' · '+opEscAttr(et.operador) : ''}${(et.status==='pendente' && !liberada) ? ' (aguarda etapa anterior)' : ''}
+        </div>
+        <div style="min-width:170px; font-size:12px; color:var(--text-dim);" data-etapatempo>
+          ativo ${fmtDuracao(etapaTempoAtivoAoVivo(et))} · ocioso ${fmtDuracao(tt.ocioso)}
+        </div>
+        <div class="no-print" style="margin-left:auto; display:flex; gap:4px;">
+          <button type="button" class="iconbtn" data-etapaup title="mover pra cima" ${i===0?'disabled':''}>▲</button>
+          <button type="button" class="iconbtn" data-etapadown title="mover pra baixo" ${i===p.etapas.length-1?'disabled':''}>▼</button>
+          <button type="button" class="iconbtn" data-etapadel title="remover">×</button>
+        </div>
+        <input type="text" data-etapanota value="${opEscAttr(et.notaPCP||'')}" placeholder="nota do PCP pro operador (opcional) — ex: cuidado com furo especial" style="width:100%; font-size:12px; margin-top:4px;">
+        ${libHtml}
+      </div>`;
+    }).join('');
+    wrap.querySelectorAll('[data-etapaidx]').forEach(row=>{
+      const i = +row.dataset.etapaidx;
+      const et = p.etapas[i];
+      row.querySelector('[data-etapamaquina]').addEventListener('change', (e)=>{
+        et.maquina = e.target.value;
+        salvarPedidoImediato(p.id);
+      });
+      const selMat = row.querySelector('[data-etapamaterial]');
+      if (selMat) selMat.addEventListener('change', (e)=>{
+        et.material = e.target.value;
+        et.espessura = '';
+        salvarPedidoImediato(p.id);
+        renderOPEtapas();
+      });
+      const selEsp = row.querySelector('[data-etapaespessura]');
+      if (selEsp) selEsp.addEventListener('change', (e)=>{ et.espessura = e.target.value; salvarPedidoImediato(p.id); });
+      const inpQtd = row.querySelector('[data-etapaqtd]');
+      if (inpQtd) inpQtd.addEventListener('input', (e)=>{ et.qtdChapas = e.target.value; salvarPedidoImediato(p.id); });
+      const chkCliente = row.querySelector('[data-etapaclientefornece]');
+      if (chkCliente) chkCliente.addEventListener('change', (e)=>{ et.clienteForneceMaterial = e.target.checked; salvarPedidoImediato(p.id); });
+      const inpNota = row.querySelector('[data-etapanota]');
+      if (inpNota) inpNota.addEventListener('input', (e)=>{ et.notaPCP = e.target.value; salvarPedidoImediato(p.id); });
+      row.querySelectorAll('[data-libgeraretq]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const [eid, lid] = btn.dataset.libgeraretq.split(':');
+          marcarLiberacaoEtiquetaGerada(p.id, eid, lid);
+          renderEtiqueta(p);
+          showView('viewEtiqueta');
+        });
+      });
+      // não deixa reordenar uma etapa que já está rodando/pausada (ou pular ela pra trás/frente),
+      // senão a "vez" calculada por etapaAtualDoPedido() troca de etapa no meio da produção.
+      const emAndamento = et2=> et2.status==='rodando' || et2.status==='pausado';
+      const btnUp = row.querySelector('[data-etapaup]');
+      if (btnUp) btnUp.addEventListener('click', ()=>{
+        if (i===0) return;
+        if (emAndamento(et) || emAndamento(p.etapas[i-1])){ alert('Essa etapa (ou a anterior) já está em andamento — pause ou encerre antes de reordenar.'); return; }
+        const tmp = p.etapas[i-1]; p.etapas[i-1] = p.etapas[i]; p.etapas[i] = tmp;
+        salvarPedidoImediato(p.id);
+        renderOPEtapas();
+      });
+      const btnDown = row.querySelector('[data-etapadown]');
+      if (btnDown) btnDown.addEventListener('click', ()=>{
+        if (i===p.etapas.length-1) return;
+        if (emAndamento(et) || emAndamento(p.etapas[i+1])){ alert('Essa etapa (ou a seguinte) já está em andamento — pause ou encerre antes de reordenar.'); return; }
+        const tmp = p.etapas[i+1]; p.etapas[i+1] = p.etapas[i]; p.etapas[i] = tmp;
+        salvarPedidoImediato(p.id);
+        renderOPEtapas();
+      });
+      const btnDel = row.querySelector('[data-etapadel]');
+      if (btnDel) btnDel.addEventListener('click', ()=>{
+        if (emAndamento(et)){ alert('Essa etapa está rodando ou pausada agora — peça pro operador encerrar antes de remover.'); return; }
+        if (!confirm('Remover essa etapa da sequência? O histórico de tempo dela se perde.')) return;
+        p.etapas.splice(i,1);
+        salvarPedidoImediato(p.id);
+        renderOPEtapas();
       });
     });
-    atualizarQtdTotal();
   }
-  document.getElementById('opMatAddBtn').addEventListener('click', ()=>{
-    p.opMateriais.push({ codigo:'', qtdChapas:'', espessura:'', material:'' });
-    salvarCampoPedido('opMateriais', p.opMateriais);
-    renderOPMateriais();
+  function popularEspessurasNovaEtapa(){
+    const matSel = document.getElementById('opEtapaNovoMaterial');
+    const espSel = document.getElementById('opEtapaNovaEspessura');
+    if (!matSel || !espSel) return;
+    const mat = materials.find(m=> m.nome === matSel.value);
+    espSel.innerHTML = '<option value="">—</option>' + (mat ? mat.thicknesses.map(t=>`<option value="${t.esp}">${t.esp}</option>`).join('') : '');
+  }
+  const opEtapaNovoMaterialEl = document.getElementById('opEtapaNovoMaterial');
+  if (opEtapaNovoMaterialEl) opEtapaNovoMaterialEl.addEventListener('change', popularEspessurasNovaEtapa);
+  popularEspessurasNovaEtapa();
+
+  document.getElementById('opEtapaAddBtn').addEventListener('click', ()=>{
+    const maq = document.getElementById('opEtapaNovaMaquina').value;
+    const material = document.getElementById('opEtapaNovoMaterial').value;
+    const espessura = document.getElementById('opEtapaNovaEspessura').value;
+    const qtdChapas = document.getElementById('opEtapaNovaQtd').value;
+    const clienteForneceMaterial = document.getElementById('opEtapaNovoClienteForneceu').checked;
+    if (!Array.isArray(p.etapas)) p.etapas = [];
+    p.etapas.push(novaEtapaProducao(maq, { material, espessura, qtdChapas, clienteForneceMaterial }));
+    salvarPedidoImediato(p.id);
+    document.getElementById('opEtapaNovoMaterial').value = '';
+    document.getElementById('opEtapaNovaQtd').value = '';
+    document.getElementById('opEtapaNovoClienteForneceu').checked = false;
+    popularEspessurasNovaEtapa();
+    renderOPEtapas();
   });
-  renderOPMateriais();
+  renderOPEtapas();
+  if (_opEtapasTimer) clearInterval(_opEtapasTimer);
+  _opEtapasTimer = setInterval(()=>{
+    const viewOPEl = document.getElementById('viewOP');
+    if (!viewOPEl || viewOPEl.style.display === 'none'){ clearInterval(_opEtapasTimer); return; }
+    if ((p.etapas||[]).some(et=> et.status==='rodando')) renderOPEtapas();
+  }, 1000);
+
   document.getElementById('opDataInicialProcesso').addEventListener('change', (e)=> salvarCampoPedido('opDataInicialProcesso', isoParaBr(e.target.value)));
   document.getElementById('opDataFinalProcesso').addEventListener('change', (e)=> salvarCampoPedido('opDataFinalProcesso', isoParaBr(e.target.value)));
   document.getElementById('opObservacao').addEventListener('input', (e)=> salvarCampoPedido('observacaoOP', e.target.value));
+  document.getElementById('opCaminhoArquivos').addEventListener('input', (e)=> salvarCampoPedido('caminhoArquivos', e.target.value));
 
   if (!Array.isArray(p.linhasProducao)) p.linhasProducao = [];
 
@@ -5936,12 +7482,32 @@ function renderOP(p){
       const mat = materials.find(m=>m.nome===l.material) || materials[0] || {thicknesses:[]};
       const calc = calcularLinha(l);
       const opcoesEsp = mat.thicknesses.map(t=>`<option value="${t.esp}" ${Math.abs(t.esp-(l.espessura||0))<1e-6?'selected':''}>${t.esp}</option>`).join('');
+      const temPedacos = Array.isArray(l.pedacos) && l.pedacos.length > 0;
+      const faltaDim = !l.clienteForneceMaterial && areaChapaM2(l) <= 0;
+      const dimCellHtml = temPedacos ? `
+          <td colspan="2" data-oplin="${idx}">
+            <div style="display:flex; flex-direction:column; gap:3px; min-width:150px;">
+              ${l.pedacos.map((pc,pi)=>`
+                <div style="display:flex; gap:3px; align-items:center;">
+                  <input type="number" min="0" data-oplin="${idx}" data-pedacoidx="${pi}" data-pedacocampo="c" value="${pc.c||''}" style="width:55px; ${(!pc.c||!pc.l)?'border-color:#e05a5a;':''}" placeholder="C" title="comprimento (mm)">
+                  ×
+                  <input type="number" min="0" data-oplin="${idx}" data-pedacoidx="${pi}" data-pedacocampo="l" value="${pc.l||''}" style="width:55px; ${(!pc.c||!pc.l)?'border-color:#e05a5a;':''}" placeholder="L" title="largura (mm)">
+                  <button type="button" class="iconbtn" data-pedacorm="${idx}:${pi}" title="remover pedaço" style="width:20px; height:20px; font-size:11px; padding:0;">×</button>
+                </div>`).join('')}
+              <button type="button" class="btn secondary small" data-pedacoadd="${idx}" style="align-self:flex-start; padding:2px 8px; font-size:11px;">+ pedaço</button>
+              <div style="font-size:10px; color:var(--text-dim);">${l.pedacos.length} ${l.pedacos.length===1?'peça':'peças'} · área total ${areaChapaM2(l).toFixed(3)} m²</div>
+            </div>
+          </td>` : `
+          <td><input type="number" data-oplin="${idx}" data-oplf="dimC" value="${l.dimC||''}" style="width:70px; ${faltaDim?'border-color:#e05a5a; background:rgba(224,90,90,0.12);':''}" placeholder="${l.clienteForneceMaterial?'—':'obrigatório'}" ${l.clienteForneceMaterial?'disabled':''}></td>
+          <td><input type="number" data-oplin="${idx}" data-oplf="dimL" value="${l.dimL||''}" style="width:70px; ${faltaDim?'border-color:#e05a5a; background:rgba(224,90,90,0.12);':''}" placeholder="${l.clienteForneceMaterial?'—':'obrigatório'}" ${l.clienteForneceMaterial?'disabled':''}>
+            ${!l.clienteForneceMaterial ? `<button type="button" class="iconbtn" data-pedacoconverter="${idx}" title="tem retalho de mais de um tamanho? clique pra registrar vários pedaços" style="margin-left:2px; width:20px; height:20px; font-size:11px; padding:0;">+</button>` : ''}
+          </td>`;
       return `
         <tr>
           <td><select data-oplin="${idx}" data-oplf="material" style="text-align:left;">${materials.map(m=>`<option value="${m.nome}" ${m.nome===l.material?'selected':''}>${m.nome}</option>`).join('')}</select></td>
           <td><select data-oplin="${idx}" data-oplf="espessura">${opcoesEsp}</select></td>
-          <td><input type="number" data-oplin="${idx}" data-oplf="dimC" value="${l.dimC||''}" style="width:70px;" placeholder="mm"></td>
-          <td><input type="number" data-oplin="${idx}" data-oplf="dimL" value="${l.dimL||''}" style="width:70px;" placeholder="mm"></td>
+          <td class="chk-cell${l.clienteForneceMaterial?' chk-on':''}" title="marcado = o cliente forneceu essa chapa, não cobra material"><input type="checkbox" data-oplin="${idx}" data-oplf="clienteForneceMaterial" ${l.clienteForneceMaterial?'checked':''}></td>
+          ${dimCellHtml}
           <td>
             <div style="display:flex; gap:2px; align-items:center;">
               <input type="number" data-oplin="${idx}" data-oplf="corteH" value="${l.corteH!==undefined?l.corteH:''}" min="0" style="width:38px;" placeholder="h" title="horas">:
@@ -5988,9 +7554,67 @@ function renderOP(p){
         renderOPFinalLinhas();
       });
     });
+    // "material do cliente?" muda se C/L ficam obrigatórios ou bloqueados — precisa recriar a linha
+    body.querySelectorAll('input[type="checkbox"][data-oplf="clienteForneceMaterial"]').forEach(el=>{
+      el.addEventListener('change', ()=>{
+        const idx = +el.dataset.oplin;
+        p.linhasProducao[idx].clienteForneceMaterial = el.checked;
+        if (el.checked){ p.linhasProducao[idx].dimC = 0; p.linhasProducao[idx].dimL = 0; p.linhasProducao[idx].pedacos = []; }
+        salvarCampoPedido('linhasProducao', p.linhasProducao);
+        renderOPFinalLinhas();
+      });
+    });
+    // pedaços/retalhos: cada peça (C×L) da linha — precisa recriar a tabela quando adiciona/remove
+    // peça (muda a estrutura), mas só atualiza os cálculos quando só edita um número
+    body.querySelectorAll('[data-pedacoconverter]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const idx = +btn.dataset.pedacoconverter;
+        const l = p.linhasProducao[idx];
+        l.pedacos = [{ c: l.dimC||0, l: l.dimL||0 }, { c:0, l:0 }];
+        salvarCampoPedido('linhasProducao', p.linhasProducao);
+        renderOPFinalLinhas();
+      });
+    });
+    body.querySelectorAll('[data-pedacoadd]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const idx = +btn.dataset.pedacoadd;
+        const l = p.linhasProducao[idx];
+        if (!Array.isArray(l.pedacos)) l.pedacos = [];
+        l.pedacos.push({ c:0, l:0 });
+        salvarCampoPedido('linhasProducao', p.linhasProducao);
+        renderOPFinalLinhas();
+      });
+    });
+    body.querySelectorAll('[data-pedacorm]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const [idxS, piS] = btn.dataset.pedacorm.split(':');
+        const l = p.linhasProducao[+idxS];
+        l.pedacos.splice(+piS, 1);
+        salvarCampoPedido('linhasProducao', p.linhasProducao);
+        renderOPFinalLinhas();
+      });
+    });
+    body.querySelectorAll('input[type="number"][data-pedacocampo]').forEach(el=>{
+      el.addEventListener('input', ()=>{
+        const idx = +el.dataset.oplin, pi = +el.dataset.pedacoidx, campo = el.dataset.pedacocampo;
+        const l = p.linhasProducao[idx];
+        l.pedacos[pi][campo] = parseFloat(el.value)||0;
+        salvarCampoPedido('linhasProducao', p.linhasProducao);
+        const calc = calcularLinha(l);
+        const tdPeso = body.querySelector(`[data-opcalcpeso="${idx}"]`);
+        const tdMaterial = body.querySelector(`[data-opcalcmaterial="${idx}"]`);
+        const tdCorte = body.querySelector(`[data-opcalccorte="${idx}"]`);
+        const tdValor = body.querySelector(`[data-opcalcvalor="${idx}"]`);
+        if (tdPeso) tdPeso.textContent = calc.peso.toFixed(2);
+        if (tdMaterial) tdMaterial.textContent = fmt(calc.valorMaterial);
+        if (tdCorte) tdCorte.textContent = fmt(calc.valorCorte + calc.valorDobra + calc.valorDobraTempo + calc.valorPrensaTempo);
+        if (tdValor) tdValor.textContent = fmt(calc.valor);
+        atualizarTotalGeral();
+      });
+    });
     // campos numéricos (dimensão, horas, dobras) só atualizam os cálculos daquela linha — sem
     // recriar os inputs, pra não perder o foco enquanto o usuário ainda está digitando
-    body.querySelectorAll('input[type="number"]').forEach(el=>{
+    body.querySelectorAll('input[type="number"][data-oplf]').forEach(el=>{
       el.addEventListener('input', ()=>{
         const idx = +el.dataset.oplin, f = el.dataset.oplf;
         p.linhasProducao[idx][f] = parseFloat(el.value)||0;
@@ -6046,12 +7670,18 @@ function renderOP(p){
 
   document.getElementById('opFinalAddBtn').addEventListener('click', ()=>{
     const primeiro = materials[0] || {nome:'', thicknesses:[{esp:0}]};
-    p.linhasProducao.push({ material: primeiro.nome, espessura: primeiro.thicknesses[0] ? primeiro.thicknesses[0].esp : 0, dimC:0, dimL:0, horasCorte:0, qtdDobras:0, horasDobra:0, horasPrensa:0, corteH:0, corteM:0, corteS:0, dobraH:0, dobraM:0, dobraS:0, prensaH:0, prensaM:0, prensaS:0 });
+    p.linhasProducao.push({ material: primeiro.nome, espessura: primeiro.thicknesses[0] ? primeiro.thicknesses[0].esp : 0, clienteForneceMaterial:false, dimC:0, dimL:0, pedacos:[], horasCorte:0, qtdDobras:0, horasDobra:0, horasPrensa:0, corteH:0, corteM:0, corteS:0, dobraH:0, dobraM:0, dobraS:0, prensaH:0, prensaM:0, prensaS:0 });
     salvarCampoPedido('linhasProducao', p.linhasProducao);
     renderOPFinalLinhas();
   });
 
   document.getElementById('opFinalizarBtn').addEventListener('click', ()=>{
+    const faltando = (p.linhasProducao||[]).filter(l=> !l.clienteForneceMaterial && areaChapaM2(l) <= 0);
+    if (faltando.length){
+      const lista = faltando.map(l=> '- '+(l.material||'material')+(l.espessura?(' '+l.espessura+'mm'):'')).join('\n');
+      alert('Não é possível finalizar: informe o tamanho da chapa (C e L) ou marque "material do cliente" nas seguintes linhas de Finalização da produção:\n\n'+lista);
+      return;
+    }
     const totalGeral = p.linhasProducao.reduce((s,l)=> s + calcularLinha(l).valor, 0);
     if (!confirm(`Finalizar essa OP e enviar pro Fiscal com o valor de ${fmt(totalGeral)}? Isso marca o pedido como concluído.`)) return;
     const all = loadPedidos();
