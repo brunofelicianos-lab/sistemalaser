@@ -4693,20 +4693,39 @@ function pedidoEmProducao(p){
   return p.etapas.some(et=> et.status !== 'pendente');
 }
 
-// impede o mesmo operador de tocar dois serviços ao mesmo tempo
-// bloqueia iniciar/retomar um serviço quando o operador já está com OUTRO ativo em algum
-// lugar — rodando OU pausado. Antes só checava "rodando", e por isso dava pra pausar um
-// serviço e iniciar outro em outra máquina sem perceber: o primeiro ficava pausado (dono
-// ainda com o nome dela) e o segundo rodava direto, sem aparecer no painel "Seu serviço
-// atual" (que só mostra UM de cada vez) — ficava "preso" na fila sem botão de pausar/encerrar.
+// impede o mesmo operador de RODAR dois serviços ao mesmo tempo (fisicamente impossível
+// operar 2 máquinas de uma vez). Só bloqueia se o OUTRO serviço estiver RODANDO — um serviço
+// PAUSADO não bloqueia mais (mudado em 13/08/2026, a pedido do bruno): agora dá pra pausar um
+// serviço e iniciar/retomar outro em outra máquina sem precisar encerrar o primeiro.
+// Entre 06/08 e 13/08/2026 isso também bloqueava com "pausado", pra evitar um bug de EXIBIÇÃO:
+// o painel "Seu serviço atual" só mostra UM serviço por vez, então um operador com 2 ativos
+// (1 rodando + 1 pausado) ficava com o outro "preso" sem botão visível. Esse problema já está
+// resolvido de outro jeito, então não precisa mais bloquear pausado: a fila de cada máquina
+// sempre mostra o botão "▶ Retomar" pra qualquer etapa pausada daquela máquina (não só a
+// "atual"), e `etapaDoOperador` (usada por "Seu serviço atual") prioriza mostrar a etapa
+// RODANDO quando o operador tiver mais de uma ativa, caindo pra pausada só se não houver
+// nenhuma rodando.
 function operadorComEtapaRodando(operador, excetoEtapaId){
   for (const p of loadPedidos()){
     for (const et of (p.etapas||[])){
       if (String(et.id) === String(excetoEtapaId)) continue;
-      if ((et.status === 'rodando' || et.status === 'pausado') && et.operador === operador) return { pedido: p, etapa: et };
+      if (et.status === 'rodando' && et.operador === operador) return { pedido: p, etapa: et };
     }
   }
   return null;
+}
+// conta quantos OUTROS serviços o operador tem pausados agora (em qualquer máquina/pedido),
+// excluindo a etapa `excetoEtapaId` — usado só pra mostrar um aviso em "Seu serviço atual",
+// já que pausado não bloqueia mais nada e é fácil esquecer um serviço pausado por aí.
+function outrosPausadosDoOperador(operador, excetoEtapaId){
+  let n = 0;
+  for (const p of loadPedidos()){
+    for (const et of (p.etapas||[])){
+      if (String(et.id) === String(excetoEtapaId)) continue;
+      if (et.status === 'pausado' && et.operador === operador) n++;
+    }
+  }
+  return n;
 }
 function _ultimoLogTs(etapa){
   if (!etapa.logs || !etapa.logs.length) return null;
@@ -4719,7 +4738,7 @@ function etapaIniciar(pedidoId, etapaId, operador){
   if (et.status === 'rodando') return true;
   const conflito = operadorComEtapaRodando(operador, etapaId);
   if (conflito){
-    alert('Esse operador já está com o serviço "'+conflito.pedido.tipo+' Nº '+conflito.pedido.numero+'" '+(conflito.etapa.status==='pausado'?'pausado':'rodando')+' em outra máquina ('+conflito.etapa.maquina+'). Retome e encerre (ou pause de novo e encerre) aquele antes de iniciar esse.');
+    alert('Esse operador já está com o serviço "'+conflito.pedido.tipo+' Nº '+conflito.pedido.numero+'" RODANDO em outra máquina ('+conflito.etapa.maquina+'). Pause aquele antes de iniciar esse (não dá pra rodar 2 máquinas ao mesmo tempo).');
     return false;
   }
   et.status = 'rodando';
@@ -4744,7 +4763,7 @@ function etapaRetomar(pedidoId, etapaId, operador){
   if (et.status !== 'pausado') return true;
   const conflito = operadorComEtapaRodando(operador, etapaId);
   if (conflito){
-    alert('Esse operador já está com o serviço "'+conflito.pedido.tipo+' Nº '+conflito.pedido.numero+'" '+(conflito.etapa.status==='pausado'?'pausado':'rodando')+' em outra máquina ('+conflito.etapa.maquina+'). Encerre (ou pause) aquele antes de retomar esse.');
+    alert('Esse operador já está com o serviço "'+conflito.pedido.tipo+' Nº '+conflito.pedido.numero+'" RODANDO em outra máquina ('+conflito.etapa.maquina+'). Pause aquele antes de retomar esse (não dá pra rodar 2 máquinas ao mesmo tempo).');
     return false;
   }
   et.status = 'rodando';
@@ -5038,15 +5057,23 @@ function moverPrioridadeFila(maquina, etapaId, direcao){
   salvarPedidoImediato(fila[alvo].pedido.id);
   renderOperFila();
 }
-// acha uma etapa rodando OU pausada por esse operador, em qualquer máquina/pedido
+// acha a etapa que deve aparecer em "Seu serviço atual" pra esse operador. Desde 13/08/2026 um
+// operador pode ter mais de uma etapa ativa (1 rodando + N pausadas em outras máquinas) — por
+// isso prioriza a que estiver RODANDO (é nela que o operador está trabalhando agora); só cai
+// pra uma pausada se não houver nenhuma rodando. As outras pausadas continuam acessíveis pelo
+// botão "▶ Retomar" na fila de cada máquina (`renderOperFila`), e o painel mostra um aviso com
+// a contagem de quantas outras estão pausadas (`outrosPausadosDoOperador`) pra não esquecer.
 function etapaDoOperador(operador){
   if (!operador) return null;
+  let achadoPausado = null;
   for (const p of loadPedidos()){
     for (const et of (p.etapas||[])){
-      if (et.operador === operador && (et.status==='rodando' || et.status==='pausado')) return { pedido:p, etapa:et };
+      if (et.operador !== operador) continue;
+      if (et.status === 'rodando') return { pedido:p, etapa:et };
+      if (et.status === 'pausado' && !achadoPausado) achadoPausado = { pedido:p, etapa:et };
     }
   }
-  return null;
+  return achadoPausado;
 }
 
 // controla quando o "Seu serviço atual" precisa refazer o HTML inteiro (troca de etapa, ou
@@ -5081,6 +5108,14 @@ function renderOperMeuServico(opts){
   const notaHtml = et.notaPCP ? `
     <div style="margin-top:10px; padding:10px 12px; background:rgba(90,150,224,0.12); border:1px solid #5a96e0; border-radius:6px; font-size:13px; white-space:pre-wrap;">
       <b>Nota do PCP:</b> ${epiEsc(et.notaPCP)}
+    </div>` : '';
+  // aviso de quantos OUTROS serviços esse operador tem pausados em outras máquinas agora —
+  // desde que pausado parou de bloquear (13/08/2026), é fácil esquecer um serviço pausado por
+  // aí; esse aviso lembra sem impedir nada. Não bloqueia, é só informativo.
+  const qtdOutrosPausados = outrosPausadosDoOperador(operador, et.id);
+  const outrosPausadosHtml = qtdOutrosPausados > 0 ? `
+    <div style="margin-top:10px; padding:8px 12px; background:rgba(240,180,41,0.12); border:1px solid #e0b84a; border-radius:6px; font-size:13px;">
+      ⚠ Você também tem ${qtdOutrosPausados} outro${qtdOutrosPausados>1?'s':''} serviço${qtdOutrosPausados>1?'s':''} pausado${qtdOutrosPausados>1?'s':''} em outra${qtdOutrosPausados>1?'s':''} máquina${qtdOutrosPausados>1?'s':''} — retome pela fila daquela máquina quando for continuar.
     </div>` : '';
   const pecas = pecasDaEtapa(et);
   const areaTotal = pecas.reduce((s,pc)=> s + ((pc.c||0)/1000)*((pc.l||0)/1000), 0);
@@ -5157,6 +5192,7 @@ function renderOperMeuServico(opts){
     ${grupoChapaHtml}
     ${obsHtml}
     ${notaHtml}
+    ${outrosPausadosHtml}
     ${htmlCaminhoArquivos(p.caminhoArquivos)}
     ${tamanhoHtml}
     ${liberarHtml}`;
