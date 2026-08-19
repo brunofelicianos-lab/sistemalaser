@@ -10202,39 +10202,48 @@ populateListaClientes();
   }
 
   // ---------- STEP -> IGS (conversão real de geometria via opencascade.js/OCCT em WASM) ----------
-  // Os dois arquivos abaixo (opencascade.wasm.js + opencascade.wasm.wasm) precisam estar
-  // hospedados junto com este index-2.html, numa pasta "lib" ao lado dele — ex.:
+  // Os arquivos abaixo precisam estar hospedados junto com este index-2.html, numa pasta
+  // "lib" ao lado dele — ex.:
   //   /index-2.html
   //   /lib/opencascade.wasm.js
-  //   /lib/opencascade.wasm.wasm
+  //   /lib/opencascade.wasm.wasm.part1  (até .part5)
   // NÃO usamos CDN (jsDelivr/unpkg) pra isso: o arquivo .wasm tem ~65MB e o jsDelivr recusa
   // (HTTP 403) esse tamanho de arquivo — confirmado na prática. Hospedar junto do próprio site
-  // (GitHub Pages aceita arquivos de até 100MB) resolve.
-  const OCCT_JS_URL   = './lib/opencascade.wasm.js';
-  const OCCT_WASM_URL = './lib/opencascade.wasm.wasm';
+  // resolve, mas o upload pelo site do GitHub (arrastar arquivo na tela) só aceita até 25MB
+  // por arquivo — por isso o .wasm vem PARTIDO em 5 pedaços (~15MB cada, dá pra arrastar todos
+  // de uma vez), remontados aqui no navegador antes de inicializar a biblioteca.
+  const OCCT_JS_URL = './lib/opencascade.wasm.js';
+  const OCCT_WASM_PARTS = [
+    './lib/opencascade.wasm.wasm.part1',
+    './lib/opencascade.wasm.wasm.part2',
+    './lib/opencascade.wasm.wasm.part3',
+    './lib/opencascade.wasm.wasm.part4',
+    './lib/opencascade.wasm.wasm.part5',
+  ];
   let _occtPromise=null;
 
-  // Baixa o .wasm manualmente (com progresso) e inicializa o módulo passando os bytes direto
-  // (evita depender do locateFile/fetch interno, que varia entre builds/ambientes).
+  // Baixa as partes do .wasm manualmente (com progresso) e remonta antes de inicializar o
+  // módulo passando os bytes direto (evita depender do locateFile/fetch interno, que varia
+  // entre builds/ambientes).
   async function carregarOcct(onProgress){
     if(_occtPromise) return _occtPromise;
     _occtPromise=(async()=>{
       onProgress && onProgress('Baixando biblioteca de conversão (~65MB, só na primeira vez)...');
       const mod=await import(/* webpackIgnore: true */ OCCT_JS_URL);
       const ocInit=mod.default;
-      const resp=await fetch(OCCT_WASM_URL);
-      if(!resp.ok) throw new Error('Falha ao baixar o componente de conversão (HTTP '+resp.status+'). Confira se a pasta "lib" com os arquivos opencascade.wasm.js e opencascade.wasm.wasm está publicada junto com o site.');
-      const total=+resp.headers.get('content-length')||0;
-      const reader=resp.body.getReader();
-      const chunks=[]; let recebido=0;
-      while(true){
-        const {done,value}=await reader.read();
-        if(done) break;
-        chunks.push(value); recebido+=value.length;
-        if(total && onProgress) onProgress('Baixando biblioteca de conversão... '+Math.round(recebido/total*100)+'%');
+
+      const partBuffers=[]; let recebidoTotal=0;
+      for(let i=0;i<OCCT_WASM_PARTS.length;i++){
+        const url=OCCT_WASM_PARTS[i];
+        const resp=await fetch(url);
+        if(!resp.ok) throw new Error('Falha ao baixar o componente de conversão, parte '+(i+1)+'/'+OCCT_WASM_PARTS.length+' (HTTP '+resp.status+'). Confira se a pasta "lib" com todos os arquivos opencascade.wasm.wasm.part1 a .part5 está publicada junto com o site.');
+        const buf=await resp.arrayBuffer();
+        partBuffers.push(new Uint8Array(buf));
+        recebidoTotal+=buf.byteLength;
+        onProgress && onProgress('Baixando biblioteca de conversão... parte '+(i+1)+'/'+OCCT_WASM_PARTS.length+' ('+(recebidoTotal/1024/1024).toFixed(0)+'MB)');
       }
-      const wasmBinary=new Uint8Array(recebido);
-      let off=0; for(const c of chunks){wasmBinary.set(c,off); off+=c.length;}
+      const wasmBinary=new Uint8Array(recebidoTotal);
+      let off=0; for(const p of partBuffers){wasmBinary.set(p,off); off+=p.length;}
       onProgress && onProgress('Inicializando conversor 3D...');
       const oc=await ocInit({wasmBinary});
       return oc;
