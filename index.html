@@ -163,6 +163,35 @@
   /* perfil de login "operador" (usuário/senha próprio, criado em Sistema → Usuários): trava
      SEMPRE nas outras abas, mas mantém o botão Sair pra ele conseguir encerrar o expediente. */
   body.perfil-operador .topnav .navbtn{display:none !important;}
+  /* perfil de login "vendas" (usuário/senha próprio): trava SEMPRE na aba Produtos, mesma
+     ideia do perfil operador — só essa aba e o botão Sair ficam visíveis. */
+  body.perfil-vendas .topnav .navbtn{display:none !important;}
+  body.perfil-vendas .topnav .navbtn[data-view="viewProdutos"]{display:inline-block !important;}
+  body.perfil-operador .topnav .nav-group, body.perfil-vendas .topnav .nav-group{display:none !important;}
+
+  /* Menu agrupado "Mais ▾" na barra superior — junta as abas usadas com menos frequência
+     (Avisos, Produção, Calendário, Fiscal, Clientes, Vistas STP, Gerador, Nota Simples, EPI,
+     Sistema), pra barra não ficar enorme. Abre passando o mouse por cima. */
+  .nav-group{position:relative; display:inline-block;}
+  .nav-group .navgroup-trigger{cursor:pointer;}
+  .nav-group .navgroup-trigger.active{color:var(--accent); border-bottom-color:var(--accent);}
+  .navgroup-panel{
+    display:none; position:absolute; top:100%; left:0; margin-top:2px; z-index:60;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px;
+    min-width:190px; box-shadow:0 10px 28px rgba(0,0,0,0.4);
+  }
+  .nav-group:hover .navgroup-panel, .nav-group:focus-within .navgroup-panel{display:block;}
+  .navgroup-panel .navbtn.navgroup-item{
+    display:block; width:100%; text-align:left; padding:9px 12px; border-bottom:none;
+    border-radius:5px; white-space:nowrap;
+  }
+  .navgroup-panel .navbtn.navgroup-item:hover{background:rgba(255,255,255,0.05); color:var(--text);}
+  .navgroup-panel .navbtn.navgroup-item.active{background:var(--accent-dim); color:var(--accent);}
+  .navgroup-divider{height:1px; background:var(--line); margin:5px 4px;}
+
+  /* linha de produto com estoque baixo (≤ mínimo cadastrado) — mesmo visual de "atrasado" */
+  table.items tr.row-estoque-baixo{background:rgba(209,8,15,0.12);}
+  table.items tr.row-estoque-baixo td:first-child{border-left:3px solid var(--brand-red);}
 
   .modal-overlay{
     position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6);
@@ -492,6 +521,7 @@
   window.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     .catch(e=> console.error('Erro ao definir persistência de login:', e));
   window.isAdmin = false;
+  window.isVendas = false;
 </script>
 </head>
 <body>
@@ -526,17 +556,29 @@
   <nav class="topnav no-print">
     <button class="navbtn active" data-view="viewOrcamento">Orçamento</button>
     <button class="navbtn" data-view="viewPedidos">Pedidos</button>
-    <button class="navbtn" data-view="viewAvisos">Avisos<span id="avisosBadge" class="badge-aviso" style="display:none;"></span></button>
     <button class="navbtn" data-view="viewOperacao">Operação</button>
-    <button class="navbtn" data-view="viewProducao">Produção</button>
-    <button class="navbtn" data-view="viewCalendario">Calendário</button>
-    <button class="navbtn" data-view="viewSistema">Sistema</button>
-    <button class="navbtn" data-view="viewFiscal">Fiscal</button>
-    <button class="navbtn" data-view="viewClientes">Clientes</button>
-    <button class="navbtn" data-view="viewVistas">Vistas STP</button>
-    <button class="navbtn" data-view="viewGerador">Gerador</button>
-    <button class="navbtn" data-view="viewNotaSimples">Nota Simples</button>
-    <button class="navbtn" data-view="viewEPI">EPI</button>
+    <button class="navbtn" data-view="viewProdutos">Produtos</button>
+    <!-- Menu agrupado: o resto das abas, usadas com menos frequência no dia a dia
+         (abre passando o mouse por cima — ver CSS .nav-group:hover .navgroup-panel). -->
+    <div class="nav-group">
+      <button class="navbtn navgroup-trigger" type="button">Mais ▾<span id="avisosBadgeMais" class="badge-aviso" style="display:none;"></span></button>
+      <div class="navgroup-panel">
+        <button class="navbtn navgroup-item" data-view="viewAvisos">Avisos<span id="avisosBadge" class="badge-aviso" style="display:none;"></span></button>
+        <button class="navbtn navgroup-item" data-view="viewProducao">Produção</button>
+        <button class="navbtn navgroup-item" data-view="viewCalendario">Calendário</button>
+        <div class="navgroup-divider"></div>
+        <button class="navbtn navgroup-item" data-view="viewFiscal">Fiscal</button>
+        <button class="navbtn navgroup-item" data-view="viewNotaSimples">Nota Simples</button>
+        <div class="navgroup-divider"></div>
+        <button class="navbtn navgroup-item" data-view="viewSistema">Sistema</button>
+        <button class="navbtn navgroup-item" data-view="viewClientes">Clientes</button>
+        <div class="navgroup-divider"></div>
+        <button class="navbtn navgroup-item" data-view="viewGerador">Gerador</button>
+        <button class="navbtn navgroup-item" data-view="viewVistas">Vistas STP</button>
+        <div class="navgroup-divider"></div>
+        <button class="navbtn navgroup-item" data-view="viewEPI">EPI</button>
+      </div>
+    </div>
     <button id="btnSair" style="margin-left:auto; background:none; border:none; color:var(--text-dim); font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:0.5px; padding:10px 16px; cursor:pointer;">Sair</button>
   </nav>
 
@@ -1141,7 +1183,7 @@
 
     <div class="panel" id="painelUsuarios" style="display:none;">
       <h2><span class="n">·</span>Usuários (login individual de cada operador)</h2>
-      <div class="footnote">Cria um usuário e senha próprios pra cada operador. Perfil <b>Operador</b>: ao entrar, já cai direto na aba Operação e não vê nenhuma outra aba (só o botão Sair) — travado sempre, sem precisar clicar em nada. Perfil <b>Administrador</b>: acesso completo ao sistema, como o seu. Criar um usuário aqui não desconecta você — pode cadastrar vários seguidos.</div>
+      <div class="footnote">Cria um usuário e senha próprios pra cada operador. Perfil <b>Operador</b>: ao entrar, já cai direto na aba Operação e não vê nenhuma outra aba (só o botão Sair) — travado sempre, sem precisar clicar em nada. Perfil <b>Vendas</b>: mesma ideia, mas travado na aba Produtos (catálogo, estoque e registro de vendas) — pra alguém do financeiro/vendas que não precisa ver o resto do sistema. Perfil <b>Administrador</b>: acesso completo ao sistema, como o seu. Criar um usuário aqui não desconecta você — pode cadastrar vários seguidos.</div>
       <div class="row" style="margin-top:10px; align-items:flex-end;">
         <div class="field" style="max-width:200px;">
           <label>Nome</label>
@@ -1159,6 +1201,7 @@
           <label>Perfil</label>
           <select id="novoUsuarioPerfil">
             <option value="operador">Operador (só Operação)</option>
+            <option value="vendas">Vendas (só Produtos)</option>
             <option value="admin">Administrador (acesso completo)</option>
           </select>
         </div>
@@ -1282,6 +1325,113 @@
     </div>
   </div><!-- /viewClientes -->
 
+  <!-- ============================================================
+       VIEW: PRODUTOS — catálogo próprio pra venda (itens fabricados por
+       conta própria, separado dos pedidos sob encomenda). Vende em três
+       canais: Mercado Livre, Distribuidor, Revenda. Controla estoque,
+       preço por canal, custo/margem e registro de vendas.
+       ============================================================ -->
+  <div id="viewProdutos" class="view" style="display:none;">
+    <header class="top no-print">
+      <h1>Produtos <span>·</span> catálogo próprio para venda</h1>
+      <div class="tag">itens fabricados por conta própria · Mercado Livre, distribuidor, revenda</div>
+    </header>
+
+    <div class="stats-bar no-print" id="produtosStatsBar"></div>
+
+    <div class="panel no-print">
+      <div class="row">
+        <div class="field"><label>Buscar produto</label><input type="text" id="produtosBusca" placeholder="nome ou código..."></div>
+        <div class="field"><label>Categoria</label><input type="text" id="produtosFiltroCategoria" placeholder="filtrar por categoria..."></div>
+        <div class="field" style="max-width:170px;">
+          <label>Mostrar</label>
+          <select id="produtosFiltroAtivo">
+            <option value="ativos">Só ativos</option>
+            <option value="todos">Todos</option>
+            <option value="inativos">Só inativos</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" id="addProdutoBtn" style="margin-top:10px;">+ Novo produto</button>
+
+      <div class="field" style="margin-top:16px; max-width:560px;">
+        <label>Adicionar vários de uma vez (um nome por linha)</label>
+        <textarea id="produtosColarLista" rows="6" style="width:100%; box-sizing:border-box; font-family:var(--mono); font-size:12px; padding:8px; background:var(--bg2); border:1px solid var(--line); border-radius:6px; color:var(--text); resize:vertical;">SUPORTE AR CONDICIONADO INOX 304 1,2MM 9000 A 12000 BTUS
+SUPORTE AR CONDICIONADO INOX 304 1,2MM 1800 A 30000 BTUS
+SUPORTE AR CONDICIONADO INOX 304 1,2MM 3600 A 80000 BTUS
+NUMEROS INOX 1,0 10CM
+NUMEROS INOX 1,0 15CM
+NUMEROS INOX 1,0 20CM
+SUPORTE MANGUEIRA GRANDE CARBONO 1,5MM
+SUPORTE MANGUEIRA PEQUENO CARBONO 1,5MM
+LINHA DECORATIVA
+SUPORTE PAPEL HIGIENICO INOX 304 1,0MM
+SUPORTE PAPEL HIGIENICO INOX 304 1,0MM PRETO FOSCO
+SUPORTE SHAMPOO INOX 304 1,0MM
+SUPORTE SHAMPOO INOX 304 1,0MM PRETO FOSCO
+SUPORTE SABONETE INOX 304 1,0MM
+SUPORTE SABONETE NOX 304 1,0MM PRETO FOSCO
+SUPORTE ESCOVA DE DENTE INOX 304 1,0MM
+SUPORTE ESCOVA DE DENTE INOX 304 1,0MM PRETO FOSCO
+CABIDEIRO INOX 304 1,00MM
+CABIDEIRO INOX 304 1,00MM PRETO FOSCO</textarea>
+      </div>
+      <button class="btn secondary" id="colarListaProdutosBtn" style="margin-top:8px;">+ Adicionar lista acima ao catálogo</button>
+
+      <div class="footnote">Custo = material + mão de obra. A margem de cada canal é calculada automaticamente (preço do canal − custo). Editar nome/código/custo/preço/mínimo segue o salvamento manual (botão "Salvar alterações" no topo, igual Clientes) — já <b>estoque</b> e <b>vendas</b> são gravados na hora, direto na nuvem, pelos botões "+ Entrada" e "$ Vender" (não dependem de Salvar). Já preenchi a caixa acima com os 19 nomes que você mandou — é só clicar em "Adicionar lista acima ao catálogo" e depois completar código/custo/preço de cada um.</div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="n">·</span>Catálogo</h2>
+      <div id="produtosEmptyMsg" class="empty-msg">Nenhum produto cadastrado ainda.</div>
+      <div style="overflow-x:auto;">
+        <table class="items" id="produtosTable" style="display:none;">
+          <thead>
+            <tr>
+              <th>Código</th><th>Nome</th><th>Categoria</th><th>Un.</th>
+              <th>Custo</th><th>Preço ML</th><th>Preço Distrib.</th><th>Preço Revenda</th>
+              <th>Estoque</th><th>Mín.</th><th>Ativo?</th><th class="no-print"></th>
+            </tr>
+          </thead>
+          <tbody id="produtosBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="n">·</span>Vendas registradas</h2>
+      <div class="row">
+        <div class="field"><label>Produto</label><select id="vendasFiltroProduto"><option value="">Todos</option></select></div>
+        <div class="field">
+          <label>Canal</label>
+          <select id="vendasFiltroCanal">
+            <option value="">Todos</option>
+            <option value="mercadolivre">Mercado Livre</option>
+            <option value="distribuidor">Distribuidor</option>
+            <option value="revenda">Revenda</option>
+          </select>
+        </div>
+        <div class="field"><label>De</label><input type="date" id="vendasFiltroDe"></div>
+        <div class="field"><label>Até</label><input type="date" id="vendasFiltroAte"></div>
+      </div>
+      <div class="actions" style="margin-top:6px;">
+        <button class="btn secondary" id="exportVendasCsvBtn">Exportar CSV</button>
+      </div>
+      <div id="vendasEmptyMsg" class="empty-msg">Nenhuma venda registrada ainda.</div>
+      <div style="overflow-x:auto;">
+        <table class="items" id="vendasTable" style="display:none;">
+          <thead>
+            <tr>
+              <th>Data</th><th>Produto</th><th>Canal</th><th>Comprador</th>
+              <th>Qtd</th><th>Preço unit.</th><th>Total</th><th>Margem</th><th>Por</th><th class="no-print"></th>
+            </tr>
+          </thead>
+          <tbody id="vendasBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div><!-- /viewProdutos -->
+
   <div id="viewVistas" class="view no-print" style="display:none;">
     <header class="top no-print">
       <h1>Vistas STP <span>·</span> extração de DXF</h1>
@@ -1310,6 +1460,20 @@
         <button class="btn" id="vistasDownloadBtn" style="display:none;">⬇ Baixar DXF</button>
       </div>
       <div id="vistasStatus" class="footnote" style="margin-top:8px;"></div>
+
+      <div style="margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
+        <div style="font-weight:600; margin-bottom:6px;">Converter para IGS (máquina de tubo Tubest)</div>
+        <div class="footnote">
+          Lê a geometria real do STEP (não apenas as arestas de contorno) e gera um arquivo <b>.igs (IGES)</b>
+          pronto para abrir na Tubest. Na primeira vez, baixa uma biblioteca de conversão (~65MB) — só acontece
+          uma vez por sessão do navegador; depois fica rápido. Precisa de internet nesse primeiro uso.
+        </div>
+        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn" id="vistasIgsBtn" disabled>Converter para IGS</button>
+          <button class="btn" id="vistasIgsDownloadBtn" style="display:none;">⬇ Baixar IGS</button>
+        </div>
+        <div id="vistasIgsStatus" class="footnote" style="margin-top:8px;"></div>
+      </div>
     </div>
 
     <div class="panel">
@@ -1754,6 +1918,49 @@
       <div class="actions" style="flex-direction:column; align-items:stretch; margin-top:10px;">
         <button class="btn" id="crSalvarBtn" style="margin-bottom:8px;">Salvar cliente</button>
         <button class="btn secondary" id="crCancelarBtn">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL — entrada de estoque de um produto (produção pronta) -->
+  <div id="modalEntradaEstoque" class="modal-overlay no-print" style="display:none; z-index:1100;">
+    <div class="modal-box" style="max-width:380px;">
+      <h2 style="margin-top:0;">Entrada de estoque</h2>
+      <p class="footnote" style="font-size:13px; color:var(--text);" id="entradaEstoqueProdutoNome"></p>
+      <div class="field"><label>Quantidade produzida</label><input type="number" id="entradaEstoqueQtd" min="0" step="1"></div>
+      <div class="field"><label>Observação (opcional)</label><input type="text" id="entradaEstoqueMotivo" placeholder="ex: lote produzido em 18/08"></div>
+      <div class="actions" style="flex-direction:column; align-items:stretch; margin-top:10px;">
+        <button class="btn" id="entradaEstoqueSalvarBtn" style="margin-bottom:8px;">Registrar entrada</button>
+        <button class="btn secondary" id="entradaEstoqueCancelarBtn">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL — registrar venda de um produto (Mercado Livre / distribuidor / revenda) -->
+  <div id="modalVenderProduto" class="modal-overlay no-print" style="display:none; z-index:1100;">
+    <div class="modal-box" style="max-width:420px;">
+      <h2 style="margin-top:0;">Registrar venda</h2>
+      <p class="footnote" style="font-size:13px; color:var(--text);" id="venderProdutoNome"></p>
+      <div class="field"><label>Canal</label>
+        <select id="venderCanal">
+          <option value="mercadolivre">Mercado Livre</option>
+          <option value="distribuidor">Distribuidor</option>
+          <option value="revenda">Revenda</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="field"><label>Quantidade</label><input type="number" id="venderQtd" min="0" step="1" value="1"></div>
+        <div class="field"><label>Preço unitário (R$)</label><input type="number" id="venderPreco" min="0" step="0.01"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Comprador (opcional)</label><input type="text" id="venderComprador"></div>
+        <div class="field"><label>Data</label><input type="date" id="venderData"></div>
+      </div>
+      <div class="field"><label>Observação (opcional)</label><input type="text" id="venderObservacao"></div>
+      <div class="footnote" id="venderMargemInfo"></div>
+      <div class="actions" style="flex-direction:column; align-items:stretch; margin-top:10px;">
+        <button class="btn" id="venderSalvarBtn" style="margin-bottom:8px;">Registrar venda</button>
+        <button class="btn secondary" id="venderCancelarBtn">Cancelar</button>
       </div>
     </div>
   </div>
@@ -2984,6 +3191,9 @@ let configCache = { orcCounter: 1, pedidoCounterLaser: 0, pedidoCounterPD: 0, no
 let savedListCache = [];
 let pedidosCache = [];
 let clientesCache = [];
+let produtosVendaCache = []; // catálogo de produtos próprios pra venda (aba Produtos)
+let vendasProdutosCache = []; // log de vendas registradas (imediato, não passa pelo botão Salvar)
+let estoqueMovCache = []; // log de movimentações de estoque (entrada/saída/ajuste), só auditoria
 let episCache = [];
 let funcionariosCache = [];
 let epiMovCache = [];
@@ -3383,6 +3593,28 @@ db.collection('clientes').onSnapshot(snap=>{
   refreshCurrentView();
 }, e=> console.error('Erro no listener de clientes:', e));
 
+// PRODUTOS — catálogo próprio pra venda (nome/código/custo/preço/mínimo editados
+// manualmente, mesmo padrão de "clientes": edita e clica em Salvar alterações).
+db.collection('produtosVenda').onSnapshot(snap=>{
+  if (snap.metadata.hasPendingWrites) return;
+  if (_gravacoesPendentes['produtosVenda']) return; // não sobrescreve edições locais não salvas
+  produtosVendaCache = snap.docs.map(d=> d.data());
+  registrarSnapshotCarregado('produtosVenda', produtosVendaCache, p=> p.id);
+  if (currentViewId === 'viewProdutos') renderProdutos();
+}, e=> console.error('Erro no listener de produtosVenda:', e));
+
+// VENDAS de produtos — log gravado IMEDIATO (não passa pelo botão Salvar), então
+// não precisa checar _gravacoesPendentes: nunca fica "pendente" nessa coleção.
+db.collection('vendasProdutos').onSnapshot(snap=>{
+  vendasProdutosCache = snap.docs.map(d=> d.data());
+  if (currentViewId === 'viewProdutos') renderProdutos();
+}, e=> console.error('Erro no listener de vendasProdutos:', e));
+
+// MOVIMENTAÇÕES de estoque (entrada/saída/ajuste) — log gravado IMEDIATO, só auditoria.
+db.collection('estoqueMovimentacoes').onSnapshot(snap=>{
+  estoqueMovCache = snap.docs.map(d=> d.data());
+}, e=> console.error('Erro no listener de estoqueMovimentacoes:', e));
+
 db.collection('epis').onSnapshot(snap=>{
   if (snap.metadata.hasPendingWrites) return;
   episCache = snap.docs.map(d=> d.data());
@@ -3443,6 +3675,7 @@ function verificarBackupPendente(){
 async function checkAdmin(user){
   window.isAdmin = false;
   window.isOperador = false;
+  window.isVendas = false;
   if (!user) return;
   try {
     const doc = await db.collection('usuarios').doc(user.uid).get();
@@ -3450,6 +3683,7 @@ async function checkAdmin(user){
       const role = doc.data().role;
       if (role === 'admin') window.isAdmin = true;
       else if (role === 'operador') window.isOperador = true; // login criado só pra Operação — trava o resto do sistema
+      else if (role === 'vendas') window.isVendas = true; // login criado só pra Produtos (catálogo/estoque/vendas) — trava o resto do sistema
     }
   } catch(e){
     // sem permissão ou sem documento: segue como não-admin, sem travar o app
@@ -3458,14 +3692,16 @@ async function checkAdmin(user){
 }
 
 /* ============================================================
-   USUÁRIOS — login individual por pessoa (perfil admin/operador),
+   USUÁRIOS — login individual por pessoa (perfil admin/operador/vendas),
    gerenciado direto na aba Sistema pelo administrador.
    Cria a conta num app Firebase SECUNDÁRIO (mesmo projeto), assim
    criar um login novo não desconecta o administrador que está usando
    o sistema. Documento em usuarios/{uid} = {nome, email, role}.
    role 'admin' = acesso completo. role 'operador' = trava sempre na
-   aba Operação (ver checkAdmin/trocarViewAgora). Sem role = acesso
-   "normal" de hoje (vê tudo, mas não é admin).
+   aba Operação (ver checkAdmin/trocarViewAgora). role 'vendas' (novo,
+   18/08/2026) = trava sempre na aba Produtos (catálogo/estoque/vendas)
+   — pra alguém do financeiro/vendas que não precisa ver o resto do
+   sistema. Sem role = acesso "normal" de hoje (vê tudo, mas não é admin).
    ============================================================ */
 function getFirebaseAppSecundario(){
   let app = firebase.apps.find(a=> a.name === 'secundario');
@@ -3539,6 +3775,7 @@ function carregarUsuarios(){
         <td>
           <select data-perfiluid="${doc.id}">
             <option value="operador" ${role==='operador'?'selected':''}>Operador (só Operação)</option>
+            <option value="vendas" ${role==='vendas'?'selected':''}>Vendas (só Produtos)</option>
             <option value="admin" ${role==='admin'?'selected':''}>Administrador</option>
             <option value="" ${role===''?'selected':''}>(sem perfil / acesso normal)</option>
           </select>
@@ -3599,11 +3836,14 @@ auth.onAuthStateChanged(async (user)=>{
     esconderLogin();
     startApp();            // registra os listeners do Firestore (só na 1ª vez)
     document.body.classList.toggle('perfil-operador', !!window.isOperador);
+    document.body.classList.toggle('perfil-vendas', !!window.isVendas);
     const painelUsuariosEl = document.getElementById('painelUsuarios');
     if (painelUsuariosEl) painelUsuariosEl.style.display = window.isAdmin ? '' : 'none';
     if (typeof aplicarModoOperador === 'function') aplicarModoOperador();
     if (window.isOperador || (typeof modoOperadorTravado !== 'undefined' && modoOperadorTravado)){
       trocarViewAgora('viewOperacao'); // login de operador (ou aparelho travado em modo kiosk): abre direto na Operação
+    } else if (window.isVendas){
+      trocarViewAgora('viewProdutos'); // login de vendas: abre direto na aba Produtos
     } else {
       refreshCurrentView();
     }
@@ -3824,6 +4064,9 @@ document.getElementById('newOrcBtn').addEventListener('click', ()=>{
    NAVEGAÇÃO POR ABAS
    ============================================================ */
 let currentViewId = 'viewOrcamento';
+// views que moraram pra dentro do menu agrupado "Mais ▾" na barra superior (18/08/2026,
+// barra tava ficando grande demais) — usado só pra saber quando marcar o botão "Mais" como ativo.
+const NAV_GRUPO_MAIS_VIEWS = ['viewAvisos','viewProducao','viewCalendario','viewFiscal','viewNotaSimples','viewSistema','viewClientes','viewGerador','viewVistas','viewEPI'];
 function renderForView(viewId){
   if (viewId === 'viewOrcamento') renderSavedList();
   if (viewId === 'viewPedidos') renderPedidos();
@@ -3833,6 +4076,7 @@ function renderForView(viewId){
   if (viewId === 'viewCalendario') { renderMaquinas(); renderPendentes(); renderFila(); renderGrade5Dias(); }
   if (viewId === 'viewFiscal') renderFiscal();
   if (viewId === 'viewClientes') renderClientes();
+  if (viewId === 'viewProdutos') renderProdutos();
   if (viewId === 'viewVistas') initVistasSTP();
   if (viewId === 'viewGerador') initGerador();
   if (viewId === 'viewNotaSimples') initNotaSimples();
@@ -3847,11 +4091,17 @@ function trocarViewAgora(viewId){
   if (typeof modoOperadorTravado !== 'undefined' && modoOperadorTravado && viewId !== 'viewOperacao') return;
   // login com perfil "operador" (usuário/senha próprio): trava SEMPRE, não é opcional/por PIN.
   if (window.isOperador && viewId !== 'viewOperacao') return;
+  // login com perfil "vendas" (usuário/senha próprio): trava SEMPRE na aba Produtos.
+  if (window.isVendas && viewId !== 'viewProdutos') return;
   document.querySelectorAll('.view').forEach(v=> v.style.display = 'none');
   document.getElementById(viewId).style.display = 'block';
   document.querySelectorAll('.topnav .navbtn').forEach(b=>{
     b.classList.toggle('active', b.dataset.view === viewId);
   });
+  // botão "Mais ▾": não tem data-view próprio (só abre o submenu), então fica "aceso"
+  // à parte, sempre que a aba atual for uma das que moraram pra dentro dele.
+  const navGroupTrigger = document.querySelector('.nav-group .navgroup-trigger');
+  if (navGroupTrigger) navGroupTrigger.classList.toggle('active', NAV_GRUPO_MAIS_VIEWS.includes(viewId));
   currentViewId = viewId;
   renderForView(viewId);
 }
@@ -3873,6 +4123,9 @@ function showView(viewId){
   trocarViewAgora(viewId);
 }
 document.querySelectorAll('.topnav .navbtn').forEach(btn=>{
+  // o botão "Mais ▾" (trigger do menu agrupado) não tem data-view — só abre o submenu ao
+  // passar o mouse (CSS), clicar nele não deve tentar navegar pra uma view inexistente.
+  if (!btn.dataset.view) return;
   btn.addEventListener('click', ()=> showView(btn.dataset.view));
 });
 
@@ -5587,6 +5840,7 @@ function descartarAlteracoesPendentes(){
   const recarregar = [];
   recarregar.push(db.collection('pedidos').get().then(snap=>{ pedidosCache = snap.docs.map(d=> d.data()); }));
   recarregar.push(db.collection('clientes').get().then(snap=>{ clientesCache = snap.docs.map(d=> d.data()); }));
+  recarregar.push(db.collection('produtosVenda').get().then(snap=>{ produtosVendaCache = snap.docs.map(d=> d.data()); }));
   recarregar.push(db.collection('orcamentos').get().then(snap=>{
     savedListCache = snap.docs.map(d=> d.data()).sort((a,b)=> (b.savedAt||'').localeCompare(a.savedAt||''));
   }));
@@ -5807,6 +6061,510 @@ document.getElementById('clienteNomeAddBtn').addEventListener('click', ()=>{
 });
 document.getElementById('npClienteAddBtn').addEventListener('click', ()=>{
   abrirModalClienteRapido(document.getElementById('npCliente').value);
+});
+
+/* ============================================================
+   PRODUTOS — CATÁLOGO PRÓPRIO PARA VENDA
+   (Mercado Livre / Distribuidor / Revenda)
+
+   Separado dos pedidos sob encomenda: são itens que o bruno fabrica por
+   conta própria pra ter em estoque e vender pelos três canais. O cadastro
+   do produto (nome, código, categoria, custo, preço por canal, estoque
+   mínimo, ativo?) segue o padrão de salvamento MANUAL — mesma lógica de
+   Clientes: edita e clica em "Salvar alterações" no topo (registrarGravacao).
+
+   Já ESTOQUE e VENDAS são gravados IMEDIATO na nuvem (mesmo padrão de
+   etapaLiberarQuantidade/salvarPedidoImediato usado na Operação) — não
+   dependem do botão Salvar, e usam FieldValue.increment pra dois
+   lançamentos ao mesmo tempo (ex.: duas pessoas registrando venda do
+   mesmo produto) não brigarem pelo mesmo saldo.
+
+   Coleções novas no Firestore:
+   - produtosVenda: {id, codigo, nome, categoria, unidade, custoMaterial,
+     custoMaoObra, precoMercadolivre, precoDistribuidor, precoRevenda,
+     estoqueAtual, estoqueMinimo, ativo}
+   - vendasProdutos: log de cada venda registrada (append-only; "cancelar"
+     marca cancelada:true e estorna o estoque, não apaga o registro).
+   - estoqueMovimentacoes: log de entrada/saída/ajuste de estoque, só
+     auditoria (não tem tela própria de edição, é histórico).
+   ============================================================ */
+const CANAIS_VENDA = {
+  mercadolivre: 'Mercado Livre',
+  distribuidor: 'Distribuidor',
+  revenda: 'Revenda'
+};
+const CANAL_CAMPO_PRECO = {
+  mercadolivre: 'precoMercadolivre',
+  distribuidor: 'precoDistribuidor',
+  revenda: 'precoRevenda'
+};
+
+function loadProdutosVenda(){ return produtosVendaCache; }
+function saveProdutosVenda(list){
+  produtosVendaCache = list;
+  registrarGravacao('produtosVenda', list, p=> p.id);
+}
+function custoTotalProduto(p){
+  return (parseFloat(p.custoMaterial)||0) + (parseFloat(p.custoMaoObra)||0);
+}
+// margem em R$ e % de um canal específico; null se o canal não tem preço cadastrado
+function margemCanal(p, canalKey){
+  const campo = CANAL_CAMPO_PRECO[canalKey];
+  const preco = parseFloat(p[campo]);
+  if (!preco) return null;
+  const custo = custoTotalProduto(p);
+  const margemRs = preco - custo;
+  const margemPct = preco ? (margemRs/preco*100) : 0;
+  return { margemRs, margemPct };
+}
+function fmtNum(n){ return (parseFloat(n)||0).toLocaleString('pt-BR', {maximumFractionDigits:2}); }
+
+/* ---------- ESTOQUE E VENDAS: gravação imediata ---------- */
+function gerarIdMovimento(){ return 'mv_' + Date.now() + '_' + Math.random().toString(36).slice(2,9); }
+function gerarIdVenda(){ return 'vd_' + Date.now() + '_' + Math.random().toString(36).slice(2,9); }
+function usuarioAtualLabel(){ return (auth.currentUser && (auth.currentUser.email || auth.currentUser.uid)) || '—'; }
+
+function registrarMovimentoEstoque(produto, tipo, quantidade, motivo, vendaId){
+  const mov = {
+    id: gerarIdMovimento(), produtoId: produto.id, produtoNome: produto.nome||'',
+    tipo, quantidade: Math.abs(parseFloat(quantidade)||0), motivo: motivo||'',
+    vendaId: vendaId||null, ts: Date.now(), criadoPor: usuarioAtualLabel()
+  };
+  return comTimeout(db.collection('estoqueMovimentacoes').doc(mov.id).set(mov), 20000, 'movimento de estoque')
+    .catch(e=>{ console.error('Erro ao gravar movimento de estoque:', e); throw e; });
+}
+
+// ajusta o saldo do produto de forma ATÔMICA (increment) — evita que dois
+// lançamentos concorrentes (ex.: duas vendas ao mesmo tempo) briguem pelo saldo.
+function ajustarEstoqueProduto(produtoId, delta){
+  return comTimeout(
+    db.collection('produtosVenda').doc(String(produtoId)).set(
+      { estoqueAtual: firebase.firestore.FieldValue.increment(delta) }, { merge:true }
+    ), 20000, 'ajustar estoque'
+  );
+}
+
+function entradaEstoqueProduto(produtoId, quantidade, motivo){
+  const p = produtosVendaCache.find(x=> x.id === produtoId);
+  if (!p) return Promise.reject(new Error('produto não encontrado'));
+  const qtd = Math.abs(parseFloat(quantidade)||0);
+  if (!qtd){ alert('Informe uma quantidade válida.'); return Promise.reject(new Error('qtd inválida')); }
+  return ajustarEstoqueProduto(produtoId, qtd)
+    .then(()=> registrarMovimentoEstoque(p, 'entrada', qtd, motivo||'Produção'))
+    .then(()=>{ avisarSalvamento('Entrada de estoque registrada ✔', false); })
+    .catch(e=>{ avisarSalvamento('⚠ Não consegui registrar a entrada de estoque. Verifique a internet.', true); throw e; });
+}
+
+function ajusteManualEstoqueProduto(produtoId, novoValor, motivo){
+  const p = produtosVendaCache.find(x=> x.id === produtoId);
+  if (!p) return Promise.reject(new Error('produto não encontrado'));
+  const delta = (parseFloat(novoValor)||0) - (parseFloat(p.estoqueAtual)||0);
+  if (!delta) return Promise.resolve();
+  return ajustarEstoqueProduto(produtoId, delta)
+    .then(()=> registrarMovimentoEstoque(p, 'ajuste', delta, motivo||'Ajuste manual'))
+    .then(()=>{ avisarSalvamento('Ajuste de estoque registrado ✔', false); })
+    .catch(e=>{ avisarSalvamento('⚠ Não consegui registrar o ajuste de estoque.', true); throw e; });
+}
+
+function registrarVendaProduto(dados){
+  // dados: { produtoId, canal, comprador, quantidade, precoUnitario, data, observacao }
+  const p = produtosVendaCache.find(x=> x.id === dados.produtoId);
+  if (!p) return Promise.reject(new Error('produto não encontrado'));
+  const qtd = Math.abs(parseFloat(dados.quantidade)||0);
+  if (!qtd){ alert('Informe uma quantidade válida.'); return Promise.reject(new Error('qtd inválida')); }
+  const precoUnitario = parseFloat(dados.precoUnitario)||0;
+  const venda = {
+    id: gerarIdVenda(), produtoId: p.id, produtoNome: p.nome||'', produtoCodigo: p.codigo||'',
+    canal: dados.canal, comprador: dados.comprador||'', quantidade: qtd,
+    precoUnitario, valorTotal: +(precoUnitario*qtd).toFixed(2),
+    custoUnitarioSnapshot: custoTotalProduto(p), // guarda o custo NA HORA da venda, pra margem histórica não mudar se o custo cadastrado mudar depois
+    data: dados.data || new Date().toISOString().slice(0,10),
+    observacao: dados.observacao||'', criadoPor: usuarioAtualLabel(),
+    criadoEm: Date.now(), cancelada: false
+  };
+  return comTimeout(db.collection('vendasProdutos').doc(venda.id).set(venda), 20000, 'venda de produto')
+    .then(()=> ajustarEstoqueProduto(p.id, -qtd))
+    .then(()=> registrarMovimentoEstoque(p, 'saida', qtd, 'Venda '+(CANAIS_VENDA[dados.canal]||dados.canal), venda.id))
+    .then(()=>{ avisarSalvamento('Venda registrada ✔', false); })
+    .catch(e=>{ console.error('Erro ao registrar venda:', e); avisarSalvamento('⚠ Não consegui registrar a venda. Verifique a internet.', true); throw e; });
+}
+
+function cancelarVendaProduto(vendaId){
+  const v = vendasProdutosCache.find(x=> x.id === vendaId);
+  if (!v || v.cancelada) return Promise.resolve();
+  if (!confirm('Cancelar esta venda? A quantidade volta pro estoque do produto.')) return Promise.resolve();
+  return comTimeout(db.collection('vendasProdutos').doc(vendaId).set(
+    { cancelada:true, canceladoEm: Date.now(), canceladoPor: usuarioAtualLabel() }, { merge:true }
+  ), 20000, 'cancelar venda')
+    .then(()=> ajustarEstoqueProduto(v.produtoId, v.quantidade))
+    .then(()=>{
+      const p = produtosVendaCache.find(x=> x.id === v.produtoId);
+      return registrarMovimentoEstoque(p || {id:v.produtoId, nome:v.produtoNome}, 'entrada', v.quantidade, 'Estorno de venda cancelada', vendaId);
+    })
+    .then(()=>{ avisarSalvamento('Venda cancelada, estoque estornado ✔', false); })
+    .catch(e=>{ console.error('Erro ao cancelar venda:', e); avisarSalvamento('⚠ Não consegui cancelar a venda. Verifique a internet.', true); });
+}
+
+/* ---------- RENDER: catálogo de produtos ---------- */
+function linhaProdutoHtml(p){
+  const custo = custoTotalProduto(p);
+  const estoque = parseFloat(p.estoqueAtual)||0;
+  const minimo = parseFloat(p.estoqueMinimo)||0;
+  const baixo = minimo > 0 && estoque <= minimo;
+  const precoCelula = (canalKey)=>{
+    const campo = CANAL_CAMPO_PRECO[canalKey];
+    const m = margemCanal(p, canalKey);
+    const margemTxt = m ? ((m.margemRs>=0?'':'⚠ ')+fmt(m.margemRs)+' ('+m.margemPct.toFixed(0)+'%)') : '';
+    return `<td>
+      <input type="number" step="0.01" min="0" data-prodcampo="${p.id}:${campo}" value="${p[campo]!=null?p[campo]:''}" style="width:72px;">
+      <span class="est" data-margemspan="${canalKey}">${margemTxt}</span>
+    </td>`;
+  };
+  return `<tr class="${baixo?'row-estoque-baixo':''}" data-produtoid="${p.id}">
+    <td><input type="text" data-prodcampo="${p.id}:codigo" value="${epiEsc(p.codigo||'')}" style="width:64px;"></td>
+    <td style="min-width:170px;"><input type="text" data-prodcampo="${p.id}:nome" value="${epiEsc(p.nome||'')}" style="width:100%; text-align:left;"></td>
+    <td><input type="text" data-prodcampo="${p.id}:categoria" value="${epiEsc(p.categoria||'')}" style="width:90px;"></td>
+    <td><input type="text" data-prodcampo="${p.id}:unidade" value="${epiEsc(p.unidade||'un')}" style="width:40px;"></td>
+    <td>
+      <input type="number" step="0.01" min="0" data-prodcampo="${p.id}:custoMaterial" value="${p.custoMaterial!=null?p.custoMaterial:''}" placeholder="material" title="custo do material" style="width:58px;"><br>
+      <input type="number" step="0.01" min="0" data-prodcampo="${p.id}:custoMaoObra" value="${p.custoMaoObra!=null?p.custoMaoObra:''}" placeholder="mão de obra" title="custo da mão de obra" style="width:58px; margin-top:2px;">
+      <span class="est" data-custospan>total ${fmt(custo)}</span>
+    </td>
+    ${precoCelula('mercadolivre')}
+    ${precoCelula('distribuidor')}
+    ${precoCelula('revenda')}
+    <td>
+      <b style="${baixo?'color:var(--brand-red);':''}">${fmtNum(estoque)}</b> ${epiEsc(p.unidade||'un')}
+      <br><button class="rmrow" data-prodajustarestoque="${p.id}" title="ajustar estoque manualmente" style="font-size:10px;">✎ ajustar</button>
+    </td>
+    <td><input type="number" step="1" min="0" data-prodcampo="${p.id}:estoqueMinimo" value="${p.estoqueMinimo!=null?p.estoqueMinimo:''}" style="width:48px;"></td>
+    <td class="chk-cell"><input type="checkbox" data-prodcampo="${p.id}:ativo" ${p.ativo!==false?'checked':''}></td>
+    <td class="no-print" style="white-space:normal; min-width:150px;">
+      <button class="btn small" data-prodentrada="${p.id}">+ Entrada</button>
+      <button class="btn small" data-prodvender="${p.id}">$ Vender</button><br>
+      <button class="rmrow" data-rmproduto="${p.id}" title="excluir produto do catálogo" style="margin-top:4px;">× excluir</button>
+    </td>
+  </tr>`;
+}
+
+// atualiza só os spans calculados (custo/margem) de UMA linha, sem refazer os
+// inputs — evita perder o foco de quem está digitando (mesmo cuidado tomado em
+// "Seu serviço atual" na Operação).
+function atualizarCalculadosLinhaProduto(id){
+  const p = produtosVendaCache.find(x=> x.id === id);
+  const tr = document.querySelector('#produtosBody tr[data-produtoid="'+id+'"]');
+  if (!p || !tr) return;
+  const custoSpan = tr.querySelector('[data-custospan]');
+  if (custoSpan) custoSpan.textContent = 'total ' + fmt(custoTotalProduto(p));
+  Object.keys(CANAL_CAMPO_PRECO).forEach(canalKey=>{
+    const m = margemCanal(p, canalKey);
+    const span = tr.querySelector('[data-margemspan="'+canalKey+'"]');
+    if (span) span.textContent = m ? ((m.margemRs>=0?'':'⚠ ')+fmt(m.margemRs)+' ('+m.margemPct.toFixed(0)+'%)') : '';
+  });
+  const minimo = parseFloat(p.estoqueMinimo)||0;
+  const estoque = parseFloat(p.estoqueAtual)||0;
+  tr.classList.toggle('row-estoque-baixo', minimo>0 && estoque<=minimo);
+}
+
+function ligarEventosLinhaProduto(root){
+  root.querySelectorAll('[data-prodcampo]').forEach(inp=>{
+    const evt = inp.type === 'checkbox' ? 'change' : 'input';
+    inp.addEventListener(evt, ()=>{
+      const [id, campo] = inp.dataset.prodcampo.split(':');
+      const list = loadProdutosVenda();
+      const p = list.find(x=> x.id === +id);
+      if (!p) return;
+      if (inp.type === 'checkbox') p[campo] = inp.checked;
+      else if (inp.type === 'number') p[campo] = inp.value === '' ? null : parseFloat(inp.value);
+      else p[campo] = inp.value;
+      saveProdutosVenda(list);
+      atualizarCalculadosLinhaProduto(p.id);
+    });
+  });
+  root.querySelectorAll('[data-rmproduto]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if (!confirm('Excluir este produto do catálogo? O histórico de vendas já registrado NÃO é apagado.')) return;
+      let list = loadProdutosVenda();
+      list = list.filter(x=> x.id !== +btn.dataset.rmproduto);
+      saveProdutosVenda(list);
+      renderProdutos();
+    });
+  });
+  root.querySelectorAll('[data-prodentrada]').forEach(btn=>{
+    btn.addEventListener('click', ()=> abrirModalEntradaEstoque(+btn.dataset.prodentrada));
+  });
+  root.querySelectorAll('[data-prodvender]').forEach(btn=>{
+    btn.addEventListener('click', ()=> abrirModalVenderProduto(+btn.dataset.prodvender));
+  });
+  root.querySelectorAll('[data-prodajustarestoque]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = +btn.dataset.prodajustarestoque;
+      const p = produtosVendaCache.find(x=> x.id === id);
+      if (!p) return;
+      const novo = prompt('Novo saldo de estoque de "'+p.nome+'" (atual: '+fmtNum(p.estoqueAtual||0)+' '+(p.unidade||'un')+'):', p.estoqueAtual||0);
+      if (novo === null || novo === '') return;
+      if (isNaN(parseFloat(novo))){ alert('Digite um número válido.'); return; }
+      const motivo = prompt('Motivo do ajuste (opcional):', 'Ajuste manual') || 'Ajuste manual';
+      ajusteManualEstoqueProduto(id, novo, motivo);
+    });
+  });
+}
+
+function renderProdutosStats(){
+  const produtos = loadProdutosVenda();
+  const ativos = produtos.filter(p=> p.ativo !== false);
+  const baixoEstoque = ativos.filter(p=>{
+    const min = parseFloat(p.estoqueMinimo)||0;
+    return min>0 && (parseFloat(p.estoqueAtual)||0) <= min;
+  });
+  const valorEstoque = produtos.reduce((s,p)=> s + (parseFloat(p.estoqueAtual)||0)*custoTotalProduto(p), 0);
+  const mesAtual = new Date().toISOString().slice(0,7); // "YYYY-MM"
+  const vendasMes = vendasProdutosCache.filter(v=> !v.cancelada && (v.data||'').slice(0,7) === mesAtual);
+  const receitaMes = vendasMes.reduce((s,v)=> s + (v.valorTotal||0), 0);
+  const custoMes = vendasMes.reduce((s,v)=> s + (v.custoUnitarioSnapshot||0)*(v.quantidade||0), 0);
+  const lucroMes = receitaMes - custoMes;
+  const bar = document.getElementById('produtosStatsBar');
+  if (!bar) return;
+  bar.innerHTML = `
+    <div class="stat-card"><div class="stat-num">${ativos.length}</div><div class="stat-label">Produtos ativos</div></div>
+    <div class="stat-card ${baixoEstoque.length?'warn':''}"><div class="stat-num">${baixoEstoque.length}</div><div class="stat-label">Com estoque baixo</div></div>
+    <div class="stat-card"><div class="stat-num">${fmt(valorEstoque)}</div><div class="stat-label">Estoque valorizado (custo)</div></div>
+    <div class="stat-card"><div class="stat-num">${fmt(receitaMes)}</div><div class="stat-label">Vendas no mês</div></div>
+    <div class="stat-card"><div class="stat-num">${fmt(lucroMes)}</div><div class="stat-label">Lucro no mês</div></div>
+  `;
+}
+
+function renderProdutos(){
+  if (!document.getElementById('produtosBody')) return;
+  renderProdutosStats();
+  const busca = (document.getElementById('produtosBusca').value||'').trim().toLowerCase();
+  const catF = (document.getElementById('produtosFiltroCategoria').value||'').trim().toLowerCase();
+  const ativoF = document.getElementById('produtosFiltroAtivo').value;
+  let produtos = loadProdutosVenda().slice().sort((a,b)=> (a.nome||'').localeCompare(b.nome||''));
+  if (busca) produtos = produtos.filter(p=> (p.nome||'').toLowerCase().includes(busca) || (p.codigo||'').toLowerCase().includes(busca));
+  if (catF) produtos = produtos.filter(p=> (p.categoria||'').toLowerCase().includes(catF));
+  if (ativoF === 'ativos') produtos = produtos.filter(p=> p.ativo !== false);
+  else if (ativoF === 'inativos') produtos = produtos.filter(p=> p.ativo === false);
+
+  const table = document.getElementById('produtosTable');
+  const empty = document.getElementById('produtosEmptyMsg');
+  const body = document.getElementById('produtosBody');
+  if (produtos.length === 0){
+    table.style.display = 'none'; empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none'; table.style.display = 'table';
+    body.innerHTML = produtos.map(linhaProdutoHtml).join('');
+    ligarEventosLinhaProduto(body);
+  }
+  atualizarSelectFiltroProdutoVendas();
+  renderVendas();
+}
+document.getElementById('produtosBusca').addEventListener('input', renderProdutos);
+document.getElementById('produtosFiltroCategoria').addEventListener('input', renderProdutos);
+document.getElementById('produtosFiltroAtivo').addEventListener('change', renderProdutos);
+document.getElementById('addProdutoBtn').addEventListener('click', ()=>{
+  const list = loadProdutosVenda();
+  list.unshift({
+    id: gerarIdUnico(), codigo:'', nome:'', categoria:'', unidade:'un',
+    custoMaterial:null, custoMaoObra:null,
+    precoMercadolivre:null, precoDistribuidor:null, precoRevenda:null,
+    estoqueAtual:0, estoqueMinimo:null, ativo:true
+  });
+  saveProdutosVenda(list);
+  renderProdutos();
+});
+
+// heurística simples só pra pré-preencher a categoria ao adicionar em lote
+// (o material costuma estar no nome) — o bruno pode corrigir depois, é só um chute inicial.
+function categoriaHeuristicaPorNome(nome){
+  const n = (nome||'').toUpperCase();
+  if (n.includes('INOX')) return 'Inox 304';
+  if (n.includes('CARBONO')) return 'Carbono';
+  return '';
+}
+// gera um id que ainda não está em uso NEM nesta mesma leva — gerarIdUnico() é baseado em
+// Date.now(), então chamado várias vezes seguidas (mesmo milissegundo, como no laço abaixo)
+// pode repetir; sem essa checagem, dois produtos da lista colada poderiam ficar com o MESMO
+// id e um sobrescreveria o outro silenciosamente ao salvar.
+function gerarIdUnicoEvitando(idsEmUso){
+  let id = gerarIdUnico();
+  while (idsEmUso.has(id)) id = gerarIdUnico();
+  idsEmUso.add(id);
+  return id;
+}
+document.getElementById('colarListaProdutosBtn').addEventListener('click', ()=>{
+  const raw = document.getElementById('produtosColarLista').value || '';
+  const linhas = raw.split('\n').map(l=> l.trim()).filter(Boolean);
+  if (!linhas.length){ alert('Cole pelo menos um nome de produto, um por linha.'); return; }
+  const list = loadProdutosVenda();
+  const idsEmUso = new Set(list.map(p=> p.id));
+  linhas.forEach(nome=>{
+    list.push({
+      id: gerarIdUnicoEvitando(idsEmUso), codigo:'', nome, categoria: categoriaHeuristicaPorNome(nome), unidade:'un',
+      custoMaterial:null, custoMaoObra:null,
+      precoMercadolivre:null, precoDistribuidor:null, precoRevenda:null,
+      estoqueAtual:0, estoqueMinimo:null, ativo:true
+    });
+  });
+  saveProdutosVenda(list);
+  document.getElementById('produtosColarLista').value = '';
+  renderProdutos();
+  avisarSalvamento(linhas.length+' produto(s) adicionado(s) ao catálogo — confira/complete código, custo e preços, depois clique em "Salvar alterações".', false);
+});
+
+/* ---------- RENDER: vendas registradas ---------- */
+function atualizarSelectFiltroProdutoVendas(){
+  const sel = document.getElementById('vendasFiltroProduto');
+  if (!sel) return;
+  const atual = sel.value;
+  const produtos = loadProdutosVenda().slice().sort((a,b)=> (a.nome||'').localeCompare(b.nome||''));
+  sel.innerHTML = '<option value="">Todos</option>' + produtos.map(p=> `<option value="${p.id}">${epiEsc(p.nome||'(sem nome)')}</option>`).join('');
+  sel.value = atual;
+}
+function linhaVendaHtml(v){
+  const custoTotalVenda = (v.custoUnitarioSnapshot||0)*(v.quantidade||0);
+  const margem = (v.valorTotal||0) - custoTotalVenda;
+  const dataFmt = v.data ? v.data.split('-').reverse().join('/') : '—';
+  return `<tr class="${v.cancelada?'row-estoque-baixo':''}" data-vendaid="${v.id}">
+    <td>${dataFmt}</td>
+    <td style="text-align:left;">${epiEsc(v.produtoNome||'')}${v.produtoCodigo?' <span class="est" style="display:inline;">('+epiEsc(v.produtoCodigo)+')</span>':''}</td>
+    <td style="text-align:left;">${epiEsc(CANAIS_VENDA[v.canal]||v.canal||'')}</td>
+    <td style="text-align:left;">${epiEsc(v.comprador||'—')}</td>
+    <td>${fmtNum(v.quantidade)}</td>
+    <td>${fmt(v.precoUnitario)}</td>
+    <td>${fmt(v.valorTotal)}</td>
+    <td style="color:${margem>=0?'var(--good)':'var(--brand-red)'};">${fmt(margem)}</td>
+    <td style="text-align:left;">${epiEsc((v.criadoPor||'').split('@')[0])}</td>
+    <td class="no-print">${v.cancelada ? '<span class="est">cancelada</span>' : '<button class="rmrow" data-cancelarvenda="'+v.id+'" title="cancelar venda (estorna o estoque)">× cancelar</button>'}</td>
+  </tr>`;
+}
+function renderVendas(){
+  if (!document.getElementById('vendasBody')) return;
+  const produtoF = document.getElementById('vendasFiltroProduto').value;
+  const canalF = document.getElementById('vendasFiltroCanal').value;
+  const deF = document.getElementById('vendasFiltroDe').value;
+  const ateF = document.getElementById('vendasFiltroAte').value;
+  let vendas = vendasProdutosCache.slice().sort((a,b)=> (b.data||'').localeCompare(a.data||'') || (b.criadoEm||0)-(a.criadoEm||0));
+  if (produtoF) vendas = vendas.filter(v=> String(v.produtoId) === produtoF);
+  if (canalF) vendas = vendas.filter(v=> v.canal === canalF);
+  if (deF) vendas = vendas.filter(v=> (v.data||'') >= deF);
+  if (ateF) vendas = vendas.filter(v=> (v.data||'') <= ateF);
+
+  const table = document.getElementById('vendasTable');
+  const empty = document.getElementById('vendasEmptyMsg');
+  const body = document.getElementById('vendasBody');
+  if (vendas.length === 0){
+    table.style.display = 'none'; empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none'; table.style.display = 'table';
+    body.innerHTML = vendas.map(linhaVendaHtml).join('');
+    body.querySelectorAll('[data-cancelarvenda]').forEach(btn=>{
+      btn.addEventListener('click', ()=> cancelarVendaProduto(btn.dataset.cancelarvenda));
+    });
+  }
+}
+['vendasFiltroProduto','vendasFiltroCanal','vendasFiltroDe','vendasFiltroAte'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', renderVendas);
+});
+
+function buildVendasCsv(){
+  const header = ['Data','Produto','Codigo','Canal','Comprador','Quantidade','PrecoUnitario','ValorTotal','CustoUnitario','Margem','RegistradoPor','Cancelada','Observacao'];
+  const lines = [header.join(';')];
+  vendasProdutosCache.slice().sort((a,b)=> (a.data||'').localeCompare(b.data||'')).forEach(v=>{
+    const margem = (v.valorTotal||0) - (v.custoUnitarioSnapshot||0)*(v.quantidade||0);
+    lines.push([
+      v.data||'', (v.produtoNome||'').replace(/;/g,','), v.produtoCodigo||'', CANAIS_VENDA[v.canal]||v.canal||'',
+      (v.comprador||'').replace(/;/g,','), v.quantidade||0, v.precoUnitario||0, v.valorTotal||0,
+      v.custoUnitarioSnapshot||0, margem.toFixed(2), (v.criadoPor||'').replace(/;/g,','),
+      v.cancelada?'SIM':'NAO', (v.observacao||'').replace(/;/g,',')
+    ].join(';'));
+  });
+  return lines.join('\n');
+}
+function exportVendasCsv(){
+  const csv = buildVendasCsv();
+  const blob = new Blob(["﻿"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'vendas_produtos.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+document.getElementById('exportVendasCsvBtn').addEventListener('click', exportVendasCsv);
+
+/* ---------- MODAL: entrada de estoque ---------- */
+let _entradaEstoqueProdutoId = null;
+function abrirModalEntradaEstoque(produtoId){
+  const p = produtosVendaCache.find(x=> x.id === produtoId);
+  if (!p) return;
+  _entradaEstoqueProdutoId = produtoId;
+  document.getElementById('entradaEstoqueProdutoNome').textContent = p.nome + ' — estoque atual: ' + fmtNum(p.estoqueAtual||0) + ' ' + (p.unidade||'un');
+  document.getElementById('entradaEstoqueQtd').value = '';
+  document.getElementById('entradaEstoqueMotivo').value = '';
+  document.getElementById('modalEntradaEstoque').style.display = 'flex';
+}
+document.getElementById('entradaEstoqueCancelarBtn').addEventListener('click', ()=>{
+  document.getElementById('modalEntradaEstoque').style.display = 'none';
+});
+document.getElementById('entradaEstoqueSalvarBtn').addEventListener('click', ()=>{
+  const qtd = document.getElementById('entradaEstoqueQtd').value;
+  const motivo = document.getElementById('entradaEstoqueMotivo').value;
+  if (!qtd || parseFloat(qtd) <= 0){ alert('Informe uma quantidade válida.'); return; }
+  entradaEstoqueProduto(_entradaEstoqueProdutoId, qtd, motivo).then(()=>{
+    document.getElementById('modalEntradaEstoque').style.display = 'none';
+  }).catch(()=>{});
+});
+
+/* ---------- MODAL: registrar venda ---------- */
+let _venderProdutoId = null;
+function atualizarVenderMargemInfo(){
+  const p = produtosVendaCache.find(x=> x.id === _venderProdutoId);
+  if (!p) return;
+  const preco = parseFloat(document.getElementById('venderPreco').value)||0;
+  const custo = custoTotalProduto(p);
+  const margem = preco - custo;
+  const pct = preco ? (margem/preco*100) : 0;
+  document.getElementById('venderMargemInfo').textContent = 'Custo do produto: ' + fmt(custo) + ' · margem nesta venda: ' + fmt(margem) + ' (' + pct.toFixed(0) + '%)';
+}
+function abrirModalVenderProduto(produtoId){
+  const p = produtosVendaCache.find(x=> x.id === produtoId);
+  if (!p) return;
+  _venderProdutoId = produtoId;
+  document.getElementById('venderProdutoNome').textContent = p.nome + ' — estoque atual: ' + fmtNum(p.estoqueAtual||0) + ' ' + (p.unidade||'un');
+  document.getElementById('venderCanal').value = 'mercadolivre';
+  document.getElementById('venderQtd').value = 1;
+  document.getElementById('venderPreco').value = p.precoMercadolivre != null ? p.precoMercadolivre : '';
+  document.getElementById('venderComprador').value = '';
+  document.getElementById('venderData').value = new Date().toISOString().slice(0,10);
+  document.getElementById('venderObservacao').value = '';
+  atualizarVenderMargemInfo();
+  document.getElementById('modalVenderProduto').style.display = 'flex';
+}
+document.getElementById('venderCanal').addEventListener('change', ()=>{
+  const p = produtosVendaCache.find(x=> x.id === _venderProdutoId);
+  if (!p) return;
+  const campo = CANAL_CAMPO_PRECO[document.getElementById('venderCanal').value];
+  const preco = p[campo];
+  if (preco != null) document.getElementById('venderPreco').value = preco;
+  atualizarVenderMargemInfo();
+});
+document.getElementById('venderPreco').addEventListener('input', atualizarVenderMargemInfo);
+document.getElementById('venderCancelarBtn').addEventListener('click', ()=>{
+  document.getElementById('modalVenderProduto').style.display = 'none';
+});
+document.getElementById('venderSalvarBtn').addEventListener('click', ()=>{
+  const dados = {
+    produtoId: _venderProdutoId,
+    canal: document.getElementById('venderCanal').value,
+    quantidade: document.getElementById('venderQtd').value,
+    precoUnitario: document.getElementById('venderPreco').value,
+    comprador: document.getElementById('venderComprador').value,
+    data: document.getElementById('venderData').value,
+    observacao: document.getElementById('venderObservacao').value
+  };
+  registrarVendaProduto(dados).then(()=>{
+    document.getElementById('modalVenderProduto').style.display = 'none';
+  }).catch(()=>{});
 });
 
 /* ============================================================
@@ -6224,10 +6982,15 @@ function fmtDuracaoLonga(ms){
 // passar, não de um dado novo chegar), pra funcionar mesmo com o admin em outra aba.
 function atualizarBadgeAvisos(){
   const badge = document.getElementById('avisosBadge');
-  if (!badge) return;
+  const badgeMais = document.getElementById('avisosBadgeMais'); // espelho no botão "Mais ▾" (Avisos ficou dentro do menu agrupado)
+  if (!badge && !badgeMais) return;
   const { total } = calcularAvisos();
-  if (total > 0){ badge.textContent = total > 99 ? '99+' : String(total); badge.style.display = ''; }
-  else { badge.style.display = 'none'; }
+  const txt = total > 99 ? '99+' : String(total);
+  [badge, badgeMais].forEach(el=>{
+    if (!el) return;
+    if (total > 0){ el.textContent = txt; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  });
 }
 
 function renderAvisos(){
@@ -8722,6 +9485,10 @@ document.getElementById('exportBackupBtn').addEventListener('click', ()=>{
     pedidos: pedidosCache,
     maquinas: loadMaquinas(),
     clientes: clientesCache,
+    produtosVenda: produtosVendaCache,
+    // vendasProdutos e estoqueMovimentacoes (aba Produtos) NÃO entram neste backup:
+    // são logs gravados imediato na nuvem (como as liberações de prensa/dobra dos
+    // pedidos), não passam pelo cache/Salvar — ficam só no Firestore mesmo.
     _geradoEm: new Date().toISOString()
   };
   const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
@@ -8748,6 +9515,7 @@ document.getElementById('importBackupInput').addEventListener('change', (e)=>{
       if (Array.isArray(dump.pedidos)) savePedidos(dump.pedidos);
       if (Array.isArray(dump.maquinas)) saveMaquinas(dump.maquinas);
       if (Array.isArray(dump.clientes)) saveClientes(dump.clientes);
+      if (Array.isArray(dump.produtosVenda)) saveProdutosVenda(dump.produtosVenda);
       salvarAlteracoesPendentes();
       alert('Backup restaurado e enviado para o banco compartilhado.');
     }catch(err){
@@ -8782,12 +9550,24 @@ function exportPedidosCsv(){
 document.getElementById('exportPedidosCsvBtn').addEventListener('click', exportPedidosCsv);
 document.getElementById('exportPedidosCsvBtn2').addEventListener('click', exportPedidosCsv);
 
+// apaga TODOS os documentos de uma coleção — usado pra "vendasProdutos" e
+// "estoqueMovimentacoes", que são logs gravados imediato (não passam pelo
+// cache/Salvar, então não têm um "saveX([])" pra chamar).
+function apagarColecaoCompleta(nome){
+  return db.collection(nome).get().then(snap=>
+    Promise.all(snap.docs.map(d=> d.ref.delete().catch(e=> console.error('Erro ao apagar', nome, d.id, e))))
+  ).catch(e=> console.error('Erro ao apagar coleção '+nome+':', e));
+}
+
 document.getElementById('limparTudoBtn').addEventListener('click', ()=>{
-  if (!confirm('ATENÇÃO: isso vai apagar TODOS os orçamentos salvos, pedidos, clientes e configurações do banco COMPARTILHADO — afeta todo mundo que usa o sistema. Fez backup antes? Esta ação não pode ser desfeita. Continuar?')) return;
+  if (!confirm('ATENÇÃO: isso vai apagar TODOS os orçamentos salvos, pedidos, clientes, produtos/vendas e configurações do banco COMPARTILHADO — afeta todo mundo que usa o sistema. Fez backup antes? Esta ação não pode ser desfeita. Continuar?')) return;
   if (!confirm('Tem certeza mesmo? Essa é a última confirmação.')) return;
   persistSavedList([]);
   savePedidos([]);
   saveClientes([]);
+  saveProdutosVenda([]);
+  apagarColecaoCompleta('vendasProdutos');
+  apagarColecaoCompleta('estoqueMovimentacoes');
   saveMaquinas(DEFAULT_MAQUINAS.slice());
   writeConfig({ orcCounter: 1, pedidoCounterLaser: 0, pedidoCounterPD: 0 });
   salvarAlteracoesPendentes();
@@ -9128,7 +9908,22 @@ populateListaClientes();
     const dp=text.split(/DATA;/)[1].split(/ENDSEC/)[0];
     const ents={}; const stmts=dp.split(";");
     const re=/^#(\d+)\s*=\s*([A-Z_0-9]+)\s*\(([\s\S]*)\)\s*$/;
-    for(let s of stmts){s=s.trim();const m=re.exec(s);if(m)ents[+m[1]]={type:m[2],args:m[3]};}
+    // Entidades "complexas" do STEP (comuns em curvas B-spline/NURBS): em vez de
+    // "#N = TIPO(...)", vêm como "#N = ( TIPOA(...) TIPOB(...) TIPOC(...) )" — vários
+    // tipos concatenados dentro de um único parêntese externo, sem tipo logo após o "=".
+    const reComplex=/^#(\d+)\s*=\s*\(([\s\S]*)\)\s*$/;
+    const reSub=/([A-Z_0-9]+)\s*\(([^()]*(?:\([^()]*\)[^()]*)*)\)/g;
+    for(let s of stmts){
+      s=s.trim(); if(!s)continue;
+      const m=re.exec(s);
+      if(m){ ents[+m[1]]={type:m[2],args:m[3]}; continue; }
+      const mc=reComplex.exec(s);
+      if(mc){
+        const subs={}; let sm; reSub.lastIndex=0;
+        while((sm=reSub.exec(mc[2]))) subs[sm[1]]=sm[2];
+        ents[+mc[1]]={type:'COMPLEX',subs};
+      }
+    }
     return ents;
   }
   const refs=s=>{const o=[];const r=/#(\d+)/g;let m;while((m=r.exec(s)))o.push(+m[1]);return o;};
@@ -9141,21 +9936,102 @@ populateListaClientes();
   const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
   const norm=a=>{const l=Math.hypot(a[0],a[1],a[2]);return l>1e-12?[a[0]/l,a[1]/l,a[2]/l]:[0,0,0];};
 
+  // ---------- Curvas B-spline / NURBS (curvas de bordas não-circulares, ex.: transições
+  // suaves entre um furo e a parede do tubo) — algoritmo padrão de De Boor (Piegl & Tiller). ----------
+  function nurbsFindSpan(n,p,u,U){
+    if(u>=U[n+1])return n;
+    if(u<=U[p])return p;
+    let lo=p,hi=n+1,mid=Math.floor((lo+hi)/2);
+    while(u<U[mid]||u>=U[mid+1]){ if(u<U[mid])hi=mid; else lo=mid; mid=Math.floor((lo+hi)/2); }
+    return mid;
+  }
+  function nurbsBasisFuns(i,u,p,U){
+    const N=[1],left=[0],right=[0];
+    for(let j=1;j<=p;j++){
+      left[j]=u-U[i+1-j]; right[j]=U[i+j]-u; let saved=0;
+      for(let r=0;r<j;r++){ const temp=N[r]/(right[r+1]+left[j-r]); N[r]=saved+right[r+1]*temp; saved=left[j-r]*temp; }
+      N[j]=saved;
+    }
+    return N;
+  }
+  function nurbsEval(ctrlPts,weights,p,U,u){
+    const n=ctrlPts.length-1;
+    const span=nurbsFindSpan(n,p,u,U);
+    const N=nurbsBasisFuns(span,u,p,U);
+    let x=0,y=0,z=0,w=0;
+    for(let j=0;j<=p;j++){
+      const idx=span-p+j, wi=weights?weights[idx]:1, Nb=N[j]*wi;
+      x+=Nb*ctrlPts[idx][0]; y+=Nb*ctrlPts[idx][1]; z+=Nb*ctrlPts[idx][2]; w+=Nb;
+    }
+    return [x/w,y/w,z/w];
+  }
+  // Lê uma entidade STEP complexa (curva B-spline concatenada com B_SPLINE_CURVE_WITH_KNOTS e,
+  // se racional, RATIONAL_B_SPLINE_CURVE) e devolve pontos amostrados ao longo da curva.
+  // Retorna null se a entidade não tiver o formato esperado (chamador cai pra linha reta).
+  function sampleBSpline(ents,complexEnt,nSeg){
+    const subs=complexEnt.subs;
+    const bc=subs.B_SPLINE_CURVE, bk=subs.B_SPLINE_CURVE_WITH_KNOTS;
+    if(!bc||!bk)return null;
+    // O grau (degree) e as multiplicidades dos nós são campos INTEIROS no STEP — vêm sem
+    // ponto decimal (ex.: "3", não "3."), então nums() (que só pega número no formato REAL,
+    // com ponto) não pega esses. Grau é sempre o primeiro token antes da primeira vírgula.
+    const degree=parseInt(bc.trim().split(',')[0].trim(),10);
+    const ctrlRefs=refs(bc);
+    const ctrlPts=ctrlRefs.map(id=>cartesian(ents,id));
+    if(!Number.isFinite(degree))return null;
+    if(ctrlPts.length<degree+1)return null;
+    const mm=/\(([^)]*)\)\s*,\s*\(([^)]*)\)/.exec(bk);
+    if(!mm)return null;
+    const mults=mm[1].split(',').map(x=>parseInt(x.trim(),10));
+    const knotVals=nums(mm[2]);
+    if(mults.length!==knotVals.length||mults.some(x=>!Number.isFinite(x)))return null;
+    const knots=[];
+    for(let i=0;i<mults.length;i++) for(let k=0;k<mults[i];k++) knots.push(knotVals[i]);
+    const weights=subs.RATIONAL_B_SPLINE_CURVE?nums(subs.RATIONAL_B_SPLINE_CURVE):null;
+    const n=ctrlPts.length-1;
+    if(knots.length!==n+degree+2)return null;
+    const u0=knots[degree], u1=knots[n+1];
+    const pts=[];
+    nSeg=nSeg||16;
+    for(let i=0;i<=nSeg;i++){
+      const u=u0+(u1-u0)*i/nSeg;
+      pts.push(nurbsEval(ctrlPts,weights,degree,knots,Math.min(Math.max(u,u0),u1)));
+    }
+    return pts;
+  }
+
   function extractSegments(ents){
     const lines=[]; const rawArcs=[];
     for(const id in ents){
       const e=ents[id]; if(e.type!=="EDGE_CURVE")continue;
-      const r=refs(e.args);
-      const p0=vertexPoint(ents,r[0]),p1=vertexPoint(ents,r[1]);
-      const curve=ents[r[2]];
-      if(curve.type==="CIRCLE"){
-        const cr=refs(curve.args); const radius=nums(curve.args).slice(-1)[0];
-        const ar=refs(ents[cr[0]].args);
-        const center=cartesian(ents,ar[0]);
-        const normal=ar[1]!=null?direction(ents,ar[1]):[0,0,1];
-        const xdir=ar[2]!=null?direction(ents,ar[2]):[1,0,0];
-        rawArcs.push({center,normal,radius,p0,p1,xdir});
-      } else { lines.push({kind:"line",p0,p1}); }
+      try{
+        const r=refs(e.args);
+        const p0=vertexPoint(ents,r[0]),p1=vertexPoint(ents,r[1]);
+        const curve=ents[r[2]];
+        if(curve&&curve.type==="CIRCLE"){
+          const cr=refs(curve.args); const radius=nums(curve.args).slice(-1)[0];
+          const ar=refs(ents[cr[0]].args);
+          const center=cartesian(ents,ar[0]);
+          const normal=ar[1]!=null?direction(ents,ar[1]):[0,0,1];
+          const xdir=ar[2]!=null?direction(ents,ar[2]):[1,0,0];
+          rawArcs.push({center,normal,radius,p0,p1,xdir});
+        } else if(curve&&curve.type==="COMPLEX"){
+          // Curva composta (normalmente B-spline/NURBS) — tenta amostrar como polilinha;
+          // se não der (formato inesperado), cai pra linha reta entre os dois pontos.
+          const pts=sampleBSpline(ents,curve,16);
+          if(pts&&pts.length>1){
+            for(let i=0;i<pts.length-1;i++) lines.push({kind:"line",p0:pts[i],p1:pts[i+1]});
+          } else {
+            lines.push({kind:"line",p0,p1});
+          }
+        } else {
+          // curva não reconhecida (ou referência não encontrada) — melhor desenhar uma
+          // linha reta do que travar a geração inteira das vistas.
+          lines.push({kind:"line",p0,p1});
+        }
+      }catch(err){
+        console.warn('Vistas STP: falha ao processar uma aresta, ignorando essa curva específica:',err);
+      }
     }
     const key=a=>{
       const nn=norm(a.normal).map(x=>Math.round(x*1000)/1000);
@@ -9325,6 +10201,98 @@ populateListaClientes();
     return {dxf:toDXF(placed),svg:toSVG(placed),result,segCount:segs.length};
   }
 
+  // ---------- STEP -> IGS (conversão real de geometria via opencascade.js/OCCT em WASM) ----------
+  // Os dois arquivos abaixo (opencascade.wasm.js + opencascade.wasm.wasm) precisam estar
+  // hospedados junto com este index-2.html, numa pasta "lib" ao lado dele — ex.:
+  //   /index-2.html
+  //   /lib/opencascade.wasm.js
+  //   /lib/opencascade.wasm.wasm
+  // NÃO usamos CDN (jsDelivr/unpkg) pra isso: o arquivo .wasm tem ~65MB e o jsDelivr recusa
+  // (HTTP 403) esse tamanho de arquivo — confirmado na prática. Hospedar junto do próprio site
+  // (GitHub Pages aceita arquivos de até 100MB) resolve.
+  const OCCT_JS_URL   = './lib/opencascade.wasm.js';
+  const OCCT_WASM_URL = './lib/opencascade.wasm.wasm';
+  let _occtPromise=null;
+
+  // Baixa o .wasm manualmente (com progresso) e inicializa o módulo passando os bytes direto
+  // (evita depender do locateFile/fetch interno, que varia entre builds/ambientes).
+  async function carregarOcct(onProgress){
+    if(_occtPromise) return _occtPromise;
+    _occtPromise=(async()=>{
+      onProgress && onProgress('Baixando biblioteca de conversão (~65MB, só na primeira vez)...');
+      const mod=await import(/* webpackIgnore: true */ OCCT_JS_URL);
+      const ocInit=mod.default;
+      const resp=await fetch(OCCT_WASM_URL);
+      if(!resp.ok) throw new Error('Falha ao baixar o componente de conversão (HTTP '+resp.status+'). Confira se a pasta "lib" com os arquivos opencascade.wasm.js e opencascade.wasm.wasm está publicada junto com o site.');
+      const total=+resp.headers.get('content-length')||0;
+      const reader=resp.body.getReader();
+      const chunks=[]; let recebido=0;
+      while(true){
+        const {done,value}=await reader.read();
+        if(done) break;
+        chunks.push(value); recebido+=value.length;
+        if(total && onProgress) onProgress('Baixando biblioteca de conversão... '+Math.round(recebido/total*100)+'%');
+      }
+      const wasmBinary=new Uint8Array(recebido);
+      let off=0; for(const c of chunks){wasmBinary.set(c,off); off+=c.length;}
+      onProgress && onProgress('Inicializando conversor 3D...');
+      const oc=await ocInit({wasmBinary});
+      return oc;
+    })();
+    // se der erro, esquece a promise quebrada — assim o usuário pode clicar em "Converter"
+    // de novo depois de corrigir o problema (ex.: publicar a pasta lib/), em vez de ficar
+    // travado com o mesmo erro pra sempre na mesma sessão do navegador.
+    _occtPromise.catch(()=>{ _occtPromise=null; });
+    return _occtPromise;
+  }
+
+  // Converte texto STEP (ISO-10303-21) em bytes IGES, preservando a geometria real (B-Rep), via OCCT.
+  // ATENÇÃO: os nomes de arquivo dentro do FS virtual do WASM (ex.: '/in.stp') têm que ser CURTOS —
+  // este build do OCCT tem um limite baixo (~10 caracteres de caminho) e falha silenciosamente
+  // (status de erro, zero geometria) com nomes maiores, tipo '/entrada.stp'. Testado e confirmado.
+  async function converterStepParaIges(stepText,onProgress){
+    const oc=await carregarOcct(onProgress);
+    onProgress && onProgress('Lendo geometria do STEP...');
+    const bytes=new TextEncoder().encode(stepText);
+    oc.FS.writeFile('/in.stp',bytes);
+
+    const reader=new oc.STEPControl_Reader_1();
+    const status=reader.ReadFile('/in.stp');
+    if(status!==oc.IFSelect_ReturnStatus.IFSelect_RetDone){
+      throw new Error('O leitor STEP não conseguiu interpretar o arquivo (status '+status+').');
+    }
+    const nTransferidas=reader.TransferRoots();
+    if(!nTransferidas){
+      throw new Error('Nenhuma geometria válida foi encontrada no STEP.');
+    }
+    const shape=reader.OneShape();
+    if(shape.IsNull()){
+      throw new Error('A geometria lida do STEP ficou vazia.');
+    }
+
+    onProgress && onProgress('Convertendo para IGES...');
+    const writer=new oc.IGESControl_Writer_2('MM',0);
+    writer.AddShape(shape);
+    writer.ComputeModel();
+    // IMPORTANTE: o 2º argumento (fnes) tem que ser "false" — com "true" o OCCT grava um
+    // formato binário/FNES não-padrão que a maioria dos leitores IGES (inclusive o nosso teste
+    // de releitura) não reconhece como IGES ASCII válido.
+    const ok=writer.Write_2('/out.igs',false);
+    if(!ok){
+      throw new Error('Falha ao gravar o arquivo IGES.');
+    }
+    const saida=oc.FS.readFile('/out.igs');
+
+    // limpeza best-effort dos objetos do WASM (evita vazamento de memória em conversões repetidas)
+    try{ oc.FS.unlink('/in.stp'); }catch(e){}
+    try{ oc.FS.unlink('/out.igs'); }catch(e){}
+    try{ reader.delete && reader.delete(); }catch(e){}
+    try{ writer.delete && writer.delete(); }catch(e){}
+    try{ shape.delete && shape.delete(); }catch(e){}
+
+    return saida; // Uint8Array
+  }
+
   // ---------- UI ----------
   let _stpText=null, _lastDXF=null, _lastName="vistas";
   window.initVistasSTP=function(){
@@ -9333,13 +10301,21 @@ populateListaClientes();
     const gerar=document.getElementById('vistasGerarBtn');
     const dl=document.getElementById('vistasDownloadBtn');
     const status=document.getElementById('vistasStatus');
+    const igsBtn=document.getElementById('vistasIgsBtn');
+    const igsDl=document.getElementById('vistasIgsDownloadBtn');
+    const igsStatus=document.getElementById('vistasIgsStatus');
     if(stpIn._wired) return; stpIn._wired=true;
+    let _lastIgs=null;
 
     stpIn.addEventListener('change',e=>{
       const f=e.target.files[0]; if(!f)return;
       _lastName=f.name.replace(/\.(stp|step)$/i,'');
       const r=new FileReader();
-      r.onload=ev=>{ _stpText=ev.target.result; gerar.disabled=false; status.textContent='Arquivo "'+f.name+'" carregado. Clique em "Gerar vistas".'; };
+      r.onload=ev=>{
+        _stpText=ev.target.result; gerar.disabled=false; igsBtn.disabled=false;
+        status.textContent='Arquivo "'+f.name+'" carregado. Clique em "Gerar vistas".';
+        igsDl.style.display='none'; _lastIgs=null; igsStatus.textContent='';
+      };
       r.readAsText(f);
     });
     pdfIn.addEventListener('change',e=>{
@@ -9377,6 +10353,31 @@ populateListaClientes();
       const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);
       a.download=_lastName+'_vistas.dxf';
+      a.click();
+    });
+
+    igsBtn.addEventListener('click',async()=>{
+      if(!_stpText)return;
+      igsBtn.disabled=true; igsDl.style.display='none'; _lastIgs=null;
+      igsStatus.textContent='Preparando conversão...';
+      try{
+        const bytes=await converterStepParaIges(_stpText,msg=>{ igsStatus.textContent=msg; });
+        _lastIgs=bytes;
+        igsDl.style.display='inline-block';
+        igsStatus.textContent='IGS gerado com sucesso ('+(bytes.length/1024).toFixed(0)+' KB). Pronto para abrir na Tubest.';
+      }catch(err){
+        igsStatus.textContent='Erro ao converter: '+err.message;
+        console.error(err);
+      }finally{
+        igsBtn.disabled=false;
+      }
+    });
+    igsDl.addEventListener('click',()=>{
+      if(!_lastIgs)return;
+      const blob=new Blob([_lastIgs],{type:'application/iges'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=_lastName+'.igs';
       a.click();
     });
   };
