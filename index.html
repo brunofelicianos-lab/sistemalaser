@@ -447,13 +447,15 @@
     }
   }
   /* ---------- EPI ---------- */
-  .epi-subnav{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:0;}
-  .epi-subnav button{
+  /* .prod-subnav (aba Produtos) reaproveita o mesmo visual do .epi-subnav — nomes de classe
+     diferentes de propósito, pra não colidir com o querySelectorAll('.epi-subnav button') do EPI. */
+  .epi-subnav, .prod-subnav{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; border-bottom:1px solid var(--line); padding-bottom:0;}
+  .epi-subnav button, .prod-subnav button{
     background:none; border:none; color:var(--text-dim); font-weight:700; text-transform:uppercase;
     font-size:12px; letter-spacing:0.5px; padding:9px 14px; cursor:pointer; border-bottom:2px solid transparent;
   }
-  .epi-subnav button:hover{color:var(--text);}
-  .epi-subnav button.active{color:var(--accent); border-bottom-color:var(--accent);}
+  .epi-subnav button:hover, .prod-subnav button:hover{color:var(--text);}
+  .epi-subnav button.active, .prod-subnav button.active{color:var(--accent); border-bottom-color:var(--accent);}
   .epi-table{width:100%; border-collapse:collapse; font-size:13px;}
   .epi-table th{background:var(--bg2); color:var(--text-dim); text-transform:uppercase; font-size:10.5px; letter-spacing:0.4px; text-align:left; padding:8px 8px; border-bottom:1px solid var(--line); white-space:nowrap;}
   .epi-table td{padding:5px 8px; border-bottom:1px solid var(--line-soft); vertical-align:middle;}
@@ -1301,6 +1303,53 @@
       <div id="fiscalEmptyMsg" class="empty-msg">Nenhum pedido concluído aguardando faturamento.</div>
       <div id="fiscalList"></div>
     </div>
+
+    <!-- ============================================================
+         VENDAS DE PRODUTOS (Mercado Livre / Distribuidor / Revenda)
+         Toda venda registrada na aba Produtos já cai aqui sozinha,
+         aguardando nota — não depende de nenhum "liberar" antes.
+         ============================================================ -->
+    <div class="panel no-print">
+      <h2><span class="n">·</span>Vendas de produtos aguardando nota</h2>
+      <div class="stats-bar no-print" id="fiscalProdutosStatsBar"></div>
+      <div class="row">
+        <div class="field"><label>Buscar produto/comprador</label><input type="text" id="fiscalProdutosBusca" placeholder="digite pra filtrar..."></div>
+        <div class="field">
+          <label>Canal</label>
+          <select id="fiscalProdutosFiltroCanal">
+            <option value="">Todos</option>
+            <option value="mercadolivre">Mercado Livre</option>
+            <option value="distribuidor">Distribuidor</option>
+            <option value="revenda">Revenda</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="fiscalProdutosFiltroStatus">
+            <option value="pendente">Aguardando nota</option>
+            <option value="faturado">Faturadas</option>
+            <option value="naoenviada">Faturadas — nota não enviada</option>
+            <option value="todos">Todas</option>
+          </select>
+        </div>
+      </div>
+      <div class="footnote">Toda venda registrada na aba <b>Produtos</b> (Mercado Livre, Distribuidor ou Revenda) já aparece aqui automaticamente, aguardando nota — o estoque já foi descontado na hora da venda. Marque "Faturado" quando emitir a nota (pode anotar o número da nota no campo ao lado) e "Nota enviada" quando despachar ao cliente.</div>
+    </div>
+
+    <div class="panel no-print" id="fiscalProdutosBulkBar">
+      <h2><span class="n">·</span>Ação em massa</h2>
+      <div class="row" style="align-items:center;">
+        <button class="btn secondary small" id="fiscalProdutosSelTodosBtn">Selecionar todos os visíveis</button>
+        <button class="btn secondary small" id="fiscalProdutosSelLimparBtn">Limpar seleção</button>
+        <span id="fiscalProdutosSelContador" style="font-size:12px; color:var(--text-dim);">0 selecionados</span>
+        <button class="btn" id="fiscalProdutosBulkAplicarBtn" style="margin-left:8px;">Aplicar aos selecionados: marcar como Faturado</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div id="fiscalProdutosEmptyMsg" class="empty-msg">Nenhuma venda de produto aguardando nota.</div>
+      <div id="fiscalProdutosList"></div>
+    </div>
   </div><!-- /viewFiscal -->
 
   <!-- ============================================================
@@ -1339,97 +1388,166 @@
 
     <div class="stats-bar no-print" id="produtosStatsBar"></div>
 
-    <div class="panel no-print">
-      <div class="row">
-        <div class="field"><label>Buscar produto</label><input type="text" id="produtosBusca" placeholder="nome ou código..."></div>
-        <div class="field"><label>Categoria</label><input type="text" id="produtosFiltroCategoria" placeholder="filtrar por categoria..."></div>
-        <div class="field" style="max-width:170px;">
-          <label>Mostrar</label>
-          <select id="produtosFiltroAtivo">
-            <option value="ativos">Só ativos</option>
-            <option value="todos">Todos</option>
-            <option value="inativos">Só inativos</option>
-          </select>
+    <div class="prod-subnav no-print">
+      <button type="button" data-prodtab="catalogo" class="active">Catálogo</button>
+      <button type="button" data-prodtab="estoque">Estoque</button>
+      <button type="button" data-prodtab="vendas">Vendas</button>
+    </div>
+
+    <!-- ================= CATÁLOGO ================= -->
+    <div id="prodSubCatalogo">
+      <div class="panel no-print">
+        <div class="row">
+          <div class="field"><label>Buscar produto</label><input type="text" id="produtosBusca" placeholder="nome ou código..."></div>
+          <div class="field"><label>Categoria</label><input type="text" id="produtosFiltroCategoria" placeholder="filtrar por categoria..."></div>
+          <div class="field" style="max-width:170px;">
+            <label>Mostrar</label>
+            <select id="produtosFiltroAtivo">
+              <option value="ativos">Só ativos</option>
+              <option value="todos">Todos</option>
+              <option value="inativos">Só inativos</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn" id="addProdutoBtn" style="margin-top:10px;">+ Novo produto</button>
+
+        <div class="field" style="margin-top:16px; max-width:560px;">
+          <label>Adicionar/atualizar vários de uma vez (um por linha — "nome", "nome;preçoML" ou "nome;preçoDistrib;preçoML")</label>
+          <textarea id="produtosColarLista" rows="6" style="width:100%; box-sizing:border-box; font-family:var(--mono); font-size:12px; padding:8px; background:var(--bg2); border:1px solid var(--line); border-radius:6px; color:var(--text); resize:vertical;">SUPORTE ESCOVA DE DENTE INOX 304 1,0MM PRETO FOSCO;39.90
+SUPORTE SHAMPOO INOX 304 1,0MM PRETO FOSCO;59.90
+SUPORTE SABONETE INOX 304 1,0MM PRETO FOSCO;42.90
+SUPORTE TOALHA INOX 304 1,0MM PRETO FOSCO;16.90
+SUPORTE PAPEL HIGIENICO INOX 304 1,5MM PRETO FOSCO;47.90
+SUPORTE REFORÇADO MANGUEIRA CARBONO 1,5MM PRETO FOSCO;134.90
+SUPORTE MÉDIO MANGUEIRA CARBONO 1,5MM PRETO FOSCO;78.90
+SUPORTE AR CONDICIONADO INOX 304 1,2MM 9000 A 12000 BTUS;90.00;147.90
+SUPORTE AR CONDICIONADO INOX 304 1,2MM 18000 A 30000 BTUS;133.00;213.50
+SUPORTE AR CONDICIONADO INOX 304 1,2MM 18000 A 30000 BTUS REFORÇADO;150.00;249.90
+SUPORTE AR CONDICIONADO INOX 304 1,2MM 36000 A 80000 BTUS;220.00;339.90
+NUMERO 0 10CM INOX 430 1MM;10.90
+NUMERO 1 10CM INOX 430 1MM;10.90
+NUMERO 2 10CM INOX 430 1MM;10.90
+NUMERO 3 10CM INOX 430 1MM;10.90
+NUMERO 4 10CM INOX 430 1MM;10.90
+NUMERO 5 10CM INOX 430 1MM;10.90
+NUMERO 6 10CM INOX 430 1MM;10.90
+NUMERO 7 10CM INOX 430 1MM;10.90
+NUMERO 8 10CM INOX 430 1MM;10.90
+NUMERO 9 10CM INOX 430 1MM;10.90
+NUMERO INOX 1MM 430 10CM 0 A 9 (KIT COM 2);24.90
+NUMERO INOX 1MM 430 10CM 0 A 9 (KIT COM 3);29.90
+NUMERO 0 20CM INOX 430 1MM;22.90
+NUMERO 1 20CM INOX 430 1MM;22.90
+NUMERO 2 20CM INOX 430 1MM;22.90
+NUMERO 3 20CM INOX 430 1MM;22.90
+NUMERO 4 20CM INOX 430 1MM;22.90
+NUMERO 5 20CM INOX 430 1MM;22.90
+NUMERO 6 20CM INOX 430 1MM;22.90
+NUMERO 7 20CM INOX 430 1MM;22.90
+NUMERO 8 20CM INOX 430 1MM;22.90
+NUMERO 9 20CM INOX 430 1MM;22.90
+NUMERO INOX 1MM 430 20CM 0 A 9 (KIT COM 2);39.90
+NUMERO INOX 1MM 430 20CM 0 A 9 (KIT COM 3);57.90
+NUMERO 0 30CM INOX 430 1MM;34.90
+NUMERO 1 30CM INOX 430 1MM;34.90
+NUMERO 2 30CM INOX 430 1MM;34.90
+NUMERO 3 30CM INOX 430 1MM;34.90
+NUMERO 4 30CM INOX 430 1MM;34.90
+NUMERO 5 30CM INOX 430 1MM;34.90
+NUMERO 6 30CM INOX 430 1MM;34.90
+NUMERO 7 30CM INOX 430 1MM;34.90
+NUMERO 8 30CM INOX 430 1MM;34.90
+NUMERO 9 30CM INOX 430 1MM;34.90
+NUMERO INOX 1MM 430 30CM 0 A 9 (KIT COM 2);67.90
+NUMERO INOX 1MM 430 30CM 0 A 9 (KIT COM 3);89.90</textarea>
+        </div>
+        <button class="btn secondary" id="colarListaProdutosBtn" style="margin-top:8px;">+ Adicionar/atualizar lista acima no catálogo</button>
+
+        <div class="footnote">Custo = material + mão de obra. A margem de cada canal é calculada automaticamente (preço do canal − custo). Nome/código/categoria/custo/preço/ativo salvam pelo botão <b>"Salvar alterações"</b> no topo, igual Clientes. <b>Estoque</b> agora tem aba própria (veja "Estoque" acima) e <b>vendas</b> ficam na aba "Vendas". Já deixei a caixa acima preenchida com os suportes (escova, shampoo, sabonete, toalha, papel higiênico, mangueira reforçado e médio), os suportes de ar condicionado (Distribuidor + Mercado Livre) e os números — agora <b>cada dígito (0 a 9) é um produto separado</b>, pra dar pra controlar o estoque de cada número individualmente; os kits (de 2 ou 3 dígitos) continuam como itens à parte, já que não são um número específico. Confira e clique em "Adicionar/atualizar lista acima". Cada linha pode ser "nome", "nome;preçoML" ou "nome;preçoDistribuidor;preçoML": se já existir um produto com esse nome EXATO no catálogo, só os preços informados são atualizados (nada mais é mexido); se não existir, um produto novo é criado. Nomes parecidos mas não idênticos (ex.: a versão antiga "0 AO 9" combinada dos números) viram produto novo — vale desativar/excluir a versão antiga combinada depois de conferir. Preço não define quantidade: depois de adicionar, vá na aba <b>Estoque</b> pra digitar quantas peças de cada dígito você já tem.</div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="n">·</span>Catálogo</h2>
+        <div id="produtosEmptyMsg" class="empty-msg">Nenhum produto cadastrado ainda.</div>
+        <div style="overflow-x:auto;">
+          <table class="items" id="produtosTable" style="display:none;">
+            <thead>
+              <tr>
+                <th>Código</th><th>Nome</th><th>Categoria</th><th>Un.</th>
+                <th>Custo</th><th>Preço ML</th><th>Preço Distrib.</th><th>Preço Revenda</th>
+                <th>Ativo?</th><th class="no-print"></th>
+              </tr>
+            </thead>
+            <tbody id="produtosBody"></tbody>
+          </table>
         </div>
       </div>
-      <button class="btn" id="addProdutoBtn" style="margin-top:10px;">+ Novo produto</button>
+    </div><!-- /prodSubCatalogo -->
 
-      <div class="field" style="margin-top:16px; max-width:560px;">
-        <label>Adicionar vários de uma vez (um nome por linha)</label>
-        <textarea id="produtosColarLista" rows="6" style="width:100%; box-sizing:border-box; font-family:var(--mono); font-size:12px; padding:8px; background:var(--bg2); border:1px solid var(--line); border-radius:6px; color:var(--text); resize:vertical;">SUPORTE AR CONDICIONADO INOX 304 1,2MM 9000 A 12000 BTUS
-SUPORTE AR CONDICIONADO INOX 304 1,2MM 1800 A 30000 BTUS
-SUPORTE AR CONDICIONADO INOX 304 1,2MM 3600 A 80000 BTUS
-NUMEROS INOX 1,0 10CM
-NUMEROS INOX 1,0 15CM
-NUMEROS INOX 1,0 20CM
-SUPORTE MANGUEIRA GRANDE CARBONO 1,5MM
-SUPORTE MANGUEIRA PEQUENO CARBONO 1,5MM
-LINHA DECORATIVA
-SUPORTE PAPEL HIGIENICO INOX 304 1,0MM
-SUPORTE PAPEL HIGIENICO INOX 304 1,0MM PRETO FOSCO
-SUPORTE SHAMPOO INOX 304 1,0MM
-SUPORTE SHAMPOO INOX 304 1,0MM PRETO FOSCO
-SUPORTE SABONETE INOX 304 1,0MM
-SUPORTE SABONETE NOX 304 1,0MM PRETO FOSCO
-SUPORTE ESCOVA DE DENTE INOX 304 1,0MM
-SUPORTE ESCOVA DE DENTE INOX 304 1,0MM PRETO FOSCO
-CABIDEIRO INOX 304 1,00MM
-CABIDEIRO INOX 304 1,00MM PRETO FOSCO</textarea>
-      </div>
-      <button class="btn secondary" id="colarListaProdutosBtn" style="margin-top:8px;">+ Adicionar lista acima ao catálogo</button>
-
-      <div class="footnote">Custo = material + mão de obra. A margem de cada canal é calculada automaticamente (preço do canal − custo). Editar nome/código/custo/preço/mínimo segue o salvamento manual (botão "Salvar alterações" no topo, igual Clientes) — já <b>estoque</b> e <b>vendas</b> são gravados na hora, direto na nuvem, pelos botões "+ Entrada" e "$ Vender" (não dependem de Salvar). Já preenchi a caixa acima com os 19 nomes que você mandou — é só clicar em "Adicionar lista acima ao catálogo" e depois completar código/custo/preço de cada um.</div>
-    </div>
-
-    <div class="panel">
-      <h2><span class="n">·</span>Catálogo</h2>
-      <div id="produtosEmptyMsg" class="empty-msg">Nenhum produto cadastrado ainda.</div>
-      <div style="overflow-x:auto;">
-        <table class="items" id="produtosTable" style="display:none;">
-          <thead>
-            <tr>
-              <th>Código</th><th>Nome</th><th>Categoria</th><th>Un.</th>
-              <th>Custo</th><th>Preço ML</th><th>Preço Distrib.</th><th>Preço Revenda</th>
-              <th>Estoque</th><th>Mín.</th><th>Ativo?</th><th class="no-print"></th>
-            </tr>
-          </thead>
-          <tbody id="produtosBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2><span class="n">·</span>Vendas registradas</h2>
-      <div class="row">
-        <div class="field"><label>Produto</label><select id="vendasFiltroProduto"><option value="">Todos</option></select></div>
-        <div class="field">
-          <label>Canal</label>
-          <select id="vendasFiltroCanal">
-            <option value="">Todos</option>
-            <option value="mercadolivre">Mercado Livre</option>
-            <option value="distribuidor">Distribuidor</option>
-            <option value="revenda">Revenda</option>
-          </select>
+    <!-- ================= ESTOQUE ================= -->
+    <div id="prodSubEstoque" style="display:none;">
+      <div class="panel no-print">
+        <div class="row">
+          <div class="field"><label>Buscar produto</label><input type="text" id="estoqueBusca" placeholder="nome ou código..."></div>
+          <div class="field"><label>Categoria</label><input type="text" id="estoqueFiltroCategoria" placeholder="filtrar por categoria..."></div>
+          <div class="field" style="max-width:220px; display:flex; align-items:flex-end; gap:6px; padding-bottom:9px;">
+            <input type="checkbox" id="estoqueFiltroBaixo" style="width:auto;"><label style="margin:0; font-weight:400;" for="estoqueFiltroBaixo">Só estoque baixo</label>
+          </div>
         </div>
-        <div class="field"><label>De</label><input type="date" id="vendasFiltroDe"></div>
-        <div class="field"><label>Até</label><input type="date" id="vendasFiltroAte"></div>
       </div>
-      <div class="actions" style="margin-top:6px;">
-        <button class="btn secondary" id="exportVendasCsvBtn">Exportar CSV</button>
+      <div class="panel">
+        <h2><span class="n">·</span>Quantidade em estoque</h2>
+        <div class="footnote">Digite a quantidade de cada produto na coluna <b>Estoque</b> (bom pra fazer a carga inicial de tudo que você já tem, ou conferir depois de uma contagem) e clique em <b>"💾 Salvar quantidades de estoque"</b> pra gravar tudo de uma vez. "+ Entrada" registra produção pronta com uma observação; "$ Vender" registra uma venda e já desconta o estoque. Se você trocar de aba antes de clicar em salvar, as quantidades digitadas aqui se perdem.</div>
+        <div id="estoqueProdutosEmptyMsg" class="empty-msg">Nenhum produto cadastrado ainda.</div>
+        <div style="overflow-x:auto;">
+          <table class="items" id="estoqueProdutosTable" style="display:none;">
+            <thead>
+              <tr><th>Código</th><th>Nome</th><th>Categoria</th><th>Estoque</th><th>Mín.</th><th class="no-print">Ações</th></tr>
+            </thead>
+            <tbody id="estoqueProdutosBody"></tbody>
+          </table>
+        </div>
+        <button class="btn" id="salvarEstoqueLoteBtn" style="margin-top:12px;">💾 Salvar quantidades de estoque</button>
       </div>
-      <div id="vendasEmptyMsg" class="empty-msg">Nenhuma venda registrada ainda.</div>
-      <div style="overflow-x:auto;">
-        <table class="items" id="vendasTable" style="display:none;">
-          <thead>
-            <tr>
-              <th>Data</th><th>Produto</th><th>Canal</th><th>Comprador</th>
-              <th>Qtd</th><th>Preço unit.</th><th>Total</th><th>Margem</th><th>Por</th><th class="no-print"></th>
-            </tr>
-          </thead>
-          <tbody id="vendasBody"></tbody>
-        </table>
+    </div><!-- /prodSubEstoque -->
+
+    <!-- ================= VENDAS ================= -->
+    <div id="prodSubVendas" style="display:none;">
+      <div class="panel">
+        <h2><span class="n">·</span>Vendas registradas</h2>
+        <div class="row">
+          <div class="field"><label>Produto</label><select id="vendasFiltroProduto"><option value="">Todos</option></select></div>
+          <div class="field">
+            <label>Canal</label>
+            <select id="vendasFiltroCanal">
+              <option value="">Todos</option>
+              <option value="mercadolivre">Mercado Livre</option>
+              <option value="distribuidor">Distribuidor</option>
+              <option value="revenda">Revenda</option>
+            </select>
+          </div>
+          <div class="field"><label>De</label><input type="date" id="vendasFiltroDe"></div>
+          <div class="field"><label>Até</label><input type="date" id="vendasFiltroAte"></div>
+        </div>
+        <div class="actions" style="margin-top:6px;">
+          <button class="btn" id="vendaAvulsaBtn">$ Registrar venda</button>
+          <button class="btn secondary" id="exportVendasCsvBtn">Exportar CSV</button>
+        </div>
+        <div class="footnote">Toda venda registrada aqui já desconta a quantidade do estoque do produto e já entra automaticamente na aba <b>Fiscal</b>, aguardando nota — não precisa marcar nada antes.</div>
+        <div id="vendasEmptyMsg" class="empty-msg">Nenhuma venda registrada ainda.</div>
+        <div style="overflow-x:auto;">
+          <table class="items" id="vendasTable" style="display:none;">
+            <thead>
+              <tr>
+                <th>Data</th><th>Produto</th><th>Canal</th><th>Comprador</th>
+                <th>Qtd</th><th>Preço unit.</th><th>Total</th><th>Margem</th><th>Fiscal</th><th>Por</th><th class="no-print"></th>
+              </tr>
+            </thead>
+            <tbody id="vendasBody"></tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </div><!-- /prodSubVendas -->
   </div><!-- /viewProdutos -->
 
   <div id="viewVistas" class="view no-print" style="display:none;">
@@ -1940,6 +2058,7 @@ CABIDEIRO INOX 304 1,00MM PRETO FOSCO</textarea>
   <div id="modalVenderProduto" class="modal-overlay no-print" style="display:none; z-index:1100;">
     <div class="modal-box" style="max-width:420px;">
       <h2 style="margin-top:0;">Registrar venda</h2>
+      <div class="field"><label>Produto</label><select id="venderProdutoSelect"></select></div>
       <p class="footnote" style="font-size:13px; color:var(--text);" id="venderProdutoNome"></p>
       <div class="field"><label>Canal</label>
         <select id="venderCanal">
@@ -3608,6 +3727,7 @@ db.collection('produtosVenda').onSnapshot(snap=>{
 db.collection('vendasProdutos').onSnapshot(snap=>{
   vendasProdutosCache = snap.docs.map(d=> d.data());
   if (currentViewId === 'viewProdutos') renderProdutos();
+  if (currentViewId === 'viewFiscal') renderFiscal();
 }, e=> console.error('Erro no listener de vendasProdutos:', e));
 
 // MOVIMENTAÇÕES de estoque (entrada/saída/ajuste) — log gravado IMEDIATO, só auditoria.
@@ -6180,12 +6300,16 @@ function registrarVendaProduto(dados){
     custoUnitarioSnapshot: custoTotalProduto(p), // guarda o custo NA HORA da venda, pra margem histórica não mudar se o custo cadastrado mudar depois
     data: dados.data || new Date().toISOString().slice(0,10),
     observacao: dados.observacao||'', criadoPor: usuarioAtualLabel(),
-    criadoEm: Date.now(), cancelada: false
+    criadoEm: Date.now(), cancelada: false,
+    // Fiscal: toda venda já nasce "aguardando nota" — aparece sozinha na aba Fiscal,
+    // não precisa de nenhum passo de "liberar" (diferente dos pedidos sob encomenda).
+    faturado: false, faturadoEm: null, dataFaturamento: '',
+    notaEnviada: false, notaEnviadaEm: null, dataNotaEnviada: '', numeroNota: ''
   };
   return comTimeout(db.collection('vendasProdutos').doc(venda.id).set(venda), 20000, 'venda de produto')
     .then(()=> ajustarEstoqueProduto(p.id, -qtd))
     .then(()=> registrarMovimentoEstoque(p, 'saida', qtd, 'Venda '+(CANAIS_VENDA[dados.canal]||dados.canal), venda.id))
-    .then(()=>{ avisarSalvamento('Venda registrada ✔', false); })
+    .then(()=>{ avisarSalvamento('Venda registrada ✔ — já aparece na aba Fiscal aguardando nota', false); })
     .catch(e=>{ console.error('Erro ao registrar venda:', e); avisarSalvamento('⚠ Não consegui registrar a venda. Verifique a internet.', true); throw e; });
 }
 
@@ -6205,12 +6329,49 @@ function cancelarVendaProduto(vendaId){
     .catch(e=>{ console.error('Erro ao cancelar venda:', e); avisarSalvamento('⚠ Não consegui cancelar a venda. Verifique a internet.', true); });
 }
 
-/* ---------- RENDER: catálogo de produtos ---------- */
+/* ---------- FISCAL: status de nota de uma venda de produto ---------- */
+// Espelha o padrão já usado em pedidos (faturado/notaEnviada/dataFaturamento/
+// dataNotaEnviada) pra a aba Fiscal conseguir tratar os dois de forma parecida.
+function marcarVendaProdutoFaturada(vendaId, faturar){
+  const patch = faturar
+    ? { faturado:true, faturadoEm: Date.now(), dataFaturamento: todayBR() }
+    : { faturado:false, faturadoEm:null, dataFaturamento:'', notaEnviada:false, notaEnviadaEm:null, dataNotaEnviada:'' };
+  return comTimeout(db.collection('vendasProdutos').doc(vendaId).set(patch, {merge:true}), 20000, 'marcar venda faturada')
+    .catch(e=>{ console.error('Erro ao marcar venda faturada:', e); avisarSalvamento('⚠ Não consegui atualizar o status fiscal da venda.', true); });
+}
+function marcarVendaProdutoNotaEnviada(vendaId, enviar){
+  const patch = enviar
+    ? { notaEnviada:true, notaEnviadaEm: Date.now(), dataNotaEnviada: todayBR() }
+    : { notaEnviada:false, notaEnviadaEm:null, dataNotaEnviada:'' };
+  return comTimeout(db.collection('vendasProdutos').doc(vendaId).set(patch, {merge:true}), 20000, 'marcar nota enviada')
+    .catch(e=>{ console.error('Erro ao marcar nota enviada:', e); avisarSalvamento('⚠ Não consegui marcar a nota como enviada.', true); });
+}
+function salvarNumeroNotaVenda(vendaId, numero){
+  return comTimeout(db.collection('vendasProdutos').doc(vendaId).set({ numeroNota: numero||'' }, {merge:true}), 20000, 'salvar número da nota')
+    .catch(e=> console.error('Erro ao salvar número da nota:', e));
+}
+
+/* ---------- Sub-abas da tela Produtos (Catálogo / Estoque / Vendas) ---------- */
+let _prodSub = 'catalogo';
+// true enquanto o bruno tem quantidades digitadas na aba Estoque ainda não salvas —
+// evita que um snapshot chegando no meio da digitação (ex.: outra pessoa vendendo)
+// apague os números que ele ainda não clicou em salvar (mesma ideia já usada em
+// _gravacoesPendentes pro cadastro manual de Clientes/Produtos).
+let _estoqueLoteSujo = false;
+function prodSwitch(name){
+  _prodSub = name;
+  if (name !== 'estoque') _estoqueLoteSujo = false; // saiu da aba: descarta edição pendente não salva
+  document.querySelectorAll('.prod-subnav button').forEach(b=> b.classList.toggle('active', b.dataset.prodtab===name));
+  document.getElementById('prodSubCatalogo').style.display = name==='catalogo'?'block':'none';
+  document.getElementById('prodSubEstoque').style.display = name==='estoque'?'block':'none';
+  document.getElementById('prodSubVendas').style.display = name==='vendas'?'block':'none';
+  renderProdutos();
+}
+document.querySelectorAll('.prod-subnav button').forEach(b=> b.addEventListener('click', ()=> prodSwitch(b.dataset.prodtab)));
+
+/* ---------- RENDER: catálogo de produtos (nome/código/categoria/custo/preço/ativo) ---------- */
 function linhaProdutoHtml(p){
   const custo = custoTotalProduto(p);
-  const estoque = parseFloat(p.estoqueAtual)||0;
-  const minimo = parseFloat(p.estoqueMinimo)||0;
-  const baixo = minimo > 0 && estoque <= minimo;
   const precoCelula = (canalKey)=>{
     const campo = CANAL_CAMPO_PRECO[canalKey];
     const m = margemCanal(p, canalKey);
@@ -6220,7 +6381,7 @@ function linhaProdutoHtml(p){
       <span class="est" data-margemspan="${canalKey}">${margemTxt}</span>
     </td>`;
   };
-  return `<tr class="${baixo?'row-estoque-baixo':''}" data-produtoid="${p.id}">
+  return `<tr data-produtoid="${p.id}">
     <td><input type="text" data-prodcampo="${p.id}:codigo" value="${epiEsc(p.codigo||'')}" style="width:64px;"></td>
     <td style="min-width:170px;"><input type="text" data-prodcampo="${p.id}:nome" value="${epiEsc(p.nome||'')}" style="width:100%; text-align:left;"></td>
     <td><input type="text" data-prodcampo="${p.id}:categoria" value="${epiEsc(p.categoria||'')}" style="width:90px;"></td>
@@ -6233,16 +6394,9 @@ function linhaProdutoHtml(p){
     ${precoCelula('mercadolivre')}
     ${precoCelula('distribuidor')}
     ${precoCelula('revenda')}
-    <td>
-      <b style="${baixo?'color:var(--brand-red);':''}">${fmtNum(estoque)}</b> ${epiEsc(p.unidade||'un')}
-      <br><button class="rmrow" data-prodajustarestoque="${p.id}" title="ajustar estoque manualmente" style="font-size:10px;">✎ ajustar</button>
-    </td>
-    <td><input type="number" step="1" min="0" data-prodcampo="${p.id}:estoqueMinimo" value="${p.estoqueMinimo!=null?p.estoqueMinimo:''}" style="width:48px;"></td>
     <td class="chk-cell"><input type="checkbox" data-prodcampo="${p.id}:ativo" ${p.ativo!==false?'checked':''}></td>
-    <td class="no-print" style="white-space:normal; min-width:150px;">
-      <button class="btn small" data-prodentrada="${p.id}">+ Entrada</button>
-      <button class="btn small" data-prodvender="${p.id}">$ Vender</button><br>
-      <button class="rmrow" data-rmproduto="${p.id}" title="excluir produto do catálogo" style="margin-top:4px;">× excluir</button>
+    <td class="no-print">
+      <button class="rmrow" data-rmproduto="${p.id}" title="excluir produto do catálogo">× excluir</button>
     </td>
   </tr>`;
 }
@@ -6261,9 +6415,6 @@ function atualizarCalculadosLinhaProduto(id){
     const span = tr.querySelector('[data-margemspan="'+canalKey+'"]');
     if (span) span.textContent = m ? ((m.margemRs>=0?'':'⚠ ')+fmt(m.margemRs)+' ('+m.margemPct.toFixed(0)+'%)') : '';
   });
-  const minimo = parseFloat(p.estoqueMinimo)||0;
-  const estoque = parseFloat(p.estoqueAtual)||0;
-  tr.classList.toggle('row-estoque-baixo', minimo>0 && estoque<=minimo);
 }
 
 function ligarEventosLinhaProduto(root){
@@ -6288,24 +6439,6 @@ function ligarEventosLinhaProduto(root){
       list = list.filter(x=> x.id !== +btn.dataset.rmproduto);
       saveProdutosVenda(list);
       renderProdutos();
-    });
-  });
-  root.querySelectorAll('[data-prodentrada]').forEach(btn=>{
-    btn.addEventListener('click', ()=> abrirModalEntradaEstoque(+btn.dataset.prodentrada));
-  });
-  root.querySelectorAll('[data-prodvender]').forEach(btn=>{
-    btn.addEventListener('click', ()=> abrirModalVenderProduto(+btn.dataset.prodvender));
-  });
-  root.querySelectorAll('[data-prodajustarestoque]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const id = +btn.dataset.prodajustarestoque;
-      const p = produtosVendaCache.find(x=> x.id === id);
-      if (!p) return;
-      const novo = prompt('Novo saldo de estoque de "'+p.nome+'" (atual: '+fmtNum(p.estoqueAtual||0)+' '+(p.unidade||'un')+'):', p.estoqueAtual||0);
-      if (novo === null || novo === '') return;
-      if (isNaN(parseFloat(novo))){ alert('Digite um número válido.'); return; }
-      const motivo = prompt('Motivo do ajuste (opcional):', 'Ajuste manual') || 'Ajuste manual';
-      ajusteManualEstoqueProduto(id, novo, motivo);
     });
   });
 }
@@ -6334,9 +6467,8 @@ function renderProdutosStats(){
   `;
 }
 
-function renderProdutos(){
+function renderCatalogoProdutos(){
   if (!document.getElementById('produtosBody')) return;
-  renderProdutosStats();
   const busca = (document.getElementById('produtosBusca').value||'').trim().toLowerCase();
   const catF = (document.getElementById('produtosFiltroCategoria').value||'').trim().toLowerCase();
   const ativoF = document.getElementById('produtosFiltroAtivo').value;
@@ -6356,6 +6488,117 @@ function renderProdutos(){
     body.innerHTML = produtos.map(linhaProdutoHtml).join('');
     ligarEventosLinhaProduto(body);
   }
+}
+
+/* ---------- RENDER: estoque (carga/ajuste em lote + entrada/venda) ---------- */
+function linhaEstoqueHtml(p){
+  const estoque = parseFloat(p.estoqueAtual)||0;
+  const minimo = parseFloat(p.estoqueMinimo)||0;
+  const baixo = minimo > 0 && estoque <= minimo;
+  return `<tr class="${baixo?'row-estoque-baixo':''}" data-produtoid="${p.id}">
+    <td>${epiEsc(p.codigo||'—')}</td>
+    <td style="text-align:left; min-width:170px;">${epiEsc(p.nome||'(sem nome)')}</td>
+    <td>${epiEsc(p.categoria||'—')}</td>
+    <td>
+      <input type="number" step="1" min="0" data-estoquebatch="${p.id}" value="${estoque}" style="width:72px; ${baixo?'border-color:var(--brand-red);':''}">
+      ${epiEsc(p.unidade||'un')}
+    </td>
+    <td><input type="number" step="1" min="0" data-prodcampo="${p.id}:estoqueMinimo" value="${p.estoqueMinimo!=null?p.estoqueMinimo:''}" style="width:56px;"></td>
+    <td class="no-print" style="white-space:normal; min-width:150px;">
+      <button class="btn small" data-prodentrada="${p.id}">+ Entrada</button>
+      <button class="btn small" data-prodvender="${p.id}">$ Vender</button>
+    </td>
+  </tr>`;
+}
+function ligarEventosLinhaEstoque(root){
+  root.querySelectorAll('[data-estoquebatch]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      _estoqueLoteSujo = true;
+      const id = +inp.dataset.estoquebatch;
+      const p = produtosVendaCache.find(x=> x.id === id);
+      const minimo = p ? (parseFloat(p.estoqueMinimo)||0) : 0;
+      const val = parseFloat(inp.value)||0;
+      const tr = inp.closest('tr');
+      if (tr) tr.classList.toggle('row-estoque-baixo', minimo>0 && val<=minimo);
+    });
+  });
+  root.querySelectorAll('[data-prodcampo]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const [id, campo] = inp.dataset.prodcampo.split(':');
+      const list = loadProdutosVenda();
+      const p = list.find(x=> x.id === +id);
+      if (!p) return;
+      p[campo] = inp.value === '' ? null : parseFloat(inp.value);
+      saveProdutosVenda(list);
+      const tr = inp.closest('tr');
+      const estoqueInp = tr && tr.querySelector('[data-estoquebatch]');
+      const estoqueTela = estoqueInp ? (parseFloat(estoqueInp.value)||0) : (parseFloat(p.estoqueAtual)||0);
+      const minimo = parseFloat(p.estoqueMinimo)||0;
+      if (tr) tr.classList.toggle('row-estoque-baixo', minimo>0 && estoqueTela<=minimo);
+    });
+  });
+  root.querySelectorAll('[data-prodentrada]').forEach(btn=>{
+    btn.addEventListener('click', ()=> abrirModalEntradaEstoque(+btn.dataset.prodentrada));
+  });
+  root.querySelectorAll('[data-prodvender]').forEach(btn=>{
+    btn.addEventListener('click', ()=> abrirModalVenderProduto(+btn.dataset.prodvender));
+  });
+}
+function renderEstoqueProdutos(force){
+  if (!document.getElementById('estoqueProdutosBody')) return;
+  if (_estoqueLoteSujo && !force) return; // não sobrescreve quantidades digitadas e ainda não salvas
+  const busca = (document.getElementById('estoqueBusca').value||'').trim().toLowerCase();
+  const catF = (document.getElementById('estoqueFiltroCategoria').value||'').trim().toLowerCase();
+  const somenteBaixo = document.getElementById('estoqueFiltroBaixo').checked;
+  let produtos = loadProdutosVenda().filter(p=> p.ativo !== false).slice().sort((a,b)=> (a.nome||'').localeCompare(b.nome||''));
+  if (busca) produtos = produtos.filter(p=> (p.nome||'').toLowerCase().includes(busca) || (p.codigo||'').toLowerCase().includes(busca));
+  if (catF) produtos = produtos.filter(p=> (p.categoria||'').toLowerCase().includes(catF));
+  if (somenteBaixo) produtos = produtos.filter(p=>{ const min=parseFloat(p.estoqueMinimo)||0; return min>0 && (parseFloat(p.estoqueAtual)||0) <= min; });
+
+  const table = document.getElementById('estoqueProdutosTable');
+  const empty = document.getElementById('estoqueProdutosEmptyMsg');
+  const body = document.getElementById('estoqueProdutosBody');
+  if (produtos.length === 0){
+    table.style.display = 'none'; empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none'; table.style.display = 'table';
+    body.innerHTML = produtos.map(linhaEstoqueHtml).join('');
+    ligarEventosLinhaEstoque(body);
+  }
+  _estoqueLoteSujo = false;
+}
+['estoqueBusca','estoqueFiltroCategoria'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=> renderEstoqueProdutos(true));
+});
+document.getElementById('estoqueFiltroBaixo').addEventListener('change', ()=> renderEstoqueProdutos(true));
+document.getElementById('salvarEstoqueLoteBtn').addEventListener('click', ()=>{
+  const inputs = document.querySelectorAll('#estoqueProdutosBody [data-estoquebatch]');
+  const mudancas = [];
+  inputs.forEach(inp=>{
+    const id = +inp.dataset.estoquebatch;
+    const p = produtosVendaCache.find(x=> x.id === id);
+    if (!p) return;
+    const novo = inp.value === '' ? 0 : parseFloat(inp.value);
+    const atual = parseFloat(p.estoqueAtual)||0;
+    if (!isNaN(novo) && novo !== atual) mudancas.push({ id, novo });
+  });
+  if (!mudancas.length){ avisarSalvamento('Nenhuma quantidade foi alterada.', false); return; }
+  if (!confirm('Salvar '+mudancas.length+' quantidade(s) de estoque alterada(s)?')) return;
+  Promise.all(mudancas.map(m=> ajusteManualEstoqueProduto(m.id, m.novo, 'Carga/ajuste de estoque em lote')))
+    .then(()=>{
+      avisarSalvamento(mudancas.length+' quantidade(s) de estoque atualizada(s) ✔', false);
+      _estoqueLoteSujo = false;
+      renderEstoqueProdutos(true);
+    })
+    .catch(()=>{});
+});
+
+/* ---------- Dispatcher geral da tela Produtos ---------- */
+function renderProdutos(){
+  if (!document.getElementById('produtosBody')) return;
+  renderProdutosStats();
+  renderCatalogoProdutos();
+  renderEstoqueProdutos();
   atualizarSelectFiltroProdutoVendas();
   renderVendas();
 }
@@ -6392,24 +6635,81 @@ function gerarIdUnicoEvitando(idsEmUso){
   idsEmUso.add(id);
   return id;
 }
+// aceita "nome" (sem preço) ou "nome;preço" (preço aceita tanto vírgula quanto ponto
+// decimal, e ignora um eventual "R$" colado junto) — devolve {nome, preco|null}.
+// converte um texto de preço solto ("39.90", "39,90", "1.234,56", "R$ 42,90") pra número.
+// só reinterpreta como formato brasileiro (ponto = milhar, vírgula = decimal) quando tem
+// vírgula — "39.90" (ponto direto, sem vírgula) já é decimal certo do jeito que está, não
+// pode virar "3990".
+function parseValorMoeda(s){
+  let bruto = (s||'').replace(/R\$/gi,'').trim();
+  if (!bruto) return null;
+  if (bruto.includes(',')) bruto = bruto.replace(/\./g,'').replace(',', '.');
+  const n = parseFloat(bruto);
+  return isNaN(n) ? null : n;
+}
+// aceita, por linha (separado por ";"):
+//   nome                                                     → só nome, sem preço
+//   nome;precoMercadolivre                                   → formato antigo, só ML
+//   nome;precoDistribuidor;precoMercadolivre                 → Distribuidor + ML juntos
+//   nome;precoDistribuidor;precoMercadolivre;precoRevenda    → os três de uma vez
+// o número de campos depois do nome decide qual formato é — não precisa avisar qual está usando.
+function parseLinhaColarProduto(linha){
+  const partes = linha.split(';').map(p=> p.trim());
+  const nome = partes[0]||'';
+  let precoDistribuidor = null, precoMercadolivre = null, precoRevenda = null;
+  if (partes.length === 2){
+    precoMercadolivre = parseValorMoeda(partes[1]);
+  } else if (partes.length === 3){
+    precoDistribuidor = parseValorMoeda(partes[1]);
+    precoMercadolivre = parseValorMoeda(partes[2]);
+  } else if (partes.length >= 4){
+    precoDistribuidor = parseValorMoeda(partes[1]);
+    precoMercadolivre = parseValorMoeda(partes[2]);
+    precoRevenda = parseValorMoeda(partes[3]);
+  }
+  return { nome, precoDistribuidor, precoMercadolivre, precoRevenda };
+}
 document.getElementById('colarListaProdutosBtn').addEventListener('click', ()=>{
   const raw = document.getElementById('produtosColarLista').value || '';
-  const linhas = raw.split('\n').map(l=> l.trim()).filter(Boolean);
-  if (!linhas.length){ alert('Cole pelo menos um nome de produto, um por linha.'); return; }
+  const linhas = raw.split('\n').map(l=> l.trim()).filter(Boolean).map(parseLinhaColarProduto).filter(l=> l.nome);
+  if (!linhas.length){ alert('Cole pelo menos um nome de produto, um por linha (pode ser só "nome", "nome;preçoML", "nome;preçoDistrib;preçoML" ou "nome;preçoDistrib;preçoML;preçoRevenda").'); return; }
   const list = loadProdutosVenda();
   const idsEmUso = new Set(list.map(p=> p.id));
-  linhas.forEach(nome=>{
-    list.push({
-      id: gerarIdUnicoEvitando(idsEmUso), codigo:'', nome, categoria: categoriaHeuristicaPorNome(nome), unidade:'un',
-      custoMaterial:null, custoMaoObra:null,
-      precoMercadolivre:null, precoDistribuidor:null, precoRevenda:null,
-      estoqueAtual:0, estoqueMinimo:null, ativo:true
-    });
+  // casa por nome EXATO (sem diferenciar maiúsculas/minúsculas nem espaços nas pontas) —
+  // achou: só atualiza os preços informados desse produto (canal sem preço na linha fica
+  // como já estava), sem mexer em mais nada; não achou: cria um produto novo. Nome
+  // levemente diferente (typo, espaçamento, MM vs mm) conta como produto diferente de
+  // propósito, pra nunca misturar dois itens por engano.
+  const porNome = new Map(list.map(p=> [(p.nome||'').trim().toLowerCase(), p]));
+  let criados = 0, atualizados = 0;
+  linhas.forEach(({nome, precoDistribuidor, precoMercadolivre, precoRevenda})=>{
+    const chave = nome.toLowerCase();
+    const existente = porNome.get(chave);
+    if (existente){
+      if (precoDistribuidor != null) existente.precoDistribuidor = precoDistribuidor;
+      if (precoMercadolivre != null) existente.precoMercadolivre = precoMercadolivre;
+      if (precoRevenda != null) existente.precoRevenda = precoRevenda;
+      atualizados++;
+    } else {
+      const novo = {
+        id: gerarIdUnicoEvitando(idsEmUso), codigo:'', nome, categoria: categoriaHeuristicaPorNome(nome), unidade:'un',
+        custoMaterial:null, custoMaoObra:null,
+        precoMercadolivre, precoDistribuidor, precoRevenda,
+        estoqueAtual:0, estoqueMinimo:null, ativo:true
+      };
+      list.push(novo);
+      porNome.set(chave, novo);
+      criados++;
+    }
   });
   saveProdutosVenda(list);
   document.getElementById('produtosColarLista').value = '';
   renderProdutos();
-  avisarSalvamento(linhas.length+' produto(s) adicionado(s) ao catálogo — confira/complete código, custo e preços, depois clique em "Salvar alterações".', false);
+  const partesMsg = [];
+  if (criados) partesMsg.push(criados+' produto(s) novo(s) criado(s)');
+  if (atualizados) partesMsg.push(atualizados+' produto(s) já existente(s) com o preço Mercado Livre atualizado');
+  avisarSalvamento(partesMsg.join(' e ')+' — confira e clique em "Salvar alterações" pra gravar.', false);
 });
 
 /* ---------- RENDER: vendas registradas ---------- */
@@ -6425,6 +6725,11 @@ function linhaVendaHtml(v){
   const custoTotalVenda = (v.custoUnitarioSnapshot||0)*(v.quantidade||0);
   const margem = (v.valorTotal||0) - custoTotalVenda;
   const dataFmt = v.data ? v.data.split('-').reverse().join('/') : '—';
+  let fiscalTxt;
+  if (v.cancelada) fiscalTxt = '—';
+  else if (v.notaEnviada) fiscalTxt = '<span class="est" style="display:inline; color:#7db4f0;">✓ nota enviada</span>';
+  else if (v.faturado) fiscalTxt = '<span class="est" style="display:inline;">faturada</span>';
+  else fiscalTxt = '<span class="est" style="display:inline; color:var(--accent);">aguardando nota</span>';
   return `<tr class="${v.cancelada?'row-estoque-baixo':''}" data-vendaid="${v.id}">
     <td>${dataFmt}</td>
     <td style="text-align:left;">${epiEsc(v.produtoNome||'')}${v.produtoCodigo?' <span class="est" style="display:inline;">('+epiEsc(v.produtoCodigo)+')</span>':''}</td>
@@ -6434,6 +6739,7 @@ function linhaVendaHtml(v){
     <td>${fmt(v.precoUnitario)}</td>
     <td>${fmt(v.valorTotal)}</td>
     <td style="color:${margem>=0?'var(--good)':'var(--brand-red)'};">${fmt(margem)}</td>
+    <td>${fiscalTxt}</td>
     <td style="text-align:left;">${epiEsc((v.criadoPor||'').split('@')[0])}</td>
     <td class="no-print">${v.cancelada ? '<span class="est">cancelada</span>' : '<button class="rmrow" data-cancelarvenda="'+v.id+'" title="cancelar venda (estorna o estoque)">× cancelar</button>'}</td>
   </tr>`;
@@ -6468,7 +6774,7 @@ function renderVendas(){
 });
 
 function buildVendasCsv(){
-  const header = ['Data','Produto','Codigo','Canal','Comprador','Quantidade','PrecoUnitario','ValorTotal','CustoUnitario','Margem','RegistradoPor','Cancelada','Observacao'];
+  const header = ['Data','Produto','Codigo','Canal','Comprador','Quantidade','PrecoUnitario','ValorTotal','CustoUnitario','Margem','RegistradoPor','Cancelada','Faturado','NumeroNota','NotaEnviada','Observacao'];
   const lines = [header.join(';')];
   vendasProdutosCache.slice().sort((a,b)=> (a.data||'').localeCompare(b.data||'')).forEach(v=>{
     const margem = (v.valorTotal||0) - (v.custoUnitarioSnapshot||0)*(v.quantidade||0);
@@ -6476,7 +6782,8 @@ function buildVendasCsv(){
       v.data||'', (v.produtoNome||'').replace(/;/g,','), v.produtoCodigo||'', CANAIS_VENDA[v.canal]||v.canal||'',
       (v.comprador||'').replace(/;/g,','), v.quantidade||0, v.precoUnitario||0, v.valorTotal||0,
       v.custoUnitarioSnapshot||0, margem.toFixed(2), (v.criadoPor||'').replace(/;/g,','),
-      v.cancelada?'SIM':'NAO', (v.observacao||'').replace(/;/g,',')
+      v.cancelada?'SIM':'NAO', v.faturado?'SIM':'NAO', (v.numeroNota||'').replace(/;/g,','),
+      v.notaEnviada?'SIM':'NAO', (v.observacao||'').replace(/;/g,',')
     ].join(';'));
   });
   return lines.join('\n');
@@ -6526,20 +6833,44 @@ function atualizarVenderMargemInfo(){
   const pct = preco ? (margem/preco*100) : 0;
   document.getElementById('venderMargemInfo').textContent = 'Custo do produto: ' + fmt(custo) + ' · margem nesta venda: ' + fmt(margem) + ' (' + pct.toFixed(0) + '%)';
 }
-function abrirModalVenderProduto(produtoId){
+// popula o <select> de produto do modal — usado tanto quando abre a partir de um produto
+// específico (botão "$ Vender" da aba Estoque) quanto quando abre "solto" (botão
+// "$ Registrar venda" da aba Vendas, sem nenhum produto pré-escolhido).
+function popularSelectVenderProduto(selecionadoId){
+  const sel = document.getElementById('venderProdutoSelect');
+  const produtos = produtosVendaCache.filter(p=> p.ativo !== false).slice().sort((a,b)=> (a.nome||'').localeCompare(b.nome||''));
+  sel.innerHTML = produtos.map(p=> `<option value="${p.id}">${epiEsc(p.nome||'(sem nome)')}${p.codigo?(' — '+epiEsc(p.codigo)):''}</option>`).join('');
+  if (selecionadoId != null) sel.value = selecionadoId;
+}
+function aplicarProdutoNoModalVenda(produtoId){
   const p = produtosVendaCache.find(x=> x.id === produtoId);
-  if (!p) return;
-  _venderProdutoId = produtoId;
-  document.getElementById('venderProdutoNome').textContent = p.nome + ' — estoque atual: ' + fmtNum(p.estoqueAtual||0) + ' ' + (p.unidade||'un');
+  document.getElementById('venderProdutoNome').textContent = p ? ('Estoque atual: ' + fmtNum(p.estoqueAtual||0) + ' ' + (p.unidade||'un')) : '';
+}
+function abrirModalVenderProduto(produtoId){
+  const produtosAtivos = produtosVendaCache.filter(p=> p.ativo !== false);
+  if (!produtosAtivos.length){ alert('Cadastre um produto ativo no Catálogo antes de registrar uma venda.'); return; }
+  const idInicial = produtoId != null ? produtoId : produtosAtivos[0].id;
+  popularSelectVenderProduto(idInicial);
+  _venderProdutoId = idInicial;
+  aplicarProdutoNoModalVenda(idInicial);
   document.getElementById('venderCanal').value = 'mercadolivre';
   document.getElementById('venderQtd').value = 1;
-  document.getElementById('venderPreco').value = p.precoMercadolivre != null ? p.precoMercadolivre : '';
+  const p0 = produtosVendaCache.find(x=> x.id === idInicial);
+  document.getElementById('venderPreco').value = (p0 && p0.precoMercadolivre != null) ? p0.precoMercadolivre : '';
   document.getElementById('venderComprador').value = '';
   document.getElementById('venderData').value = new Date().toISOString().slice(0,10);
   document.getElementById('venderObservacao').value = '';
   atualizarVenderMargemInfo();
   document.getElementById('modalVenderProduto').style.display = 'flex';
 }
+document.getElementById('venderProdutoSelect').addEventListener('change', (e)=>{
+  _venderProdutoId = +e.target.value;
+  aplicarProdutoNoModalVenda(_venderProdutoId);
+  const p = produtosVendaCache.find(x=> x.id === _venderProdutoId);
+  const campo = CANAL_CAMPO_PRECO[document.getElementById('venderCanal').value];
+  if (p && p[campo] != null) document.getElementById('venderPreco').value = p[campo];
+  atualizarVenderMargemInfo();
+});
 document.getElementById('venderCanal').addEventListener('change', ()=>{
   const p = produtosVendaCache.find(x=> x.id === _venderProdutoId);
   if (!p) return;
@@ -6566,6 +6897,7 @@ document.getElementById('venderSalvarBtn').addEventListener('click', ()=>{
     document.getElementById('modalVenderProduto').style.display = 'none';
   }).catch(()=>{});
 });
+document.getElementById('vendaAvulsaBtn').addEventListener('click', ()=> abrirModalVenderProduto(null));
 
 /* ============================================================
    MODAL DE APROVAÇÃO
@@ -7282,6 +7614,125 @@ function renderFiscalStats(){
   `;
 }
 
+/* ============================================================
+   FISCAL — vendas de produtos (Mercado Livre/Distribuidor/Revenda)
+   Painel separado dos pedidos sob encomenda acima: toda venda registrada na
+   aba Produtos já nasce "aguardando nota" (sem passo de "liberar") e aparece
+   aqui sozinha. Ver registrarVendaProduto/marcarVendaProdutoFaturada/
+   marcarVendaProdutoNotaEnviada, perto do bloco PRODUTOS.
+   ============================================================ */
+const fiscalProdutosSelecionados = new Set();
+function renderFiscalProdutosStats(){
+  const bar = document.getElementById('fiscalProdutosStatsBar');
+  if (!bar) return;
+  const vendas = vendasProdutosCache.filter(v=> !v.cancelada);
+  const pendentes = vendas.filter(v=> !v.faturado);
+  const faturadas = vendas.filter(v=> v.faturado);
+  const naoEnviadas = faturadas.filter(v=> !v.notaEnviada);
+  const valorPendente = pendentes.reduce((s,v)=> s + (v.valorTotal||0), 0);
+  bar.innerHTML = `
+    <div class="stat-card warn"><div class="stat-num">${pendentes.length}</div><div class="stat-label">Vendas aguardando nota</div></div>
+    <div class="stat-card"><div class="stat-num">${fmt(valorPendente)}</div><div class="stat-label">Valor pendente</div></div>
+    <div class="stat-card"><div class="stat-num">${faturadas.length}</div><div class="stat-label">Já faturadas</div></div>
+    <div class="stat-card ${naoEnviadas.length?'warn':''}"><div class="stat-num">${naoEnviadas.length}</div><div class="stat-label">Notas não enviadas</div></div>
+  `;
+}
+function htmlVendaFiscal(v){
+  const dataFmt = v.data ? v.data.split('-').reverse().join('/') : '—';
+  let badge;
+  if (v.notaEnviada) badge = '<span class="fr-badge env">✓ Nota enviada</span>';
+  else if (v.faturado) badge = '<span class="fr-badge fat">Faturado</span>';
+  else badge = '<span class="fr-badge pend">Aguardando nota</span>';
+  return `
+  <div class="fiscal-grupo${v.notaEnviada?' nota-enviada':''}" data-vendafiscal="${v.id}">
+    <div class="fiscal-resumo" style="cursor:default;">
+      <input type="checkbox" class="no-print" data-fiscalprodsel="${v.id}" style="flex:0 0 auto; width:auto;">
+      <div class="fr-cliente">${epiEsc(v.produtoNome||'')}${v.produtoCodigo?' <span class="est" style="display:inline;">('+epiEsc(v.produtoCodigo)+')</span>':''}
+        <span class="fr-sub">${epiEsc(CANAIS_VENDA[v.canal]||v.canal||'')} · ${epiEsc(v.comprador||'sem comprador')} · ${dataFmt} · qtd ${fmtNum(v.quantidade)}</span>
+      </div>
+      <div class="fr-tipo no-print"><input type="text" data-vendanota="${v.id}" value="${epiEsc(v.numeroNota||'')}" placeholder="nº da nota" style="width:100px;"></div>
+      <div class="fr-valor">${fmt(v.valorTotal)}</div>
+      ${badge}
+      <div class="fr-liberar no-print">
+        <button class="btn small liberar-btn${v.faturado?' on':''}" data-marcarfaturadaprod="${v.id}">${v.faturado?'✓ Faturado':'Marcar faturado'}</button>
+      </div>
+      <div class="fr-enviar no-print">
+        <button class="btn small enviada-btn${v.notaEnviada?' on':''}" data-notaenviadaprod="${v.id}" ${!v.faturado?'disabled':''} style="${!v.faturado?'opacity:.4; cursor:not-allowed;':''}">${v.notaEnviada?'✓ Enviada':'Nota enviada'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+function renderFiscalProdutos(){
+  if (!document.getElementById('fiscalProdutosList')) return;
+  renderFiscalProdutosStats();
+  const busca = (document.getElementById('fiscalProdutosBusca').value||'').trim().toLowerCase();
+  const canalF = document.getElementById('fiscalProdutosFiltroCanal').value;
+  const statusF = document.getElementById('fiscalProdutosFiltroStatus').value;
+  let vendas = vendasProdutosCache.filter(v=> !v.cancelada);
+  if (busca) vendas = vendas.filter(v=> (v.produtoNome||'').toLowerCase().includes(busca) || (v.comprador||'').toLowerCase().includes(busca));
+  if (canalF) vendas = vendas.filter(v=> v.canal === canalF);
+  if (statusF === 'pendente') vendas = vendas.filter(v=> !v.faturado);
+  else if (statusF === 'faturado') vendas = vendas.filter(v=> v.faturado);
+  else if (statusF === 'naoenviada') vendas = vendas.filter(v=> v.faturado && !v.notaEnviada);
+  vendas.sort((a,b)=> (b.data||'').localeCompare(a.data||'') || (b.criadoEm||0)-(a.criadoEm||0));
+
+  const wrap = document.getElementById('fiscalProdutosList');
+  const empty = document.getElementById('fiscalProdutosEmptyMsg');
+  document.getElementById('fiscalProdutosSelContador').textContent = fiscalProdutosSelecionados.size + ' selecionados';
+  if (!vendas.length){
+    empty.style.display = 'block';
+    wrap.innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none';
+  wrap.innerHTML = vendas.map(htmlVendaFiscal).join('');
+
+  wrap.querySelectorAll('[data-vendanota]').forEach(inp=>{
+    inp.addEventListener('change', ()=> salvarNumeroNotaVenda(inp.dataset.vendanota, inp.value));
+  });
+  wrap.querySelectorAll('[data-marcarfaturadaprod]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = vendasProdutosCache.find(x=> x.id === btn.dataset.marcarfaturadaprod);
+      marcarVendaProdutoFaturada(btn.dataset.marcarfaturadaprod, !(v && v.faturado));
+    });
+  });
+  wrap.querySelectorAll('[data-notaenviadaprod]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = vendasProdutosCache.find(x=> x.id === btn.dataset.notaenviadaprod);
+      if (!v || !v.faturado) return;
+      marcarVendaProdutoNotaEnviada(btn.dataset.notaenviadaprod, !v.notaEnviada);
+    });
+  });
+  wrap.querySelectorAll('[data-fiscalprodsel]').forEach(chk=>{
+    chk.checked = fiscalProdutosSelecionados.has(chk.dataset.fiscalprodsel);
+    chk.addEventListener('change', ()=>{
+      if (chk.checked) fiscalProdutosSelecionados.add(chk.dataset.fiscalprodsel);
+      else fiscalProdutosSelecionados.delete(chk.dataset.fiscalprodsel);
+      document.getElementById('fiscalProdutosSelContador').textContent = fiscalProdutosSelecionados.size + ' selecionados';
+    });
+  });
+}
+['fiscalProdutosBusca'].forEach(id=> document.getElementById(id).addEventListener('input', renderFiscalProdutos));
+['fiscalProdutosFiltroCanal','fiscalProdutosFiltroStatus'].forEach(id=> document.getElementById(id).addEventListener('change', renderFiscalProdutos));
+document.getElementById('fiscalProdutosSelTodosBtn').addEventListener('click', ()=>{
+  document.querySelectorAll('#fiscalProdutosList [data-fiscalprodsel]').forEach(chk=>{
+    chk.checked = true;
+    fiscalProdutosSelecionados.add(chk.dataset.fiscalprodsel);
+  });
+  document.getElementById('fiscalProdutosSelContador').textContent = fiscalProdutosSelecionados.size + ' selecionados';
+});
+document.getElementById('fiscalProdutosSelLimparBtn').addEventListener('click', ()=>{
+  fiscalProdutosSelecionados.clear();
+  renderFiscalProdutos();
+});
+document.getElementById('fiscalProdutosBulkAplicarBtn').addEventListener('click', ()=>{
+  if (!fiscalProdutosSelecionados.size){ alert('Selecione ao menos uma venda.'); return; }
+  Promise.all(Array.from(fiscalProdutosSelecionados).map(id=> marcarVendaProdutoFaturada(id, true))).then(()=>{
+    fiscalProdutosSelecionados.clear();
+    avisarSalvamento('Vendas marcadas como faturadas ✔', false);
+  });
+});
+
 function lerArquivoComoBase64(file, callback){
   if (!file){ callback(null); return; }
   const reader = new FileReader();
@@ -7563,6 +8014,7 @@ function htmlPedidoFiscalInterno(p){
 const _gruposFiscalAbertos = new Set(); // lembra quais grupos da fiscal estão expandidos
 function renderFiscal(){
   renderFiscalStats();
+  renderFiscalProdutos();
   const buscaCliente = document.getElementById('fiscalBuscaCliente').value.trim().toLowerCase();
   const tipoF = document.getElementById('fiscalFiltroTipo').value;
   const statusF = document.getElementById('fiscalFiltroStatus').value;
