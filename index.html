@@ -545,7 +545,7 @@
     </div>
     <div id="loginErro" style="display:none; margin-top:14px; font-size:13px; color:#ff6b6b;"></div>
     <button id="btnEntrar" style="width:100%; margin-top:20px; background:var(--accent); border:none; color:#15171a; font-weight:800; font-size:14px; letter-spacing:0.5px; padding:12px; border-radius:8px; cursor:pointer;">Entrar</button>
-    <div style="text-align:center; margin-top:14px; font-size:10px; color:var(--text-dim); opacity:0.6;">versão 2026-08-14a</div>
+    <div style="text-align:center; margin-top:14px; font-size:10px; color:var(--text-dim); opacity:0.6;">versão 2026-08-28a</div>
   </div>
 </div>
 <!-- =================== FIM TELA DE LOGIN =================== -->
@@ -714,12 +714,12 @@
 
   <!-- Upload -->
   <div class="panel no-print">
-    <h2><span class="n">04</span>Arquivos DXF das peças</h2>
+    <h2><span class="n">04</span>Arquivos DXF/STEP das peças</h2>
     <div class="dropzone" id="dropzone">
-      <div><b>Arraste os arquivos .DXF aqui</b> ou clique para selecionar</div>
-      <div class="sub">cada arquivo é tratado como uma peça — você define a quantidade depois</div>
+      <div><b>Arraste os arquivos .DXF ou .STEP/.STP aqui</b> ou clique para selecionar</div>
+      <div class="sub">cada arquivo é tratado como uma peça — você define a quantidade depois. Peça em STEP: a área/perímetro são calculados automaticamente a partir da geometria 3D (mesmo motor de leitura usado na aba Vistas STP), confira o resultado antes de fechar o orçamento.</div>
     </div>
-    <input type="file" id="fileInput" accept=".dxf" multiple style="display:none">
+    <input type="file" id="fileInput" accept=".dxf,.step,.stp" multiple style="display:none">
     <button class="btn secondary small" id="addManualBtn" style="margin-top:10px;">+ adicionar item manual (sem DXF)</button>
 
     <div style="margin-top:16px; border-top:1px dashed var(--line); padding-top:12px;">
@@ -735,7 +735,7 @@
   <!-- Itens / Resultado -->
   <div class="panel">
     <h2 class="no-print"><span class="n">05</span>Itens do orçamento</h2>
-    <div id="emptyMsg" class="empty-msg">Nenhuma peça adicionada ainda. Solte arquivos DXF acima.</div>
+    <div id="emptyMsg" class="empty-msg">Nenhuma peça adicionada ainda. Solte arquivos DXF ou STEP acima.</div>
     <div class="no-print" style="overflow-x:auto;">
       <table class="items" id="itemsTable" style="display:none;">
         <thead>
@@ -936,7 +936,7 @@
   <div id="viewOperacao" class="view" style="display:none;">
     <header class="top no-print">
       <h1>Operação <span>·</span> chão de fábrica</h1>
-      <div class="tag">fila de serviço por máquina · versão 2026-08-14a</div>
+      <div class="tag">fila de serviço por máquina · versão 2026-08-28a</div>
       <div style="display:flex; gap:8px;">
         <button class="btn secondary small" id="operTravarBtn">🔒 Travar nesta tela</button>
         <button class="btn small" id="operDestravarBtn" style="display:none;">🔓 Destravar (PIN)</button>
@@ -3080,13 +3080,27 @@ fileInput.addEventListener('change', ()=> handleFiles(fileInput.files));
 function handleFiles(fileList){
   const unitScale = parseFloat(document.getElementById('unidadeDxf').value)||1;
   Array.from(fileList).forEach(file=>{
-    if (!file.name.toLowerCase().endsWith('.dxf')) return;
+    const nomeMin = file.name.toLowerCase();
+    const ehDXF = nomeMin.endsWith('.dxf');
+    const ehSTEP = nomeMin.endsWith('.step') || nomeMin.endsWith('.stp');
+    if (!ehDXF && !ehSTEP) return;
     const reader = new FileReader();
     reader.onload = (e)=>{
-      let analysis;
+      let analysis, avisoTubo = false;
       try{
-        analysis = analyzeDXF(e.target.result, unitScale);
+        if (ehSTEP){
+          // reaproveita o mesmo motor de leitura STEP já validado na aba Vistas STP: converte
+          // a peça pra um DXF equivalente (contornos fechados) e joga no mesmo analyzeDXF()
+          // usado pra DXF solto — assim o cálculo de área/perímetro/furos fica idêntico.
+          if (!window.stepParaPecaOrcamento) throw new Error('conversor STEP não carregado');
+          const conv = window.stepParaPecaOrcamento(e.target.result);
+          avisoTubo = conv.tube;
+          analysis = analyzeDXF(conv.dxf, unitScale);
+        } else {
+          analysis = analyzeDXF(e.target.result, unitScale);
+        }
       }catch(err){
+        console.warn('Falha ao processar peça ('+file.name+'):', err);
         analysis = {area:0, perimetro:0, estimativa:true, furos:0};
       }
       items.push({
@@ -3107,6 +3121,7 @@ function handleFiles(fileList){
         geometry: analysis.geometry
       });
       renderItems();
+      if (avisoTubo) alert(file.name+' parece ser uma peça de TUBO (não de chapa plana) — a área/perímetro foram calculados a partir das faces desdobradas do tubo, confira antes de fechar o orçamento.');
     };
     reader.readAsText(file);
   });
@@ -4579,7 +4594,7 @@ function epiPopulateSelects(){
   ['epiMovEpi','epiEntEpi'].forEach(id=>{ const el=document.getElementById(id); if(el){ const v=el.value; el.innerHTML=epiOptionsEpis(); el.value=v; } });
   ['epiEntFunc','epiFichaFunc'].forEach(id=>{ const el=document.getElementById(id); if(el){ const v=el.value; el.innerHTML=epiOptionsFuncs(); el.value=v; } });
   const dl=document.getElementById('listaFuncionarios'); if(dl) dl.innerHTML=funcionariosCache.map(f=>`<option value="${epiEsc(f.nome)}"></option>`).join('');
-  const diag=document.getElementById('operNomesDiag'); if(diag) diag.textContent = funcionariosCache.length + ' nome(s) carregado(s) · v2026-08-14a';
+  const diag=document.getElementById('operNomesDiag'); if(diag) diag.textContent = funcionariosCache.length + ' nome(s) carregado(s) · v2026-08-28a';
 }
 
 function epiRenderAlertas(){
@@ -5008,7 +5023,7 @@ function sincronizarLinhasProducaoDeEtapas(p){
         // retalhos de tamanhos diferentes (quando tiver mais de um); dimC/dimL continuam
         // preenchidos como fallback pro formato antigo (uma peça só).
         dimC: et.dimC||0, dimL: et.dimL||0,
-        pedacos: (Array.isArray(et.pedacos) && et.pedacos.length) ? et.pedacos.map(pc=>({c:pc.c||0, l:pc.l||0})) : [],
+        pedacos: (Array.isArray(et.pedacos) && et.pedacos.length) ? et.pedacos.map(pc=>({c:pc.c||0, l:pc.l||0, qtd:pc.qtd||1})) : [],
         notaPCP: et.notaPCP||'',
         horasCorte:0, qtdDobras:0, horasDobra:0, horasPrensa:0,
         corteH:0, corteM:0, corteS:0, dobraH:0, dobraM:0, dobraS:0, prensaH:0, prensaM:0, prensaS:0
@@ -5163,7 +5178,7 @@ function etapaRetomar(pedidoId, etapaId, operador){
 // (dimC/dimL de uma peça só) como fallback quando ainda não tem nada no formato novo.
 function pecasDaEtapa(et){
   if (Array.isArray(et.pedacos) && et.pedacos.length) return et.pedacos;
-  if (et.dimC && et.dimL) return [{ c: et.dimC, l: et.dimL }];
+  if (et.dimC && et.dimL) return [{ c: et.dimC, l: et.dimL, qtd: 1 }];
   return [];
 }
 // retorna true se encerrou. Retorna false (sem encerrar) quando o material é NOSSO e o
@@ -5505,20 +5520,22 @@ function renderOperMeuServico(opts){
       ⚠ Você também tem ${qtdOutrosPausados} outro${qtdOutrosPausados>1?'s':''} serviço${qtdOutrosPausados>1?'s':''} pausado${qtdOutrosPausados>1?'s':''} em outra${qtdOutrosPausados>1?'s':''} máquina${qtdOutrosPausados>1?'s':''} — retome pela fila daquela máquina quando for continuar.
     </div>` : '';
   const pecas = pecasDaEtapa(et);
-  const areaTotal = pecas.reduce((s,pc)=> s + ((pc.c||0)/1000)*((pc.l||0)/1000), 0);
+  const areaTotal = pecas.reduce((s,pc)=> s + ((pc.c||0)/1000)*((pc.l||0)/1000)*(pc.qtd||1), 0);
+  const totalChapasFisicas = pecas.reduce((s,pc)=> s + (pc.qtd||1), 0);
   const listaPecasHtml = pecas.length ? `
     <div style="display:flex; flex-direction:column; gap:4px; margin:8px 0;">
       ${pecas.map((pc,i)=>`
         <div style="display:flex; align-items:center; gap:8px; font-size:13px; background:rgba(255,255,255,0.04); padding:5px 9px; border-radius:5px;">
-          <span style="flex:1;">Pedaço ${i+1}: <b>${pc.c}</b> × <b>${pc.l}</b> mm</span>
+          <span style="flex:1;">Pedaço ${i+1}: <b>${pc.c}</b> × <b>${pc.l}</b> mm${(pc.qtd||1)>1 ? ` — <b>${pc.qtd}</b> iguais` : ''}</span>
+          <input type="number" min="1" step="1" data-operpecaqtd="${i}" value="${pc.qtd||1}" title="quantidade de chapas/peças com esse mesmo tamanho" style="width:52px; padding:2px 4px;">
           <button type="button" class="iconbtn" data-operpecarm="${i}" title="remover">×</button>
         </div>`).join('')}
-      <div class="footnote" style="margin:0;">Área total: ${areaTotal.toFixed(3)} m² · ${pecas.length} ${pecas.length===1?'pedaço':'pedaços'}</div>
+      <div class="footnote" style="margin:0;">Área total: ${areaTotal.toFixed(3)} m² · ${pecas.length} tamanho${pecas.length===1?'':'s'} diferente${pecas.length===1?'':'s'} · ${totalChapasFisicas} chapa(s)/peça(s) no total</div>
     </div>` : '<div class="footnote" style="margin:6px 0;">Nenhum tamanho registrado ainda.</div>';
   const tamanhoHtml = precisaTamanho ? `
     <div style="margin-top:10px;">
       <label style="font-weight:700; font-size:13px;">Tamanho da chapa${pecas.length?'':' *'}</label>
-      <div class="footnote" style="margin:2px 0 4px;">Material é NOSSO — preencha o(s) tamanho(s) real(is). Se sobrou retalho de tamanhos diferentes, adicione um pedaço de cada vez: digite e aperte Enter, sem precisar clicar de novo.</div>
+      <div class="footnote" style="margin:2px 0 4px;">Material é NOSSO — preencha o(s) tamanho(s) real(is). Se sobrou retalho de tamanhos diferentes, adicione um pedaço de cada vez: digite e aperte Enter, sem precisar clicar de novo. Se várias chapas forem IGUAIS (ex.: 10 chapas de 1200×3000), não precisa adicionar uma por uma — preencha a Quantidade abaixo com "10" que ele conta como 10 chapas desse tamanho.</div>
       ${listaPecasHtml}
       <div class="row" style="align-items:flex-end; margin:0;">
         <div class="field" style="max-width:110px;">
@@ -5529,15 +5546,21 @@ function renderOperMeuServico(opts){
           <label>Largura (mm)</label>
           <input type="number" min="0" id="operPecaL" placeholder="ex: 800">
         </div>
+        <div class="field" style="max-width:90px;">
+          <label>Quantidade</label>
+          <input type="number" min="1" step="1" id="operPecaQtd" value="1" placeholder="1">
+        </div>
         <button type="button" class="btn secondary small" id="operPecaAddBtn" style="margin-bottom:8px;">+ adicionar pedaço</button>
       </div>
     </div>` : '';
-  // liberação por palete/caixa: disponível pra PRENSA e pra DOBRA/VIRADEIRA — nos dois casos
-  // o operador fecha lotes prontos (peças ou chapas) aos poucos, antes de encerrar a etapa
-  // inteira (ex.: longarinas dobradas liberadas por palete conforme vão saindo). Antes só
-  // existia pra prensa; dobra ficava sem esse campo (14/08/2026, a pedido do bruno).
+  // liberação por palete/caixa: disponível pra PRENSA, DOBRA/VIRADEIRA e LASER (tubo e chapa)
+  // — nos três casos o operador fecha lotes prontos (peças ou chapas) aos poucos, antes de
+  // encerrar a etapa inteira (ex.: longarinas dobradas liberadas por palete conforme vão
+  // saindo). Antes só existia pra prensa; dobra ganhou em 14/08/2026; laser ganhou em
+  // 28/08/2026 (a pedido do bruno — deixar a laser liberar quantidade igual à prensa e à
+  // dobradeira já fazem).
   const tipoMaquinaEtapa = tipoDeMaquina(et.maquina);
-  const mostraLiberacao = tipoMaquinaEtapa === 'prensa' || tipoMaquinaEtapa === 'dobra';
+  const mostraLiberacao = tipoMaquinaEtapa === 'prensa' || tipoMaquinaEtapa === 'dobra' || tipoMaquinaEtapa === 'corte';
   const libItens = et.liberacoes||[];
   // saldo: quanto já foi liberado x quanto falta, com base na quantidade total da etapa
   // (et.qtdChapas) — assim o operador não precisa fazer conta de cabeça a cada palete fechado.
@@ -5592,15 +5615,17 @@ function renderOperMeuServico(opts){
   ligarBotoesCopiarCaminho(wrap);
   const inpPecaC = wrap.querySelector('#operPecaC');
   const inpPecaL = wrap.querySelector('#operPecaL');
+  const inpPecaQtd = wrap.querySelector('#operPecaQtd');
   function adicionarPecaAtual(){
     const c = parseFloat(inpPecaC.value)||0;
     const l = parseFloat(inpPecaL.value)||0;
+    const qtd = Math.max(1, parseInt(inpPecaQtd && inpPecaQtd.value, 10)||1);
     if (!c || !l){ alert('Preencha comprimento e largura do pedaço antes de adicionar.'); return; }
     if (!Array.isArray(et.pedacos) || !et.pedacos.length){
       // migra o formato antigo (uma peça só) pra lista, se já tinha algo preenchido
-      et.pedacos = (et.dimC && et.dimL) ? [{ c: et.dimC, l: et.dimL }] : [];
+      et.pedacos = (et.dimC && et.dimL) ? [{ c: et.dimC, l: et.dimL, qtd: 1 }] : [];
     }
-    et.pedacos.push({ c, l });
+    et.pedacos.push({ c, l, qtd });
     et.dimC = 0; et.dimL = 0;
     salvarPedidoImediato(p.id);
     renderOperMeuServico({forcar:true});
@@ -5609,6 +5634,7 @@ function renderOperMeuServico(opts){
     const enterAdiciona = (e)=>{ if (e.key==='Enter'){ e.preventDefault(); adicionarPecaAtual(); } };
     inpPecaC.addEventListener('keydown', enterAdiciona);
     inpPecaL.addEventListener('keydown', enterAdiciona);
+    if (inpPecaQtd) inpPecaQtd.addEventListener('keydown', enterAdiciona);
     inpPecaC.focus();
   }
   const btnPecaAdd = wrap.querySelector('#operPecaAddBtn');
@@ -5618,6 +5644,17 @@ function renderOperMeuServico(opts){
     const atuais = pecasDaEtapa(et);
     atuais.splice(i,1);
     et.pedacos = atuais; et.dimC = 0; et.dimL = 0;
+    salvarPedidoImediato(p.id);
+    renderOperMeuServico({forcar:true});
+  }));
+  // editar a quantidade de um pedaço já registrado (ex.: corrigir de 10 pra 8 sem remover e
+  // adicionar de novo) — só atualiza o número, não recria a tela inteira, pra não perder foco.
+  wrap.querySelectorAll('[data-operpecaqtd]').forEach(inp=> inp.addEventListener('change', ()=>{
+    const i = +inp.dataset.operpecaqtd;
+    const atuais = pecasDaEtapa(et);
+    if (!atuais[i]) return;
+    atuais[i].qtd = Math.max(1, parseInt(inp.value,10)||1);
+    et.pedacos = atuais;
     salvarPedidoImediato(p.id);
     renderOperMeuServico({forcar:true});
   }));
@@ -8445,7 +8482,9 @@ function calcularValorCorteItem(it){
 // senão cai no formato antigo de uma peça só (dimC × dimL).
 function areaChapaM2(l){
   if (Array.isArray(l.pedacos) && l.pedacos.length){
-    return l.pedacos.reduce((s,pc)=> s + ((pc.c||0)/1000) * ((pc.l||0)/1000), 0);
+    // pc.qtd = quantas chapas/peças IGUAIS esse pedaço representa (padrão 1, formato antigo
+    // sem o campo) — evita ter que cadastrar retalho igual várias vezes só pra somar a área.
+    return l.pedacos.reduce((s,pc)=> s + ((pc.c||0)/1000) * ((pc.l||0)/1000) * (pc.qtd||1), 0);
   }
   return ((l.dimC||0)/1000) * ((l.dimL||0)/1000);
 }
@@ -8648,10 +8687,10 @@ function renderOP(p){
       const totalLiberadoAdm = libItens.reduce((s,l)=> s + (parseFloat(l.qtd)||0), 0);
       const unidadeQtdAdmTxt = unidadeQtdNome(et, totalQtdEtapaAdm || totalLiberadoAdm || 2);
       const saldoAdmTxt = totalQtdEtapaAdm > 0 ? ` · já liberado ${totalLiberadoAdm} de ${totalQtdEtapaAdm} ${unidadeQtdAdmTxt} (falta ${Math.max(0,totalQtdEtapaAdm-totalLiberadoAdm)})` : (totalLiberadoAdm>0 ? ` · já liberado ${totalLiberadoAdm} ${unidadeQtdAdmTxt}` : '');
-      const podeLiberarAdm = tipoDeMaquina(et.maquina)==='prensa' || tipoDeMaquina(et.maquina)==='dobra';
+      const podeLiberarAdm = tipoDeMaquina(et.maquina)==='prensa' || tipoDeMaquina(et.maquina)==='dobra' || tipoDeMaquina(et.maquina)==='corte';
       const libHtml = (podeLiberarAdm && libItens.length) ? `
         <div style="width:100%; margin-top:4px; padding:6px 10px; background:rgba(255,138,30,0.10); border:1px solid #ff8a1e; border-radius:6px;">
-          <div style="font-size:12px; font-weight:700; color:#ff8a1e; margin-bottom:4px;">📦 Liberações de quantidade (prensa) — pedido continua aberto até encerrar a etapa${saldoAdmTxt}</div>
+          <div style="font-size:12px; font-weight:700; color:#ff8a1e; margin-bottom:4px;">📦 Liberações de quantidade — pedido continua aberto até encerrar a etapa${saldoAdmTxt}</div>
           ${libItens.map(l=>`
             <div style="display:flex; align-items:center; gap:8px; font-size:12px; padding:2px 0; ${l.etiquetaGerada?'opacity:0.55;':''}">
               <span style="flex:1;">${l.qtd} ${l.tipo==='caixa'?'caixa(s)':'palete(s)'} · ${opEscAttr(l.operador||'—')} · ${new Date(l.ts).toLocaleString('pt-BR')}${l.etiquetaGerada?' · etiqueta já gerada':''}</span>
@@ -8894,16 +8933,18 @@ function renderOP(p){
       const faltaDim = !l.clienteForneceMaterial && areaChapaM2(l) <= 0;
       const dimCellHtml = temPedacos ? `
           <td colspan="2" data-oplin="${idx}">
-            <div style="display:flex; flex-direction:column; gap:3px; min-width:150px;">
+            <div style="display:flex; flex-direction:column; gap:3px; min-width:190px;">
               ${l.pedacos.map((pc,pi)=>`
                 <div style="display:flex; gap:3px; align-items:center;">
                   <input type="number" min="0" data-oplin="${idx}" data-pedacoidx="${pi}" data-pedacocampo="c" value="${pc.c||''}" style="width:55px; ${(!pc.c||!pc.l)?'border-color:#e05a5a;':''}" placeholder="C" title="comprimento (mm)">
                   ×
                   <input type="number" min="0" data-oplin="${idx}" data-pedacoidx="${pi}" data-pedacocampo="l" value="${pc.l||''}" style="width:55px; ${(!pc.c||!pc.l)?'border-color:#e05a5a;':''}" placeholder="L" title="largura (mm)">
+                  ×
+                  <input type="number" min="1" step="1" data-oplin="${idx}" data-pedacoidx="${pi}" data-pedacocampo="qtd" value="${pc.qtd||1}" style="width:44px;" placeholder="qtd" title="quantas chapas/peças iguais desse tamanho">
                   <button type="button" class="iconbtn" data-pedacorm="${idx}:${pi}" title="remover pedaço" style="width:20px; height:20px; font-size:11px; padding:0;">×</button>
                 </div>`).join('')}
               <button type="button" class="btn secondary small" data-pedacoadd="${idx}" style="align-self:flex-start; padding:2px 8px; font-size:11px;">+ pedaço</button>
-              <div style="font-size:10px; color:var(--text-dim);">${l.pedacos.length} ${l.pedacos.length===1?'peça':'peças'} · área total ${areaChapaM2(l).toFixed(3)} m²</div>
+              <div style="font-size:10px; color:var(--text-dim);">${l.pedacos.length} tamanho${l.pedacos.length===1?'':'s'} · ${l.pedacos.reduce((s,pc)=>s+(pc.qtd||1),0)} chapa(s)/peça(s) · área total ${areaChapaM2(l).toFixed(3)} m²</div>
             </div>
           </td>` : `
           <td><input type="number" data-oplin="${idx}" data-oplf="dimC" value="${l.dimC||''}" style="width:70px; ${faltaDim?'border-color:#e05a5a; background:rgba(224,90,90,0.12);':''}" placeholder="${l.clienteForneceMaterial?'—':'obrigatório'}" ${l.clienteForneceMaterial?'disabled':''}></td>
@@ -8978,7 +9019,7 @@ function renderOP(p){
       btn.addEventListener('click', ()=>{
         const idx = +btn.dataset.pedacoconverter;
         const l = p.linhasProducao[idx];
-        l.pedacos = [{ c: l.dimC||0, l: l.dimL||0 }, { c:0, l:0 }];
+        l.pedacos = [{ c: l.dimC||0, l: l.dimL||0, qtd:1 }, { c:0, l:0, qtd:1 }];
         salvarCampoPedido('linhasProducao', p.linhasProducao);
         renderOPFinalLinhas();
       });
@@ -8988,7 +9029,7 @@ function renderOP(p){
         const idx = +btn.dataset.pedacoadd;
         const l = p.linhasProducao[idx];
         if (!Array.isArray(l.pedacos)) l.pedacos = [];
-        l.pedacos.push({ c:0, l:0 });
+        l.pedacos.push({ c:0, l:0, qtd:1 });
         salvarCampoPedido('linhasProducao', p.linhasProducao);
         renderOPFinalLinhas();
       });
@@ -9006,7 +9047,7 @@ function renderOP(p){
       el.addEventListener('input', ()=>{
         const idx = +el.dataset.oplin, pi = +el.dataset.pedacoidx, campo = el.dataset.pedacocampo;
         const l = p.linhasProducao[idx];
-        l.pedacos[pi][campo] = parseFloat(el.value)||0;
+        l.pedacos[pi][campo] = campo==='qtd' ? Math.max(1, parseInt(el.value,10)||1) : (parseFloat(el.value)||0);
         salvarCampoPedido('linhasProducao', p.linhasProducao);
         const calc = calcularLinha(l);
         const tdPeso = body.querySelector(`[data-opcalcpeso="${idx}"]`);
@@ -10652,6 +10693,79 @@ populateListaClientes();
     const placed=layout(result);
     return {dxf:toDXF(placed),svg:toSVG(placed),result,segCount:segs.length};
   }
+
+  // ---------- STEP -> DXF de PEÇA (pro Orçamento aceitar peça em STEP, não só DXF) ----------
+  // O toDXF() acima é pensado pra desenho técnico de referência (LINEs soltas + texto do nome
+  // da vista) — serve pra imprimir/consultar, mas o analyzeDXF() do Orçamento (mesmo motor que
+  // já lê um DXF exportado do SolidWorks/AutoCAD) só reconhece um contorno FECHADO através de
+  // LWPOLYLINE (flag "closed") ou CIRCLE — não através de várias LINEs soltas mesmo que, juntas,
+  // desenhem um contorno fechado. Por isso aqui, em vez de reusar toDXF(), encadeamos os
+  // segmentos de cada vista em contornos fechados antes de escrever o DXF.
+  function encadearSegmentosVista(lines, tol){
+    tol = tol || 0.01;
+    const perto=(p,q)=> Math.hypot(p[0]-q[0], p[1]-q[1]) < tol;
+    const restantes = lines.map(([a,b])=>[[a[0],a[1]],[b[0],b[1]]]);
+    const loops = [];
+    while (restantes.length){
+      let atual = restantes.shift();
+      let mudou = true;
+      while (mudou){
+        mudou = false;
+        for (let i=0;i<restantes.length;i++){
+          const seg = restantes[i];
+          const aIni = atual[0], aFim = atual[atual.length-1];
+          const sIni = seg[0], sFim = seg[seg.length-1];
+          if (perto(aFim, sIni)){ atual = atual.concat(seg.slice(1)); restantes.splice(i,1); mudou=true; break; }
+          if (perto(aFim, sFim)){ atual = atual.concat(seg.slice().reverse().slice(1)); restantes.splice(i,1); mudou=true; break; }
+          if (perto(aIni, sFim)){ atual = seg.slice(0,-1).concat(atual); restantes.splice(i,1); mudou=true; break; }
+          if (perto(aIni, sIni)){ atual = seg.slice().reverse().slice(0,-1).concat(atual); restantes.splice(i,1); mudou=true; break; }
+        }
+      }
+      loops.push(atual);
+    }
+    return loops;
+  }
+  function toDXFPecaOrcamento(placed){
+    const out=["0","SECTION","2","ENTITIES"];
+    const lwpolyFechada=(layer,pts)=>{
+      out.push("0","LWPOLYLINE","8",layer,"90",String(pts.length),"70","1");
+      pts.forEach(p=> out.push("10", p[0].toFixed(4), "20", p[1].toFixed(4)));
+    };
+    const line=(layer,x1,y1,x2,y2)=>out.push("0","LINE","8",layer,"10",x1.toFixed(4),"20",y1.toFixed(4),"30","0.0","11",x2.toFixed(4),"21",y2.toFixed(4),"31","0.0");
+    const circle=(layer,cx,cy,r)=>out.push("0","CIRCLE","8",layer,"10",cx.toFixed(4),"20",cy.toFixed(4),"30","0.0","40",r.toFixed(4));
+    for (const {v,dx,dy} of placed){
+      const deslocadas = v.lines.map(([a,b])=>[[a[0]+dx,a[1]+dy],[b[0]+dx,b[1]+dy]]);
+      const loops = encadearSegmentosVista(deslocadas, 0.01);
+      loops.forEach(loop=>{
+        if (loop.length < 2) return;
+        const fechado = Math.hypot(loop[0][0]-loop[loop.length-1][0], loop[0][1]-loop[loop.length-1][1]) < 0.05;
+        if (fechado && loop.length >= 4){
+          lwpolyFechada(v.name, loop.slice(0,-1)); // remove o ponto duplicado final (flag "70,1" já fecha sozinho)
+        } else {
+          // não fechou (geometria com problema/aberta) — cai pra LINE solta, igual toDXF(), só
+          // pra não perder a informação; não vira contorno reconhecido pelo analyzeDXF.
+          for (let i=0;i<loop.length-1;i++) line(v.name, loop[i][0],loop[i][1], loop[i+1][0],loop[i+1][1]);
+        }
+      });
+      v.circles.forEach(c=> circle(v.name, c.cx+dx, c.cy+dy, c.r));
+    }
+    out.push("0","ENDSEC","0","EOF");
+    return out.join("\n");
+  }
+  // Exposto global pro Orçamento (item "04 Arquivos DXF das peças") poder aceitar um STEP direto
+  // — descarta a VISTA_SECAO (é só referência técnica de espessura, não é peça de corte de
+  // verdade) e usa só a(s) face(s): peça de chapa comum vira 1 contorno; peça de tubo vira 4
+  // (uma por face desdobrada — cada uma conta como material/área separada, aproximação razoável
+  // já que tubo não é o caso normal desse orçamento em chapa).
+  window.stepParaPecaOrcamento = function(stepText){
+    const ents = parseStep(stepText);
+    const segs = extractSegments(ents);
+    const result = buildViews(segs);
+    const viewsSemSecao = result.views.filter(v=> !v.name.startsWith('VISTA_SECAO'));
+    if (!viewsSemSecao.length) throw new Error('Não foi possível identificar nenhuma face/contorno nesse STEP.');
+    const placed = layout({ views: viewsSemSecao });
+    return { dxf: toDXFPecaOrcamento(placed), tube: !!result.tube };
+  };
 
   // ---------- STEP -> IGS (conversão real de geometria via opencascade.js/OCCT em WASM) ----------
   // Os arquivos abaixo precisam estar hospedados junto com este index-2.html, numa pasta
