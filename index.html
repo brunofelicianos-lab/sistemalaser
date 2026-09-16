@@ -131,6 +131,12 @@
   table.items td.chk-on{background:var(--accent-dim);}
   table.items .est{color:#d99a4f; font-size:9.5px; display:block;}
   table.items .calc{color:var(--good);}
+  table.items td.unit-cell{white-space:normal;}
+  table.items td.unit-manual{background:var(--accent-dim);}
+  table.items .unit-wrap{display:flex; align-items:center; justify-content:flex-end; gap:3px;}
+  table.items .unit-wrap input{width:64px;}
+  table.items .unit-toggle{width:20px; height:20px; font-size:11px; padding:0; flex:none;}
+  table.items .unit-calc-hint{text-align:right;}
   table.items .rmrow{background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px;}
   table.items .rmrow:hover{color:#ff5050;}
   table.items tfoot td{border-top:2px solid var(--accent); border-bottom:none; font-weight:700; padding-top:8px;}
@@ -753,7 +759,7 @@
             <th>Mat. (R$)</th>
             <th>Corte (R$)</th>
             <th>Dobra (R$)</th>
-            <th>Unit. (R$)</th>
+            <th title="Clique no ícone ✎ na linha da peça pra travar um preço unitário manual, em vez do calculado automaticamente">Unit. (R$)</th>
             <th>Total (R$)</th>
             <th class="no-print"></th>
           </tr>
@@ -772,6 +778,7 @@
             <th>Esp. (mm)</th>
             <th>Mat. cliente?</th>
             <th>Qtd</th>
+            <th>Valor unit. (R$)</th>
             <th>Valor (R$)</th>
           </tr>
         </thead>
@@ -2836,9 +2843,21 @@ function computeRow(it){
   } else {
     custoDobra = (it.dobras||0) * custoDobraUnit;
   }
-  const subtotalUnit = custoMaterial + custoCorte + custoDobra + (it.custoAdicional||0);
+  const custoAutoUnit = custoMaterial + custoCorte + custoDobra;
+  const custoAdicionalBase = it.custoAdicional||0;
+  // Preço manual: sobrescreve o unitário calculado. A diferença entre o valor digitado e o
+  // que sairia do cálculo automático entra como "adicional", pra continuar valendo nos totais
+  // do orçamento (materialTotal/corteTotal/dobraTotal continuam mostrando a composição real
+  // do cálculo, sem distorcer as colunas Mat./Corte/Dobra da tabela).
+  let custoAdicional = custoAdicionalBase;
+  if (it.precoManual){
+    const precoManual = parseFloat(it.precoManualValor)||0;
+    custoAdicional = custoAdicionalBase + (precoManual - (custoAutoUnit + custoAdicionalBase));
+  }
+  const subtotalUnit = custoAutoUnit + custoAdicional;
+  const subtotalUnitCalc = custoAutoUnit + custoAdicionalBase; // valor que o cálculo automático daria, sem o ajuste manual
   const subtotalTotal = subtotalUnit * (it.qtd||0);
-  return {peso, pesoLiquido, areaEncaixe, custoMaterial, tempoCorte, custoCorte, custoDobra, subtotalUnit, subtotalTotal, precoKg: thick.preco||0};
+  return {peso, pesoLiquido, areaEncaixe, custoMaterial, tempoCorte, custoCorte, custoDobra, custoAdicional, subtotalUnit, subtotalUnitCalc, subtotalTotal, precoKg: thick.preco||0};
 }
 
 function renderItems(){
@@ -2877,7 +2896,14 @@ function renderItems(){
       <td class="calc" data-out="custoMaterial">-</td>
       <td class="calc" data-out="custoCorte">-</td>
       <td class="calc" data-out="custoDobra">-</td>
-      <td class="calc" data-out="subtotalUnit">-</td>
+      <td class="calc unit-cell${it.precoManual?' unit-manual':''}">
+        <div class="unit-wrap">
+          <span data-out="subtotalUnit" style="${it.precoManual?'display:none;':''}">-</span>
+          <input type="number" data-idx="${idx}" data-f="precoManualValor" value="${it.precoManualValor?it.precoManualValor:''}" step="0.01" placeholder="0,00" style="${it.precoManual?'':'display:none;'}">
+          <button type="button" class="iconbtn unit-toggle" data-toggleunit="${idx}" title="${it.precoManual?'voltar ao cálculo automático':'definir preço unitário manual'}">${it.precoManual?'↺':'✎'}</button>
+        </div>
+        ${it.precoManual?'<span class="est unit-calc-hint" data-out="subtotalUnitCalc">calc.: -</span>':''}
+      </td>
       <td class="calc" data-out="subtotalTotal">-</td>
       <td class="no-print"><button class="rmrow" data-rm="${idx}">×</button></td>
     `;
@@ -2930,6 +2956,20 @@ function renderItems(){
       renderItems();
     });
   });
+  itemsBody.querySelectorAll('[data-toggleunit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = +btn.dataset.toggleunit;
+      const it = items[idx];
+      it.precoManual = !it.precoManual;
+      if (it.precoManual && !it.precoManualValor){
+        // pré-preenche com o valor calculado atual, pra facilitar um ajuste fino em vez de
+        // começar do zero
+        const c = computeRow(it);
+        it.precoManualValor = Math.round((c.subtotalUnitCalc||0) * 100) / 100;
+      }
+      renderItems();
+    });
+  });
 
   items.forEach((it,idx)=> updateRowCalc(idx));
   updateTotals();
@@ -2952,7 +2992,10 @@ function updateRowCalc(idx){
   }
   tr.querySelector('[data-out="custoCorte"]').textContent = fmt(c.custoCorte);
   tr.querySelector('[data-out="custoDobra"]').textContent = fmt(c.custoDobra);
-  tr.querySelector('[data-out="subtotalUnit"]').textContent = fmt(c.subtotalUnit);
+  const unitOut = tr.querySelector('[data-out="subtotalUnit"]');
+  if (unitOut) unitOut.textContent = fmt(c.subtotalUnit);
+  const unitCalcOut = tr.querySelector('[data-out="subtotalUnitCalc"]');
+  if (unitCalcOut) unitCalcOut.textContent = 'calc.: ' + fmt(c.subtotalUnitCalc);
   tr.querySelector('[data-out="subtotalTotal"]').textContent = fmt(c.subtotalTotal);
 }
 
@@ -2973,6 +3016,7 @@ function renderPrintItems(){
       <td>${it.espessura} mm</td>
       <td>${it.clienteFornece ? 'Sim' : 'Não'}</td>
       <td>${it.qtd}</td>
+      <td>${fmt(c.subtotalUnit)}</td>
       <td>${fmt(c.subtotalTotal)}</td>
     </tr>`;
   }).join('');
@@ -2987,7 +3031,7 @@ function updateTotals(){
     materialTotal += c.custoMaterial * qtd;
     corteTotal += c.custoCorte * qtd;
     dobraTotal += c.custoDobra * qtd;
-    adicionalTotal += (it.custoAdicional||0) * qtd;
+    adicionalTotal += c.custoAdicional * qtd;
   });
 
   const minCorte = parseFloat(document.getElementById('minCorte').value)||0;
@@ -3116,6 +3160,8 @@ function handleFiles(fileList){
         furos: analysis.furos || 0,
         dobras: 0,
         custoAdicional: 0,
+        precoManual: false,
+        precoManualValor: 0,
         clienteFornece: false,
         estimativa: analysis.estimativa,
         geometry: analysis.geometry
@@ -3131,7 +3177,7 @@ document.getElementById('addManualBtn').addEventListener('click', ()=>{
   const firstEsp = (materials[0] && materials[0].thicknesses.length) ? materials[0].thicknesses[0].esp : 1;
   items.push({
     id: nextId++, fileName:'Item manual', material: materials[0]?materials[0].nome:'',
-    espessura:firstEsp, qtd:1, area:0, perimetro:0, bboxC:0, bboxL:0, furos:0, dobras:0, custoAdicional:0, clienteFornece:false, estimativa:false
+    espessura:firstEsp, qtd:1, area:0, perimetro:0, bboxC:0, bboxL:0, furos:0, dobras:0, custoAdicional:0, precoManual:false, precoManualValor:0, clienteFornece:false, estimativa:false
   });
   renderItems();
 });
@@ -3242,6 +3288,8 @@ async function handleBendPDFs(fileList){
       bendsList: res.bends,
       pdfThumb: res.thumb || null,
       custoAdicional: 0,
+      precoManual: false,
+      precoManualValor: 0,
       clienteFornece: false,
       estimativa: false
     });
@@ -4045,8 +4093,10 @@ function buildSnapshot(){
       pdfThumb: it.pdfThumb || null,
       clienteFornece: !!it.clienteFornece, estimativa: !!it.estimativa,
       geometry: it.geometry || null,
+      precoManual: !!it.precoManual, precoManualValor: it.precoManualValor||0,
       peso: c.peso, custoMaterial: c.custoMaterial, custoCorte: c.custoCorte,
-      custoDobra: c.custoDobra, subtotalUnit: c.subtotalUnit, subtotalTotal: c.subtotalTotal,
+      custoDobra: c.custoDobra, custoAdicional: c.custoAdicional,
+      subtotalUnit: c.subtotalUnit, subtotalTotal: c.subtotalTotal,
       tempoCorte: c.tempoCorte
     };
   });
@@ -4056,6 +4106,7 @@ function buildSnapshot(){
     materialTotal += r.custoMaterial * qtd;
     corteTotal += r.custoCorte * qtd;
     dobraTotal += r.custoDobra * qtd;
+    adicionalTotal += (r.custoAdicional||0) * qtd;
   });
   const minCorte = parseFloat(document.getElementById('minCorte').value)||0;
   const minDobra = parseFloat(document.getElementById('minDobra').value)||0;
@@ -4152,7 +4203,8 @@ function openSaved(i){
     dobraTempo: !!r.dobraTempo, segPorDobraItem: r.segPorDobraItem||0, setupSegItem: r.setupSegItem||0,
     bendsList: r.bendsList || null,
     pdfThumb: r.pdfThumb || null,
-    clienteFornece: r.clienteFornece, custoAdicional: 0, estimativa: r.estimativa, geometry: r.geometry
+    clienteFornece: r.clienteFornece, custoAdicional: 0, estimativa: r.estimativa, geometry: r.geometry,
+    precoManual: !!r.precoManual, precoManualValor: r.precoManualValor||0
   }));
   if (document.getElementById('espacoPecas') && o.espacoPecas !== undefined) document.getElementById('espacoPecas').value = o.espacoPecas;
   if (document.getElementById('sobraBorda') && o.sobraBorda !== undefined) document.getElementById('sobraBorda').value = o.sobraBorda;
