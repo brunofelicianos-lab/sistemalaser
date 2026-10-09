@@ -720,12 +720,12 @@
 
   <!-- Upload -->
   <div class="panel no-print">
-    <h2><span class="n">04</span>Arquivos DXF/STEP das peças</h2>
+    <h2><span class="n">04</span>Arquivos DXF/STEP/IGES das peças</h2>
     <div class="dropzone" id="dropzone">
-      <div><b>Arraste os arquivos .DXF ou .STEP/.STP aqui</b> ou clique para selecionar</div>
-      <div class="sub">cada arquivo é tratado como uma peça — você define a quantidade depois. Peça em STEP: a área/perímetro são calculados automaticamente a partir da geometria 3D (mesmo motor de leitura usado na aba Vistas STP), confira o resultado antes de fechar o orçamento.</div>
+      <div><b>Arraste os arquivos .DXF, .STEP/.STP ou .IGS/.IGES aqui</b> ou clique para selecionar</div>
+      <div class="sub">cada arquivo é tratado como uma peça — você define a quantidade depois. Peça em STEP ou IGES: a área/perímetro são calculados automaticamente a partir da geometria 3D (mesmo motor de leitura usado na aba Vistas STP), confira o resultado antes de fechar o orçamento.</div>
     </div>
-    <input type="file" id="fileInput" accept=".dxf,.step,.stp" multiple style="display:none">
+    <input type="file" id="fileInput" accept=".dxf,.step,.stp,.igs,.iges" multiple style="display:none">
     <button class="btn secondary small" id="addManualBtn" style="margin-top:10px;">+ adicionar item manual (sem DXF)</button>
 
     <div style="margin-top:16px; border-top:1px dashed var(--line); padding-top:12px;">
@@ -3127,7 +3127,11 @@ function handleFiles(fileList){
     const nomeMin = file.name.toLowerCase();
     const ehDXF = nomeMin.endsWith('.dxf');
     const ehSTEP = nomeMin.endsWith('.step') || nomeMin.endsWith('.stp');
-    if (!ehDXF && !ehSTEP) return;
+    const ehIGES = nomeMin.endsWith('.igs') || nomeMin.endsWith('.iges');
+    if (!ehDXF && !ehSTEP && !ehIGES){
+      alert(file.name+': formato não suportado. Use .DXF, .STEP/.STP ou .IGS/.IGES.');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e)=>{
       let analysis, avisoTubo = false;
@@ -3140,6 +3144,14 @@ function handleFiles(fileList){
           const conv = window.stepParaPecaOrcamento(e.target.result);
           avisoTubo = conv.tube;
           analysis = analyzeDXF(conv.dxf, unitScale);
+        } else if (ehIGES){
+          // IGES: lê as arestas 3D (já convertidas pra mm pela unidade declarada no próprio
+          // arquivo) e segue o MESMO caminho do STEP (vistas -> contornos fechados -> analyzeDXF).
+          // unitScale fixo em 1: o IGES já diz a unidade dele, o seletor "unidade do DXF" não se aplica.
+          if (!window.igesParaPecaOrcamento) throw new Error('conversor IGES não carregado');
+          const conv = window.igesParaPecaOrcamento(e.target.result);
+          avisoTubo = conv.tube;
+          analysis = analyzeDXF(conv.dxf, 1);
         } else {
           analysis = analyzeDXF(e.target.result, unitScale);
         }
@@ -10786,7 +10798,20 @@ populateListaClientes();
     const line=(layer,x1,y1,x2,y2)=>out.push("0","LINE","8",layer,"10",x1.toFixed(4),"20",y1.toFixed(4),"30","0.0","11",x2.toFixed(4),"21",y2.toFixed(4),"31","0.0");
     const circle=(layer,cx,cy,r)=>out.push("0","CIRCLE","8",layer,"10",cx.toFixed(4),"20",cy.toFixed(4),"30","0.0","40",r.toFixed(4));
     for (const {v,dx,dy} of placed){
-      const deslocadas = v.lines.map(([a,b])=>[[a[0]+dx,a[1]+dy],[b[0]+dx,b[1]+dy]]);
+      // Na projeção, a aresta de cima e a de baixo da chapa caem exatamente uma em cima da
+      // outra (e as arestas da espessura viram um ponto). Sem limpar isso o contorno sai em
+      // dobro (perímetro dobrado, furo contado 2x) — então tira traço de comprimento zero e
+      // traço repetido antes de encadear.
+      const qk=x=>Math.round(x*100)/100, pk=p=>qk(p[0])+','+qk(p[1]);
+      const vistos=new Set();
+      const deslocadas = [];
+      v.lines.forEach(([a,b])=>{
+        const A=[a[0]+dx,a[1]+dy], B=[b[0]+dx,b[1]+dy];
+        if (Math.hypot(A[0]-B[0],A[1]-B[1]) < 0.005) return;
+        const k=[pk(A),pk(B)].sort().join('|');
+        if (vistos.has(k)) return; vistos.add(k);
+        deslocadas.push([A,B]);
+      });
       const loops = encadearSegmentosVista(deslocadas, 0.01);
       loops.forEach(loop=>{
         if (loop.length < 2) return;
@@ -10799,7 +10824,12 @@ populateListaClientes();
           for (let i=0;i<loop.length-1;i++) line(v.name, loop[i][0],loop[i][1], loop[i+1][0],loop[i+1][1]);
         }
       });
-      v.circles.forEach(c=> circle(v.name, c.cx+dx, c.cy+dy, c.r));
+      const circVistos=new Set();
+      v.circles.forEach(c=>{
+        const k=qk(c.cx+dx)+','+qk(c.cy+dy)+','+qk(c.r);
+        if (circVistos.has(k)) return; circVistos.add(k);
+        circle(v.name, c.cx+dx, c.cy+dy, c.r);
+      });
     }
     out.push("0","ENDSEC","0","EOF");
     return out.join("\n");
@@ -10809,14 +10839,298 @@ populateListaClientes();
   // verdade) e usa só a(s) face(s): peça de chapa comum vira 1 contorno; peça de tubo vira 4
   // (uma por face desdobrada — cada uma conta como material/área separada, aproximação razoável
   // já que tubo não é o caso normal desse orçamento em chapa).
+  // Escolhe as vistas que contam como peça no Orçamento. Chapa (não-tubo): só UMA vista — a
+  // olhando de frente pra chapa, ou seja, projetando ao longo do eixo de MENOR dimensão (a
+  // espessura). Antes pegava as faces do buildViews, que pra chapa incluem a vista de LADO
+  // (comprimento × espessura, uma tira fininha) e essa tira era somada na área da peça.
+  function vistasParaOrcamento(result){
+    if (result.tube) return result.views.filter(v=> !v.name.startsWith('VISTA_SECAO'));
+    const la = result.lenAxis, o = [0,1,2].filter(i=> i!==la), sp = result.bb.span;
+    // f=0 projeta em (comprimento, eixo A) => olha ao longo do eixo B; f=1 olha ao longo do A
+    const f = sp[o[1]] <= sp[o[0]] ? 0 : 1;
+    const v = result.allFaces[f];
+    return v ? [v] : result.views.filter(v=> !v.name.startsWith('VISTA_SECAO'));
+  }
   window.stepParaPecaOrcamento = function(stepText){
     const ents = parseStep(stepText);
     const segs = extractSegments(ents);
     const result = buildViews(segs);
-    const viewsSemSecao = result.views.filter(v=> !v.name.startsWith('VISTA_SECAO'));
+    const viewsSemSecao = vistasParaOrcamento(result);
     if (!viewsSemSecao.length) throw new Error('Não foi possível identificar nenhuma face/contorno nesse STEP.');
     const placed = layout({ views: viewsSemSecao });
     return { dxf: toDXFPecaOrcamento(placed), tube: !!result.tube };
+  };
+
+  // ---------- IGES (.igs/.iges) -> segmentos 3D (mesmo formato do extractSegments do STEP) ----------
+  // Pro Orçamento aceitar peça em IGES além de DXF/STEP. Lê as curvas de ARESTA do arquivo
+  // (linhas 110, arcos/círculos 100, B-splines 126, polilinhas 106) já no espaço do modelo
+  // (aplicando a matriz de transformação 124 de cada entidade) e devolve no MESMO formato de
+  // segmentos que o extractSegments() do STEP — daí pra frente é exatamente o mesmo caminho
+  // (buildViews -> contornos fechados -> analyzeDXF), sem cálculo paralelo.
+  // Ignorado de propósito: curvas em "espaço de parâmetro" de superfície (flag de uso 05 no
+  // diretório — são 2D dentro da superfície, não coordenada real da peça) e a curva composta
+  // 102 (as curvas que a compõem já estão no arquivo como entidades próprias — ler as duas
+  // duplicaria as arestas).
+  function parseIges(text){
+    const secs={S:[],G:[],D:[],P:[]};
+    text.split(/\r\n|\r|\n/).forEach(l=>{
+      if(l.length<73) return;
+      const sec=l.charAt(72);
+      if(secs[sec]) secs[sec].push(l);
+    });
+    if(!secs.D.length) throw new Error('Arquivo IGES sem seção de diretório (D) — não parece ser um IGES válido.');
+    // ---- seção global (unidade) ----
+    const gTxt=secs.G.map(l=>l.slice(0,72)).join('');
+    let pd=',', rd=';';
+    function lerGlobal(s){
+      const out=[]; let i=0;
+      // delimitadores podem ser redefinidos nos 2 primeiros campos (ex.: "1H,,1H;,")
+      const lerCampo=()=>{
+        let j=i; while(j<s.length && s[j]===' ') j++;
+        const h=/^(\d+)H/.exec(s.slice(j));
+        if(h){ const n=+h[1]; const ini=j+h[0].length; const val=s.substr(ini,n); i=ini+n; return val; }
+        let k=j; while(k<s.length && s[k]!==pd && s[k]!==rd) k++;
+        const val=s.slice(j,k).trim(); i=k; return val;
+      };
+      for(let c=0;c<30 && i<s.length;c++){
+        const v=lerCampo(); out.push(v);
+        if(c===0 && v) pd=v; if(c===1 && v) rd=v;
+        if(s[i]===rd) break;
+        i++;
+      }
+      return out;
+    }
+    const g=lerGlobal(gTxt);
+    const escalaModelo=parseFloat(String(g[12]||'1').replace(/D/i,'E'))||1;
+    const unitFlag=parseInt(g[13],10)||2;
+    const unitNome=String(g[14]||'').toUpperCase().replace(/^\d+H/,'');
+    const UNIT_MM={1:25.4,2:1,4:304.8,5:1609344,6:1000,7:1e6,8:0.0254,9:0.001,10:10,11:0.0000254};
+    let fator=UNIT_MM[unitFlag];
+    if(unitFlag===3 || fator==null){
+      const porNome={'IN':25.4,'INCH':25.4,'MM':1,'FT':304.8,'M':1000,'KM':1e6,'MIL':0.0254,'UM':0.001,'CM':10,'UIN':0.0000254,'MI':1609344};
+      fator=porNome[unitNome]!=null?porNome[unitNome]:1;
+    }
+    fator=fator/escalaModelo;
+
+    // ---- diretório ----
+    const campo=(l,n)=>l.substr(n*8,8).trim();
+    const dir={};
+    for(let k=0;k+1<secs.D.length;k+=2){
+      const l1=secs.D[k], l2=secs.D[k+1];
+      const seq=parseInt(l1.substr(73,7),10)||(k+1);
+      const status=campo(l1,8).padStart(8,'0');
+      dir[seq]={type:parseInt(campo(l1,0),10), pptr:parseInt(campo(l1,1),10), xf:parseInt(campo(l1,6),10)||0,
+        sub:status.substr(2,2), use:status.substr(4,2), form:parseInt(campo(l2,4),10)||0};
+    }
+    // ---- parâmetros (agrupados pelo ponteiro do diretório, colunas 65-72) ----
+    const ptxt={};
+    for(const l of secs.P){
+      const de=parseInt(l.substr(64,8),10);
+      if(!de) continue;
+      ptxt[de]=(ptxt[de]||'')+l.slice(0,64);
+    }
+    const params=de=>{
+      const t=ptxt[de]; if(t==null) return null;
+      const corpo=t.split(rd)[0];
+      // campos podem conter string Hollerith (nH...) — raros em curva, mas tratamos
+      const out=[]; let i=0;
+      while(i<=corpo.length){
+        let j=i; while(j<corpo.length && corpo[j]===' ') j++;
+        const h=/^(\d+)H/.exec(corpo.slice(j));
+        if(h){ const n=+h[1]; const ini=j+h[0].length; out.push(corpo.substr(ini,n)); i=ini+n; while(i<corpo.length && corpo[i]!==pd) i++; i++; continue; }
+        let k=j; while(k<corpo.length && corpo[k]!==pd) k++;
+        out.push(corpo.slice(j,k).trim()); i=k+1;
+      }
+      return out;
+    };
+    const num=v=>{ const x=parseFloat(String(v||'0').replace(/D/i,'E')); return Number.isFinite(x)?x:0; };
+
+    // ---- matriz de transformação (124), com encadeamento ----
+    const cacheXf={};
+    function matriz(de,prof){
+      if(!de) return null;
+      if(cacheXf[de]!==undefined) return cacheXf[de];
+      const d=dir[de]; const p=params(de);
+      if(!d || d.type!==124 || !p) return (cacheXf[de]=null);
+      const v=p.slice(1,13).map(num);
+      let M={R:[[v[0],v[1],v[2]],[v[4],v[5],v[6]],[v[8],v[9],v[10]]],T:[v[3],v[7],v[11]]};
+      if(d.xf && (prof||0)<10){
+        const P=matriz(d.xf,(prof||0)+1);
+        if(P){ // composição: P ∘ M
+          const R=[0,1,2].map(i=>[0,1,2].map(j=>P.R[i][0]*M.R[0][j]+P.R[i][1]*M.R[1][j]+P.R[i][2]*M.R[2][j]));
+          const T=[0,1,2].map(i=>P.R[i][0]*M.T[0]+P.R[i][1]*M.T[1]+P.R[i][2]*M.T[2]+P.T[i]);
+          M={R,T};
+        }
+      }
+      return (cacheXf[de]=M);
+    }
+    const aplica=(M,p)=>{
+      const q=M?[0,1,2].map(i=>M.R[i][0]*p[0]+M.R[i][1]*p[1]+M.R[i][2]*p[2]+M.T[i]):p.slice();
+      return [q[0]*fator,q[1]*fator,q[2]*fator];
+    };
+    const aplicaDir=(M,v)=>M?[0,1,2].map(i=>M.R[i][0]*v[0]+M.R[i][1]*v[1]+M.R[i][2]*v[2]):v.slice();
+
+    // ---- curvas no espaço de parâmetro (2D dentro de uma superfície) ----
+    // Nem todo programa marca essas curvas com a flag de uso 05 (o OpenCascade, por exemplo, não
+    // marca) — então também descobrimos pela estrutura: o BPTR da 142 (curva sobre superfície) e
+    // as curvas PSC do laço 508 (sólido B-Rep) são sempre espaço de parâmetro. Se uma delas for
+    // uma composta 102, as curvas dentro dela também são.
+    const paramSpace=new Set();
+    const marcaParam=(de,prof)=>{
+      de=parseInt(de,10); if(!de || paramSpace.has(de) || (prof||0)>20) return;
+      paramSpace.add(de);
+      const d=dir[de]; if(d && d.type===102){ const pp=params(de)||[]; const n=parseInt(pp[1],10)||0; for(let i=0;i<n;i++) marcaParam(pp[2+i],(prof||0)+1); }
+    };
+    // Arestas "de verdade" (espaço do modelo) de um modelo de superfície/sólido: CPTR da 142 e
+    // as curvas da lista de arestas 504. Quando o arquivo tem 142/504, só essas entram — assim
+    // ficam de fora também as curvas que só servem pra DEFINIR uma superfície (eixo/geratriz
+    // de superfície de revolução 120, diretriz da 122 etc.), que não são aresta da peça.
+    // IGES só de arame (2D/3D sem superfície, ex.: exportado de CAD 2D) não tem 142/504 —
+    // aí entram todas as curvas que não forem espaço de parâmetro.
+    const modelo=new Set(); let temTopologia=false;
+    const marcaModelo=(de,prof)=>{
+      de=parseInt(de,10); if(!de || modelo.has(de) || (prof||0)>20) return;
+      modelo.add(de);
+      const d=dir[de]; if(d && d.type===102){ const pp=params(de)||[]; const n=parseInt(pp[1],10)||0; for(let i=0;i<n;i++) marcaModelo(pp[2+i],(prof||0)+1); }
+    };
+    for(const de in dir){
+      const d=dir[de];
+      try{
+        if(d.type===142){ temTopologia=true; const pp=params(+de)||[]; marcaParam(pp[3]); marcaModelo(pp[4]); }
+        else if(d.type===504){
+          temTopologia=true; const pp=params(+de)||[]; const n=parseInt(pp[1],10)||0;
+          for(let e=0;e<n;e++) marcaModelo(pp[2+5*e]);
+        }
+        else if(d.type===508){
+          const pp=params(+de)||[]; const n=parseInt(pp[1],10)||0; let i=2;
+          for(let e=0;e<n;e++){ const k=parseInt(pp[i+4],10)||0; for(let j=0;j<k;j++) marcaParam(pp[i+5+2*j+1]); i+=5+2*k; }
+        }
+      }catch(err){ /* estrutura inesperada — segue sem marcar */ }
+    }
+
+    // ---- curvas ----
+    const curvas=[]; // cada item: {kind:'line'|'arc'|'circle'|'poly', ...}
+    let ignoradas=0;
+    for(const de in dir){
+      const d=dir[de];
+      if(d.use==='05' || paramSpace.has(+de)) continue;   // curva no espaço de parâmetro da superfície
+      if(temTopologia && !modelo.has(+de)) continue;       // não é aresta da peça (ver acima)
+      if([110,100,126,106].indexOf(d.type)<0) continue;
+      try{
+        const p=params(+de); if(!p) continue;
+        const M=matriz(d.xf);
+        if(d.type===110){
+          const v=p.slice(1,7).map(num);
+          curvas.push({kind:'line',p0:aplica(M,[v[0],v[1],v[2]]),p1:aplica(M,[v[3],v[4],v[5]])});
+        } else if(d.type===100){
+          const v=p.slice(1,8).map(num); const zt=v[0];
+          const c=[v[1],v[2],zt], s=[v[3],v[4],zt], e=[v[5],v[6],zt];
+          const r=Math.hypot(s[0]-c[0],s[1]-c[1]);
+          if(r<1e-9) continue;
+          const center=aplica(M,c), p0=aplica(M,s), p1=aplica(M,e);
+          let normal=norm(aplicaDir(M,[0,0,1]));
+          const xdir=norm(aplicaDir(M,[1,0,0]));
+          // matriz espelhada (determinante negativo) inverte o sentido anti-horário do arco:
+          // corrige virando a normal, pra arcTo2D continuar girando de p0 até p1 do lado certo
+          if(dot(cross(normal,xdir),norm(aplicaDir(M,[0,1,0])))<0) normal=normal.map(x=>-x);
+          const radius=r*fator*Math.hypot(...aplicaDir(M,[1,0,0]));
+          const cheio=Math.hypot(s[0]-e[0],s[1]-e[1])<1e-6*Math.max(1,r);
+          if(cheio) curvas.push({kind:'circle',center,normal,radius,xdir});
+          else curvas.push({kind:'arc',center,normal,radius,p0,p1,xdir,full:false});
+        } else if(d.type===126){
+          const K=parseInt(p[1],10), Mg=parseInt(p[2],10);
+          if(!(K>=1) || !(Mg>=1)) throw new Error('B-spline inválida');
+          const N=1+K-Mg, A=N+2*Mg;
+          let idx=7;
+          const knots=p.slice(idx,idx+A+1).map(num); idx+=A+1;
+          const pesos=p.slice(idx,idx+K+1).map(num); idx+=K+1;
+          const ctrl=[]; for(let i=0;i<=K;i++){ ctrl.push([num(p[idx]),num(p[idx+1]),num(p[idx+2])]); idx+=3; }
+          let v0=num(p[idx]), v1=num(p[idx+1]);
+          if(!(v1>v0)){ v0=knots[Mg]; v1=knots[K+1]; }
+          const racional=parseInt(p[5],10)===0; // PROP3: 0 = racional, 1 = polinomial
+          const nSeg=Mg===1?K:24;
+          const pts=[];
+          for(let i=0;i<=nSeg;i++){
+            const u=v0+(v1-v0)*i/nSeg;
+            pts.push(aplica(M,nurbsEval(ctrl,racional?pesos:null,Mg,knots,Math.min(Math.max(u,knots[Mg]),knots[K+1]))));
+          }
+          curvas.push({kind:'poly',pts});
+        } else if(d.type===106){
+          const ip=parseInt(p[1],10), n=parseInt(p[2],10);
+          const pts=[];
+          if(ip===1){ const z=num(p[3]); for(let i=0;i<n;i++) pts.push(aplica(M,[num(p[4+2*i]),num(p[5+2*i]),z])); }
+          else if(ip===2 || ip===3){ const passo=ip===2?3:6; for(let i=0;i<n;i++) pts.push(aplica(M,[num(p[3+passo*i]),num(p[4+passo*i]),num(p[5+passo*i])])); }
+          // só as formas de polilinha (11, 12, 63) — as outras formas do 106 são nuvem de pontos/hachura
+          if(pts.length>1 && [11,12,63].indexOf(d.form)>=0){
+            if(d.form===63) pts.push(pts[0]);
+            curvas.push({kind:'poly',pts});
+          }
+        }
+      }catch(err){ ignoradas++; console.warn('IGES: curva '+de+' ignorada:',err); }
+    }
+
+    // ---- remove arestas duplicadas (no IGES de superfícies cada aresta costuma vir 2x,
+    // uma pra cada face vizinha — no STEP isso não acontece porque a aresta é única) ----
+    const q=x=>Math.round(x*100)/100;
+    const kp=p=>p.map(q).join(',');
+    const visto=new Set(); const segs=[];
+    const chave=c=>{
+      if(c.kind==='line'){ return 'L|'+[kp(c.p0),kp(c.p1)].sort().join('|'); }
+      if(c.kind==='circle'){ return 'C|'+kp(c.center)+'|'+q(c.radius)+'|'+norm(c.normal).map(x=>Math.round(Math.abs(x)*1000)).join(','); }
+      if(c.kind==='arc'){ const m=arcMeio(c); return 'A|'+kp(c.center)+'|'+q(c.radius)+'|'+[kp(c.p0),kp(c.p1)].sort().join('|')+'|'+kp(m); }
+      const a=c.pts[0], b=c.pts[c.pts.length-1], m=c.pts[Math.floor(c.pts.length/2)];
+      return 'P|'+[kp(a),kp(b)].sort().join('|')+'|'+kp(m);
+    };
+    function arcMeio(c){
+      const nn=norm(c.normal),xx=norm(c.xdir),yy=cross(nn,xx);
+      const ang=p=>{const w=sub(p,c.center);return Math.atan2(dot(w,yy),dot(w,xx));};
+      let a0=ang(c.p0),a1=ang(c.p1); if(a1<=a0)a1+=2*Math.PI; const a=(a0+a1)/2;
+      return [0,1,2].map(i=>c.center[i]+c.radius*(Math.cos(a)*xx[i]+Math.sin(a)*yy[i]));
+    }
+    // arco com normal invertida (-Z) é o mesmo arco percorrido ao contrário: normaliza pro
+    // mesmo sentido antes de comparar/usar (arcTo2D sempre gira p0->p1 em volta da normal)
+    for(const c of curvas){
+      const k=chave(c);
+      if(visto.has(k)) continue;
+      visto.add(k);
+      if(c.kind==='poly'){
+        for(let i=0;i<c.pts.length-1;i++) segs.push({kind:'line',p0:c.pts[i],p1:c.pts[i+1]});
+      } else segs.push(c);
+    }
+    // junta arcos do mesmo círculo que fecham 360° num CIRCLE (igual o extractSegments faz no STEP)
+    const arcs=segs.filter(s=>s.kind==='arc');
+    const restantes=segs.filter(s=>s.kind!=='arc');
+    const grupos={};
+    for(const a of arcs){
+      const nn=norm(a.normal); const sgn=(nn[0]||nn[1]||nn[2])<0?-1:1;
+      const k=kp(a.center)+'|'+q(a.radius)+'|'+nn.map(x=>Math.round(x*sgn*1000)).join(',');
+      (grupos[k]=grupos[k]||[]).push(a);
+    }
+    for(const k in grupos){
+      const gr=grupos[k];
+      let cov=0;
+      for(const a of gr){
+        const nn=norm(a.normal),xx=norm(a.xdir),yy=cross(nn,xx);
+        const ang=p=>{const w=sub(p,a.center);return Math.atan2(dot(w,yy),dot(w,xx));};
+        let dd=ang(a.p1)-ang(a.p0); dd=((dd%(2*Math.PI))+2*Math.PI)%(2*Math.PI); if(dd<1e-6)dd=2*Math.PI; cov+=dd;
+      }
+      if(cov>=2*Math.PI-0.05 && cov<=2*Math.PI+0.05){
+        const f=gr[0]; restantes.push({kind:'circle',center:f.center,normal:f.normal,radius:f.radius,xdir:f.xdir});
+      } else gr.forEach(a=>restantes.push(a));
+    }
+    const NOME_UN={1:'INCH',2:'MM',4:'FT',5:'MI',6:'M',7:'KM',8:'MIL',9:'UM',10:'CM',11:'UIN'};
+    return {segs:restantes, unidade:unitNome||NOME_UN[unitFlag]||String(unitFlag), fator, ignoradas};
+  }
+
+  // Exposto global pro Orçamento (item "04") — mesmo contrato do stepParaPecaOrcamento.
+  window.igesParaPecaOrcamento = function(igesText){
+    const r = parseIges(igesText);
+    if (!r.segs.length) throw new Error('Nenhuma aresta (linha/arco/curva) encontrada nesse IGES.');
+    const result = buildViews(r.segs);
+    const viewsSemSecao = vistasParaOrcamento(result);
+    if (!viewsSemSecao.length) throw new Error('Não foi possível identificar nenhuma face/contorno nesse IGES.');
+    const placed = layout({ views: viewsSemSecao });
+    return { dxf: toDXFPecaOrcamento(placed), tube: !!result.tube, unidade: r.unidade };
   };
 
   // ---------- STEP -> IGS (conversão real de geometria via opencascade.js/OCCT em WASM) ----------
